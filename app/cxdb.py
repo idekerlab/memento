@@ -16,7 +16,7 @@ class CXDB:
             raise ValueError("Node name must be unique")
         if properties is None:
             properties = {}
-        node_id = self.next_node_id
+        node_id = int(self.next_node_id)
         self.next_node_id += 1
         new_node = pd.DataFrame([[node_id, name, type, properties]], columns=self.nodes.columns)
         self.nodes = pd.concat([self.nodes, new_node], ignore_index=True)
@@ -60,7 +60,7 @@ class CXDB:
     def add_edge(self, source, target, relationship, properties=None):
         if properties is None:
             properties = {}
-        new_edge = pd.DataFrame([[source, target, relationship, properties]], columns=self.edges.columns)
+        new_edge = pd.DataFrame([[int(source), int(target), relationship, properties]], columns=self.edges.columns)
         self.edges = pd.concat([self.edges, new_edge], ignore_index=True)
 
     def delete_edge(self, source, target, relationship):
@@ -91,26 +91,65 @@ class CXDB:
             return edge.iloc[0]
         return None
 
+    # def to_cx2(self):
+    #     if self.cx2_network is None:
+    #         self.cx2_network = CX2Network()
+    #     else:
+    #         self.clear_nodes()
+    #         self.clear_edges()
+
+    #     # Add nodes from CXDB to CX2Network
+    #     for _, node in self.nodes.iterrows():
+    #         self.cx2_network.add_node(node['id'], node['name'])
+    #         self.cx2_network.set_node_attribute(node['id'], 'type', node['type'])
+    #         for key, value in node['properties'].items():
+    #             self.cx2_network.set_node_attribute(node['id'], key, value)
+
+    #     # Add edges from CXDB to CX2Network
+    #     for _, edge in self.edges.iterrows():
+    #         edge_id = self.cx2_network.add_edge(edge['source'], edge['target'], edge['relationship'])
+    #         for key, value in edge['properties'].items():
+    #             self.cx2_network.set_edge_attribute(edge_id, key, value)
+
+    #     return self.cx2_network
+    
     def to_cx2(self):
         if self.cx2_network is None:
             self.cx2_network = CX2Network()
-
-        # Clear existing nodes and edges in CX2Network
-        self.cx2_network.clear_nodes()
-        self.cx2_network.clear_edges()
+        else:
+            self.clear_nodes()
+            self.clear_edges()
 
         # Add nodes from CXDB to CX2Network
         for _, node in self.nodes.iterrows():
-            self.cx2_network.add_node(node['id'], node['name'])
-            self.cx2_network.add_node_attribute(node['id'], 'type', node['type'])
-            for key, value in node['properties'].items():
-                self.cx2_network.add_node_attribute(node['id'], key, value)
+            # Create a dictionary of node attributes
+            node_attrs = {
+                'name': node['name'],
+                'type': node['type']
+            }
+            # Add any additional properties
+            if isinstance(node['properties'], dict):
+                node_attrs.update(node['properties'])
+            
+            # Add the node to CX2Network
+            self.cx2_network.add_node(int(node['id']), node_attrs)
 
         # Add edges from CXDB to CX2Network
         for _, edge in self.edges.iterrows():
-            edge_id = self.cx2_network.add_edge(edge['source'], edge['target'], edge['relationship'])
-            for key, value in edge['properties'].items():
-                self.cx2_network.add_edge_attribute(edge_id, key, value)
+            # Create a dictionary of edge attributes
+            edge_attrs = {
+                'interaction': edge['relationship']
+            }
+            # Add any additional properties
+            if isinstance(edge['properties'], dict):
+                edge_attrs.update(edge['properties'])
+            
+            # Add the edge to CX2Network
+            edge_id = self.cx2_network.add_edge(int(edge['source']), int(edge['target']))
+            
+            # Set edge attributes
+            for key, value in edge_attrs.items():
+                self.cx2_network.set_edge_attribute(edge_id, key, value)
 
         return self.cx2_network
 
@@ -122,11 +161,10 @@ class CXDB:
 
         # Import nodes
         for node_id in cx2_network.get_nodes():
-            name = cx2_network.get_node_attribute(node_id, 'name')
-            node_type = cx2_network.get_node_attribute(node_id, 'type')
-            properties = {attr: cx2_network.get_node_attribute(node_id, attr)
-                          for attr in cx2_network.get_node_attributes(node_id)
-                          if attr not in ['name', 'type']}
+            node_attrs = cx2_network.get_node_attributes(node_id)
+            name = node_attrs.get('name', '')
+            node_type = node_attrs.get('type', '')
+            properties = {k: v for k, v in node_attrs.items() if k not in ['name', 'type']}
             
             self.nodes = pd.concat([self.nodes, pd.DataFrame({
                 "id": [node_id],
@@ -142,9 +180,9 @@ class CXDB:
             edge = cx2_network.get_edge(edge_id)
             source = edge['s']
             target = edge['t']
-            relationship = edge['i']
-            properties = {attr: cx2_network.get_edge_attribute(edge_id, attr)
-                          for attr in cx2_network.get_edge_attributes(edge_id)}
+            edge_attrs = cx2_network.get_edge_attributes(edge_id)
+            relationship = edge_attrs.get('interaction', '')
+            properties = {k: v for k, v in edge_attrs.items() if k != 'interaction'}
             
             self.edges = pd.concat([self.edges, pd.DataFrame({
                 "source": [source],
@@ -154,6 +192,47 @@ class CXDB:
             })], ignore_index=True)
 
         return self
+
+    # def import_cx2(self, cx2_network):
+    #     if not self.nodes.empty or not self.edges.empty:
+    #         raise ValueError("CXDB is not empty. Cannot import CX2 into a non-empty database.")
+
+    #     self.cx2_network = cx2_network
+
+    #     # Import nodes
+    #     for node_id in cx2_network.get_nodes():
+    #         name = cx2_network.get_node_attribute(node_id, 'name')
+    #         node_type = cx2_network.get_node_attribute(node_id, 'type')
+    #         properties = {attr: cx2_network.get_node_attribute(node_id, attr)
+    #                       for attr in cx2_network.get_node_attributes(node_id)
+    #                       if attr not in ['name', 'type']}
+            
+    #         self.nodes = pd.concat([self.nodes, pd.DataFrame({
+    #             "id": [node_id],
+    #             "name": [name],
+    #             "type": [node_type],
+    #             "properties": [properties]
+    #         })], ignore_index=True)
+    #         self.node_names.add(name)
+    #         self.next_node_id = max(self.next_node_id, node_id + 1)
+
+    #     # Import edges
+    #     for edge_id in cx2_network.get_edges():
+    #         edge = cx2_network.get_edge(edge_id)
+    #         source = edge['s']
+    #         target = edge['t']
+    #         relationship = edge['i']
+    #         properties = {attr: cx2_network.get_edge_attribute(edge_id, attr)
+    #                       for attr in cx2_network.get_edge_attributes(edge_id)}
+            
+    #         self.edges = pd.concat([self.edges, pd.DataFrame({
+    #             "source": [source],
+    #             "target": [target],
+    #             "relationship": [relationship],
+    #             "properties": [properties]
+    #         })], ignore_index=True)
+
+    #     return self
 
     def to_ndex(self, name=None, description=None, visibility="PRIVATE", overwrite=False):
         # Load NDEx credentials
@@ -216,11 +295,26 @@ class CXDB:
         
         return self
 
-    def clear(self):
+    def clear_nodes(self):
+        """Clear all nodes from both the DataFrame and CX2Network."""
         self.nodes = pd.DataFrame(columns=['id', 'name', 'type', 'properties'])
-        self.edges = pd.DataFrame(columns=['source', 'target', 'relationship', 'properties'])
-        self.next_node_id = 1
         self.node_names = set()
+        self.next_node_id = 1
+        if self.cx2_network:
+            for node_id in list(self.cx2_network.get_nodes()):
+                self.cx2_network.remove_node(node_id)
+
+    def clear_edges(self):
+        """Clear all edges from both the DataFrame and CX2Network."""
+        self.edges = pd.DataFrame(columns=['source', 'target', 'relationship', 'properties'])
+        if self.cx2_network:
+            for edge_id in list(self.cx2_network.get_edges()):
+                self.cx2_network.remove_edge(edge_id)
+
+    def clear(self):
+        """Clear all data from CXDB, including nodes, edges, and CX2Network."""
+        self.clear_nodes()
+        self.clear_edges()
         self.cx2_network = None
         if hasattr(self, 'ndex_uuid'):
             del self.ndex_uuid

@@ -1,7 +1,17 @@
 import unittest
+import os
+import sys
+
+cwd = os.getcwd() # Current working directory
+dirname = os.path.dirname(cwd) # Parent directory
+print(f'\n\n CWD: {cwd} \n\n')
+print(f'\n\n PARENT: {dirname} \n\n')
+sys.path.append(cwd)# Add the parent directory to the Python path
+print(sys.path)
+
+
 from app.cxdb import CXDB
 from ndex2.cx2 import CX2Network
-import pandas as pd
 
 class TestCXDB(unittest.TestCase):
 
@@ -74,6 +84,23 @@ class TestCXDB(unittest.TestCase):
         self.assertEqual(len(self.cxdb.nodes), 0)
         self.assertEqual(len(self.cxdb.edges), 0)
         self.assertIsNone(self.cxdb.cx2_network)
+
+    def test_clear_nodes(self):
+        self.cxdb.add_node("Node1", "Type1", {"prop1": "value1"})
+        self.cxdb.add_node("Node2", "Type2", {"prop2": "value2"})
+        self.cxdb.to_cx2()  # This creates the CX2Network object
+        self.cxdb.clear_nodes()
+        self.assertEqual(len(self.cxdb.nodes), 0)
+        self.assertEqual(len(self.cxdb.cx2_network.get_nodes()), 0)
+
+    def test_clear_edges(self):
+        node1_id = self.cxdb.add_node("Node1", "Type1")
+        node2_id = self.cxdb.add_node("Node2", "Type2")
+        self.cxdb.add_edge(node1_id, node2_id, "RELATES_TO", {"weight": 1})
+        self.cxdb.to_cx2()  # This creates the CX2Network object
+        self.cxdb.clear_edges()
+        self.assertEqual(len(self.cxdb.edges), 0)
+        self.assertEqual(len(self.cxdb.cx2_network.get_edges()), 0)
 
     # Note: The following tests require NDEx credentials and network access.
     # You may want to mock these or run them separately.
