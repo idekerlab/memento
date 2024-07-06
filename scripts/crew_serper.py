@@ -1,6 +1,5 @@
 import os
 import sys
-os.environ["SERPER_API_KEY"] = "08b8d890a30174ab3ed8d6be341054836e87d91c"  # serper.dev API key
 
 cwd = os.getcwd() # Current working directory
 dirname = os.path.dirname(cwd) # Parent directory

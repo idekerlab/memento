@@ -1,0 +1,16 @@
+**The "CXCL10-IFI44L axis" hypothesis**
+
+The data suggests a novel mechanistic relationship between CXCL10, IFI44L, and the immune response to dengue virus infection. Specifically, I propose that CXCL10, a chemokine involved in immune cell recruitment, induces the expression of IFI44L, a interferon-inducible protein, which in turn enhances the antiviral response by promoting the degradation of dengue virus proteins.
+
+The data shows that CXCL10 is highly upregulated at 24 hours post-infection (log2FC = 11.5141626), while IFI44L is also upregulated, albeit to a lesser extent, at 48 hours post-infection (log2FC = 9.038601577). Furthermore, IFI44L has been shown to interact with dengue virus proteins (dengue proteins that bind this protein column). I hypothesize that CXCL10, by inducing IFI44L, creates a positive feedback loop that amplifies the antiviral response, leading to the degradation of dengue virus proteins.
+
+**Validation experiment proposal:**
+
+To validate this hypothesis, I propose a siRNA-mediated knockdown of CXCL10 in human cells infected with dengue virus. The experiment would involve:
+
+1. Transfecting human cells with siRNA against CXCL10 or a scrambled control.
+2. Infecting the cells with dengue virus.
+3. Measuring IFI44L protein levels at 48 hours post-infection using Western blot or qRT-PCR.
+4. Assessing the degradation of dengue virus proteins using Western blot or immunofluorescence.
+
+If the hypothesis is correct, the knockdown of CXCL10 should lead to a decrease in IFI44L expression and a concomitant decrease in the degradation of dengue virus proteins. This experiment would provide evidence for the causal relationship between CXCL10, IFI44L, and the immune response to dengue virus infection.
