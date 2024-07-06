@@ -1,14 +1,15 @@
 import pandas as pd
+from ndex2.cx2 import CX2Network
+import ndex2.client as nc2
+from app.config import load_config
 
-# The purpose of this class is to provide a simple in-memory graph database. It implements
-# a subset of the Cypher query language, incrementally extended to meet the needs
-# of the project. 
 class CXDB:
     def __init__(self):
         self.nodes = pd.DataFrame(columns=['id', 'name', 'type', 'properties'])
         self.edges = pd.DataFrame(columns=['source', 'target', 'relationship', 'properties'])
         self.next_node_id = 1
         self.node_names = set()
+        self.cx2_network = None
 
     def add_node(self, name, type, properties=None):
         if name in self.node_names:
@@ -74,19 +75,13 @@ class CXDB:
             if edge_index.empty:
                 raise ValueError("Edge not found")
 
-            # Get the current properties
             current_properties = self.edges.at[edge_index[0], 'properties']
-
-            # Update properties
             for key, value in properties.items():
                 if value is None:
                     current_properties.pop(key, None)
                 else:
                     current_properties[key] = value
-
-            # Assign the updated properties back to the DataFrame
             self.edges.at[edge_index[0], 'properties'] = current_properties
-
 
     def get_edge(self, source, target, relationship):
         edge = self.edges[(self.edges['source'] == source) & 
@@ -96,117 +91,136 @@ class CXDB:
             return edge.iloc[0]
         return None
 
-    def query(self, cypher):
-        tokens = cypher.strip().split()
-        if tokens[0].upper() == "MATCH":
-            pattern = tokens[1]
-            if pattern.startswith("(") and pattern.endswith(")"):
-                node_type = pattern[1:-1]
-                result_nodes = self.nodes[self.nodes['type'] == node_type]
-                return result_nodes
-            elif pattern.startswith("(") and ")-[" in pattern and "]->(" in pattern:
-                source_type = pattern.split(")-[")[0][1:]
-                relationship = pattern.split("]-[")[1].split("]->")[0]
-                target_type = pattern.split("]->(")[1][:-1]
-                
-                matched_edges = self.edges[self.edges['relationship'] == relationship]
-                
-                matched_edges = matched_edges.merge(self.nodes[self.nodes['type'] == source_type], left_on='source', right_on='id', suffixes=('', '_source'))
-                matched_edges = matched_edges.merge(self.nodes[self.nodes['type'] == target_type], left_on='target', right_on='id', suffixes=('', '_target'))
-                
-                return matched_edges[['source', 'target', 'relationship', 'properties']]
-        return pd.DataFrame() # Return an empty DataFrame if the query is not supported
-    
     def to_cx2(self):
-        cx2 = {
-            "metaData": [
-                {"name": "nodes", "elementCount": len(self.nodes)},
-                {"name": "edges", "elementCount": len(self.edges)}
-            ],
-            "networkAttributes": [],
-            "nodes": [],
-            "edges": []
-        }
-        
+        if self.cx2_network is None:
+            self.cx2_network = CX2Network()
+
+        # Clear existing nodes and edges in CX2Network
+        self.cx2_network.clear_nodes()
+        self.cx2_network.clear_edges()
+
+        # Add nodes from CXDB to CX2Network
         for _, node in self.nodes.iterrows():
-            cx2["nodes"].append({
-                "@id": node['id'],
-                "n": node['name'],
-                "v": {
-                    "type": node['type'],
-                    **node['properties']
-                }
-            })
-        
+            self.cx2_network.add_node(node['id'], node['name'])
+            self.cx2_network.add_node_attribute(node['id'], 'type', node['type'])
+            for key, value in node['properties'].items():
+                self.cx2_network.add_node_attribute(node['id'], key, value)
+
+        # Add edges from CXDB to CX2Network
         for _, edge in self.edges.iterrows():
-            cx2["edges"].append({
-                "s": edge['source'],
-                "t": edge['target'],
-                "i": edge['relationship'],
-                "v": edge['properties']
-            })
-        
-        return cx2
-    
-    def import_cx2(self, cx):
-        # TODO: Implement import from CX2 format.
-        # This method should take a CX2 representation of a graph and import it into the CXDB.
-        # At this time, this will only handle the case where this database is empty.
-        # If the database is not empty, it should raise an error.
-        return self # Return the CXDB object
-    
-    def to_ndex(arguments TBD):
-        # TODO: implement
-        # This method should convert the current graph to CX2 format and then push it to NDEx.
-        # By default, the method should use the NDEx credentials stored in the config file.
-        # The CXDB object should store the UUID of the network in the NDEx database and 
-        # needs to be extended to support operators to update the network attributes, such
-        # as the name and description.
-        # By default, the network should be saved as a new network with permissions set
-        # to public but not visible.
-        # This can be overridden by passing in the appropriate arguments.
-        # (the config file should be read by the config module)
-        # here is a simple example of reading the config file:
-        # def load_api_key(key_name):
-        # config = configparser.ConfigParser()
-        # # Define the path to the configuration file
-        # config_file_path = os.path.expanduser('~/ae_config/config.ini')
-        
-        # # Read the configuration file
-        # config.read(config_file_path)
-        
-        # # Access the API key
-        # api_key = config.get('API_KEYS', key_name, fallback=None)
-        # return api_key
-        return UUID # Return the UUID of the NDEx network
-    
-    def from_ndex(arguments TBD):
-        # TODO: implement
-        # This method should take a UUID and load the network from NDEx
-        # into the CXDB object.
-        # By default, the method should use the NDEx credentials stored in the config file.
-        # it should return the CXDB object
+            edge_id = self.cx2_network.add_edge(edge['source'], edge['target'], edge['relationship'])
+            for key, value in edge['properties'].items():
+                self.cx2_network.add_edge_attribute(edge_id, key, value)
+
+        return self.cx2_network
+
+    def import_cx2(self, cx2_network):
+        if not self.nodes.empty or not self.edges.empty:
+            raise ValueError("CXDB is not empty. Cannot import CX2 into a non-empty database.")
+
+        self.cx2_network = cx2_network
+
+        # Import nodes
+        for node_id in cx2_network.get_nodes():
+            name = cx2_network.get_node_attribute(node_id, 'name')
+            node_type = cx2_network.get_node_attribute(node_id, 'type')
+            properties = {attr: cx2_network.get_node_attribute(node_id, attr)
+                          for attr in cx2_network.get_node_attributes(node_id)
+                          if attr not in ['name', 'type']}
+            
+            self.nodes = pd.concat([self.nodes, pd.DataFrame({
+                "id": [node_id],
+                "name": [name],
+                "type": [node_type],
+                "properties": [properties]
+            })], ignore_index=True)
+            self.node_names.add(name)
+            self.next_node_id = max(self.next_node_id, node_id + 1)
+
+        # Import edges
+        for edge_id in cx2_network.get_edges():
+            edge = cx2_network.get_edge(edge_id)
+            source = edge['s']
+            target = edge['t']
+            relationship = edge['i']
+            properties = {attr: cx2_network.get_edge_attribute(edge_id, attr)
+                          for attr in cx2_network.get_edge_attributes(edge_id)}
+            
+            self.edges = pd.concat([self.edges, pd.DataFrame({
+                "source": [source],
+                "target": [target],
+                "relationship": [relationship],
+                "properties": [properties]
+            })], ignore_index=True)
+
         return self
 
+    def to_ndex(self, name=None, description=None, visibility="PRIVATE", overwrite=False):
+        # Load NDEx credentials
+        server = load_config('NDEX', 'server', fallback='http://public.ndexbio.org')
+        username = load_config('NDEX', 'username')
+        password = load_config('NDEX', 'password')
+        
+        # Create NDEx client
+        ndex = nc2.Ndex2(server, username, password)
+        
+        # Get CX2Network
+        cx2_network = self.to_cx2()
+        
+        if overwrite and hasattr(self, 'ndex_uuid'):
+            # Update existing network
+            ndex.update_cx2_network(self.ndex_uuid, cx2_network)
+            uuid = self.ndex_uuid
+        else:
+            # Create new network
+            uuid = ndex.save_new_cx2_network(cx2_network)
+            self.ndex_uuid = uuid
+        
+        # Update network properties
+        if name or description:
+            props = {}
+            if name:
+                props['name'] = name
+            if description:
+                props['description'] = description
+            ndex.set_network_properties(uuid, props)
+        
+        # Set visibility
+        if visibility == "PUBLIC":
+            ndex.make_network_public(uuid)
+        elif visibility == "PRIVATE":
+            ndex.make_network_private(uuid)
+        
+        return uuid
 
+    def from_ndex(self, uuid):
+        if not self.nodes.empty or not self.edges.empty:
+            raise ValueError("CXDB is not empty. Cannot import from NDEx into a non-empty database.")
+        
+        # Load NDEx credentials
+        server = load_config('NDEX', 'server', fallback='http://public.ndexbio.org')
+        username = load_config('NDEX', 'username')
+        password = load_config('NDEX', 'password')
+        
+        # Create NDEx client
+        ndex = nc2.Ndex2(server, username, password)
+        
+        # Get network as CX2Network
+        cx2_network = CX2Network(ndex.get_network_as_cx2_stream(uuid))
+        
+        # Import CX2Network data
+        self.import_cx2(cx2_network)
+        
+        # Store NDEx UUID
+        self.ndex_uuid = uuid
+        
+        return self
 
-# # Example usage
-# cxdb = CXDB()
-# node_id_1 = cxdb.add_node('Alice', 'Person', {'age': 30})
-# node_id_2 = cxdb.add_node('Bob', 'Person', {'age': 25})
-# cxdb.add_edge(node_id_1, node_id_2, 'KNOWS', {'since': 2020})
-
-# # Query nodes
-# print(cxdb.query("MATCH (Person)"))
-
-# # Query edges
-# print(cxdb.query("MATCH (Person)-[KNOWS]->(Person)"))
-
-# # Update node
-# cxdb.update_node(node_id_1, properties={'age': 31})
-
-# # Delete edge
-# cxdb.delete_edge(node_id_1, node_id_2, 'KNOWS')
-
-# # Delete node
-# cxdb.delete_node(node_id_2)
+    def clear(self):
+        self.nodes = pd.DataFrame(columns=['id', 'name', 'type', 'properties'])
+        self.edges = pd.DataFrame(columns=['source', 'target', 'relationship', 'properties'])
+        self.next_node_id = 1
+        self.node_names = set()
+        self.cx2_network = None
+        if hasattr(self, 'ndex_uuid'):
+            del self.ndex_uuid
