@@ -60,14 +60,9 @@ class TestCXDB(unittest.TestCase):
 
     def test_import_cx2(self):
         cx2_network = CX2Network()
-        cx2_network.add_node(1, "Node1")
-        cx2_network.add_node_attribute(1, "type", "Type1")
-        cx2_network.add_node_attribute(1, "prop1", "value1")
-        cx2_network.add_node(2, "Node2")
-        cx2_network.add_node_attribute(2, "type", "Type2")
-        cx2_network.add_node_attribute(2, "prop2", "value2")
-        cx2_network.add_edge(1, 2, "RELATES_TO")
-        cx2_network.add_edge_attribute(1, "weight", 1)
+        cx2_network.add_node(1, {"name": "Node1", "type": "Type1", "prop1": "value1"})
+        cx2_network.add_node(2, {"name": "Node2", "type": "Type2", "prop2": "value2"})
+        cx2_network.add_edge(source=1, target=2, attributes={"RELATES_TO": "RELATES_TO", "weight": 1})
 
         self.cxdb.import_cx2(cx2_network)
         self.assertEqual(len(self.cxdb.nodes), 2)
@@ -118,8 +113,9 @@ class TestCXDB(unittest.TestCase):
         self.cxdb.add_node("Node1", "Type1", {"prop1": "value1"})
         self.cxdb.add_node("Node2", "Type2", {"prop2": "value2"})
         self.cxdb.add_edge(1, 2, "RELATES_TO", {"weight": 1})
-        uuid = self.cxdb.to_ndex(name="Test Network for From NDEx")
-
+        
+        uuid = self.cxdb.to_ndex(name="Test Network", description="A test network")
+        
         # Clear the CXDB and then load from NDEx
         self.cxdb.clear()
         self.cxdb.from_ndex(uuid)

@@ -91,28 +91,7 @@ class CXDB:
             return edge.iloc[0]
         return None
 
-    # def to_cx2(self):
-    #     if self.cx2_network is None:
-    #         self.cx2_network = CX2Network()
-    #     else:
-    #         self.clear_nodes()
-    #         self.clear_edges()
 
-    #     # Add nodes from CXDB to CX2Network
-    #     for _, node in self.nodes.iterrows():
-    #         self.cx2_network.add_node(node['id'], node['name'])
-    #         self.cx2_network.set_node_attribute(node['id'], 'type', node['type'])
-    #         for key, value in node['properties'].items():
-    #             self.cx2_network.set_node_attribute(node['id'], key, value)
-
-    #     # Add edges from CXDB to CX2Network
-    #     for _, edge in self.edges.iterrows():
-    #         edge_id = self.cx2_network.add_edge(edge['source'], edge['target'], edge['relationship'])
-    #         for key, value in edge['properties'].items():
-    #             self.cx2_network.set_edge_attribute(edge_id, key, value)
-
-    #     return self.cx2_network
-    
     def to_cx2(self):
         if self.cx2_network is None:
             self.cx2_network = CX2Network()
@@ -145,11 +124,11 @@ class CXDB:
                 edge_attrs.update(edge['properties'])
             
             # Add the edge to CX2Network
-            edge_id = self.cx2_network.add_edge(int(edge['source']), int(edge['target']))
+            edge_id = self.cx2_network.add_edge(source=int(edge['source']), target=int(edge['target']))
             
             # Set edge attributes
-            for key, value in edge_attrs.items():
-                self.cx2_network.set_edge_attribute(edge_id, key, value)
+            #for key, value in edge_attrs.items():
+            self.cx2_network.update_edge(edge_id, edge_attrs)
 
         return self.cx2_network
 
@@ -160,8 +139,8 @@ class CXDB:
         self.cx2_network = cx2_network
 
         # Import nodes
-        for node_id in cx2_network.get_nodes():
-            node_attrs = cx2_network.get_node_attributes(node_id)
+        for node_id, node_data in cx2_network.get_nodes().items():
+            node_attrs = node_data['v']
             name = node_attrs.get('name', '')
             node_type = node_attrs.get('type', '')
             properties = {k: v for k, v in node_attrs.items() if k not in ['name', 'type']}
@@ -176,11 +155,11 @@ class CXDB:
             self.next_node_id = max(self.next_node_id, node_id + 1)
 
         # Import edges
-        for edge_id in cx2_network.get_edges():
+        for edge_id, edge_data in cx2_network.get_edges().items():
             edge = cx2_network.get_edge(edge_id)
             source = edge['s']
             target = edge['t']
-            edge_attrs = cx2_network.get_edge_attributes(edge_id)
+            edge_attrs = edge_data['v']
             relationship = edge_attrs.get('interaction', '')
             properties = {k: v for k, v in edge_attrs.items() if k != 'interaction'}
             
@@ -245,30 +224,25 @@ class CXDB:
         
         # Get CX2Network
         cx2_network = self.to_cx2()
+        if name is not None:
+            cx2_network.set_network_attributes({'name': name})
+        if description is not None:
+            cx2_network.set_network_attributes({'description': description })
         
         if overwrite and hasattr(self, 'ndex_uuid'):
             # Update existing network
-            ndex.update_cx2_network(self.ndex_uuid, cx2_network)
+            ndex.update_cx2_network(self.ndex_uuid, cx2_network.to_cx2)
             uuid = self.ndex_uuid
         else:
             # Create new network
-            uuid = ndex.save_new_cx2_network(cx2_network)
+            uuid = ndex.save_new_cx2_network(cx2_network.to_cx2())
             self.ndex_uuid = uuid
         
-        # Update network properties
-        if name or description:
-            props = {}
-            if name:
-                props['name'] = name
-            if description:
-                props['description'] = description
-            ndex.set_network_properties(uuid, props)
-        
         # Set visibility
-        if visibility == "PUBLIC":
-            ndex.make_network_public(uuid)
-        elif visibility == "PRIVATE":
-            ndex.make_network_private(uuid)
+        # if visibility == "PUBLIC":
+        #     ndex.make_network_public(uuid)
+        # elif visibility == "PRIVATE":
+        #     ndex.make_network_private(uuid)
         
         return uuid
 
