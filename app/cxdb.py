@@ -3,6 +3,12 @@ from ndex2.cx2 import CX2Network
 import ndex2.client as nc2
 from app.config import load_config
 
+'''
+
+CXDB is a lightweight, in-memory graph database that supports basic Cypher operations. 
+It is backed by CX2, either as files or stored on NDEx.
+
+'''
 class CXDB:
     def __init__(self):
         self.nodes = pd.DataFrame(columns=['id', 'name', 'type', 'properties'])
@@ -91,6 +97,11 @@ class CXDB:
             return edge.iloc[0]
         return None
 
+'''
+
+CX2 import/export
+
+'''
 
     def to_cx2(self):
         if self.cx2_network is None:
@@ -172,47 +183,9 @@ class CXDB:
 
         return self
 
-    # def import_cx2(self, cx2_network):
-    #     if not self.nodes.empty or not self.edges.empty:
-    #         raise ValueError("CXDB is not empty. Cannot import CX2 into a non-empty database.")
-
-    #     self.cx2_network = cx2_network
-
-    #     # Import nodes
-    #     for node_id in cx2_network.get_nodes():
-    #         name = cx2_network.get_node_attribute(node_id, 'name')
-    #         node_type = cx2_network.get_node_attribute(node_id, 'type')
-    #         properties = {attr: cx2_network.get_node_attribute(node_id, attr)
-    #                       for attr in cx2_network.get_node_attributes(node_id)
-    #                       if attr not in ['name', 'type']}
-            
-    #         self.nodes = pd.concat([self.nodes, pd.DataFrame({
-    #             "id": [node_id],
-    #             "name": [name],
-    #             "type": [node_type],
-    #             "properties": [properties]
-    #         })], ignore_index=True)
-    #         self.node_names.add(name)
-    #         self.next_node_id = max(self.next_node_id, node_id + 1)
-
-    #     # Import edges
-    #     for edge_id in cx2_network.get_edges():
-    #         edge = cx2_network.get_edge(edge_id)
-    #         source = edge['s']
-    #         target = edge['t']
-    #         relationship = edge['i']
-    #         properties = {attr: cx2_network.get_edge_attribute(edge_id, attr)
-    #                       for attr in cx2_network.get_edge_attributes(edge_id)}
-            
-    #         self.edges = pd.concat([self.edges, pd.DataFrame({
-    #             "source": [source],
-    #             "target": [target],
-    #             "relationship": [relationship],
-    #             "properties": [properties]
-    #         })], ignore_index=True)
-
-    #     return self
-
+    '''
+    Interface to NDEx
+    '''
     def to_ndex(self, name=None, description=None, visibility="PRIVATE", overwrite=False):
         # Load NDEx credentials
         server = load_config('NDEX', 'server', fallback='http://public.ndexbio.org')
