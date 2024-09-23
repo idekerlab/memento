@@ -3,7 +3,7 @@ import time
 from groq import Groq
 import google.generativeai as genai
 import requests
-from app.config import load_api_key, load_local_server_url
+from memento_app.memento_config import load_api_key, load_local_server_url
 
 class LLM:
     def __init__(self, type=None, model_name=None,
