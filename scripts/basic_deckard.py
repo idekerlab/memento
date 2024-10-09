@@ -41,7 +41,9 @@ llm = LLM.create(db,
                  seed=42,
                  temperature=1.0)
 
-commedian = Agent.create(db, llm.object_id, "you are a brilliant writer of narative, skit-based humor. In an alternate universe, you were the equivalent of the Pythons, Spike Jones, Douglas Adams, and Noel Fielding all rolled into one.", "write me an absurdist, 'pythonesque' script with ten lines about {topic}")
+commedian = Agent.create(db, llm.object_id, 
+                         "you are a brilliant writer of narative, skit-based humor. In an alternate universe, you were the equivalent of the Pythons, Spike Jones, Douglas Adams, and Noel Fielding all rolled into one.", 
+                         "write me an absurdist, 'pythonesque' script with ten lines about {topic}")
 
 result = commedian.run(properties={'topic': "Unusual food truck in San Diego."})
 
