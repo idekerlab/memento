@@ -1,49 +1,28 @@
 import unittest
-from datetime import datetime, timedelta
-from arxiv_api import ArxivAPI
+from arxiv_query_tool import ArxivQueryTool
 
-class TestArxivAPI(unittest.TestCase):
+class TestArxivQueryToolIntegration(unittest.TestCase):
     def setUp(self):
-        self.api = ArxivAPI()
-        self.today = datetime.now().strftime('%Y-%m-%d')
-        self.yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        self.tool = ArxivQueryTool()
 
-    def test_author_search(self):
-        query = self.api.build_query(author="dexter pratt")
-        results = self.api.search(query, max_results=5)
-        
-        self.assertTrue(len(results) > 0)
-        for paper in results:
-            self.assertTrue(any('Pratt, Dexter' in author for author in paper['authors']))
+    def test_search_returns_results(self):
+        """Test that the search method returns at least one result for a common query."""
+        search_string = "machine learning"
+        results = self.tool.search(search_string, max_results=5)
 
-    def test_title_search(self):
-        query = self.api.build_query(title="network biology")
-        results = self.api.search(query, max_results=3)
-        
-        self.assertTrue(len(results) > 0)
-        for paper in results:
-            self.assertTrue('network'.lower() in paper['title'].lower() or 
-                          'biology'.lower() in paper['title'].lower())
+        self.assertGreater(len(results), 0, "Search did not return any results.")
+        for result in results:
+            self.assertIn(search_string.split()[0].lower(), result.title.lower() + result.summary.lower(),
+                          f"Search result did not contain the search term: {result.title}")
 
-    def test_date_range_search(self):
-        query = self.api.build_query(title="machine learning")
-        results = self.api.search(query, max_results=5, 
-                                date_from=self.yesterday, 
-                                date_to=self.today)
-        
-        self.assertTrue(len(results) >= 0)  # May be 0 if no papers published
-        for paper in results:
-            paper_date = datetime.strptime(paper['published'][:10], '%Y-%m-%d')
-            self.assertTrue(paper_date >= datetime.strptime(self.yesterday, '%Y-%m-%d'))
-            self.assertTrue(paper_date <= datetime.now())
+    def test_search_limited_results(self):
+        """Test that the search method limits the number of results as specified."""
+        search_string = "quantum"
+        max_results = 3
+        results = self.tool.search(search_string, max_results=max_results)
 
-    def test_pdf_url(self):
-        query = self.api.build_query(title="deep learning")
-        results = self.api.search(query, max_results=1)
-        
-        self.assertTrue(len(results) > 0)
-        self.assertTrue(results[0]['pdf_url'].startswith('http'))
-        self.assertTrue(results[0]['pdf_url'].endswith('pdf'))
+        self.assertLessEqual(len(results), max_results,
+                             f"Search returned more results than the specified limit ({max_results}).")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

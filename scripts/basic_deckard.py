@@ -22,8 +22,8 @@ sys.path.insert(0, ae_repo)
 for path in sys.path:
     print(path)
 
-from app.config import load_api_keys, load_database_uri
-from app.sqlite_database import SqliteDatabase
+from memento.config import load_api_keys, load_database_uri
+from memento.sqlite_database import SqliteDatabase
 from models.llm import LLM
 from models.agent import Agent
 print('\n\ndone with imports\n')
