@@ -4,15 +4,14 @@ import time
 from groq import Groq
 import google.generativeai as genai 
 import requests
-from app.config import load_api_key, load_local_server_url
+from memento.config import load_api_key, load_local_server_url
 import anthropic
 import json
 
 class LLM:
-    def __init__(self, db, type=None, model_name=None,
+    def __init__(self, type=None, model_name=None,
                  max_tokens=None, seed=None, temperature=None,
                  object_id=None, created=None, name=None, description=None):
-        self.db = db
         self.type = type
         self.model_name = model_name
         self.max_tokens = max_tokens
@@ -22,37 +21,6 @@ class LLM:
         self.created = created
         self.name = name
         self.description = description
-
-    @classmethod
-    def create(cls, db, type, model_name, max_tokens=2048, seed=None, temperature=0.5, name=None, description=None):
-        # Create the LLM instance in the database
-        properties = {
-            "type": type,
-            "model_name": model_name,
-            "max_tokens": max_tokens,
-            "seed": seed,
-            "temperature": temperature,
-            "name": name,
-            "description": description
-        }
-        object_id, created, _ = db.add(object_id=None, properties=properties, object_type="llm")
-        return cls(db, type, model_name, max_tokens, seed, temperature, object_id, created)
-
-    @classmethod
-    def load(cls, db, object_id):
-        # Load the LLM instance from the database
-        properties, _ = db.load(object_id)
-        if properties:
-            return cls(db, **properties)
-        else:
-            return None
-
-    def update(self, **kwargs):
-        # Update attributes of the LLM instance
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        # update the record in the database
-        self.db.update(self.object_id, kwargs)
 
     def query(self, context, prompt):
         self.max_tokens = int(self.max_tokens)
@@ -292,8 +260,6 @@ class LLM:
                 raise Exception(f"An unexpected error occurred: {e}")
         
         raise Exception(f"Error: Max retries exceeded. Last exception: {e}")
-
-    
    
     def query_local_model(self, context, prompt):
         '''
