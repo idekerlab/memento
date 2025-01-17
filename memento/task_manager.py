@@ -22,11 +22,15 @@ class TaskManager:
         #
         # 
 
-        
-
     def execute_tasks(self):
-        # executes the current tasks
+        # query the KG to get the requested tasks
+        # execute each task
+        # return a task execution summary
+
+    
+    def _execute_task(self):
+        # for each task type, call a corresponding internal method
         
 
     def record_task_results(self):
-        # attaches the results to the episode as "result" entities and in some cases to the active Action
+        # attaches the results to the episode as "result" entities and in some cases updates corresponding Actions
