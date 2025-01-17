@@ -2,8 +2,8 @@
 import datetime
 import json
 from typing import List, Dict, Optional
-from prompt_assembler import PromptAssembler
-from action_executor import ActionExecutor
+from memento.prompt_manager import PromptAssembler
+from task_manager import TaskManager
 from episode_manager import EpisodeManager
 from plan_manager import PlanManager
 from knowledge_graph import KnowledgeGraph
@@ -15,8 +15,8 @@ class Memento:
     """
     def __init__(self, kg_client):
         self.knowledge_graph = KnowledgeGraph(kg_client)     
-        self.prompt_assembler = PromptAssembler(self.knowledge_graph)
-        self.action_executor = ActionExecutor(self.knowledge_graph)
+        self.prompt_manager = PromptManager(self.knowledge_graph)
+        self.task_manager = TaskManager(self.knowledge_graph)
         self.episode_manager = EpisodeManager(self.knowledge_graph)
         self.plan_manager = PlanManager(self.knowledge_graph)
         self.llm = LLM
@@ -31,8 +31,11 @@ class Memento:
         response = self.llm.query(prompt)
 
         # Execute actions
-        print("[LOG] Executing actions from LLM response...")
-        action_results = self.action_executor.execute_actions(response["actions"])
+        print("[LOG] Performing tasks specified by the LLM response...")
+        action_results = self.task_manager.execute_actions(response["actions"])
+
+        # Update the plan
+        self.plan_manager.update_plan
 
         # Record the episode
         print("[LOG] Recording episode details...")
