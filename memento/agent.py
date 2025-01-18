@@ -19,28 +19,46 @@ class Memento:
         self.episode_manager = EpisodeManager(self.knowledge_graph)
         self.plan_manager = PlanManager(self.knowledge_graph)
 
-
     async def run_episode(self):
         """Run one episode of the agent's loop with detailed logging and error handling."""
+        try:
+            # Create new episode
+            print(f"\nCreating new episode")
+            episode = await self.episode_manager.new_episode()
+            print(f"\nStarting episode {episode['id']}")
 
-        episode = self.episode_manager.new_episode()
-        # log the episode by time, name, id, status ()
+            # Get prompt and query LLM
+            prompt = await self.query_manager.assemble_prompt()
+            query_status = await self.query_manager.query_llm(prompt, episode['id'])
+            print(f"LLM query completed: {query_status['status']}")
 
-        prompt = self.query_manager.assemble_prompt()
-        query_status = self.query_manager.query_llm(prompt, episode.id)
-        # log the query by time, status()
+            # Execute actions
+            action_status = await self.task_manager.execute_actions(episode['id'])
+            print(f"Actions executed: {action_status}")
 
-        # Execute actions
-        action_status_summary = self.task_manager.execute_actions(episode.id)
-        # log the action status
+            # Update the plan
+            plan_status = await self.plan_manager.update_plan(episode['id'])
+            print(f"Plan updated: {plan_status}")
 
-        # Update the plan
-        plan_update_summary = self.plan_manager.update_plan(episode.id)
-        # log the plan update update summary
+            # Close the episode
+            close_status = await self.episode_manager.close_episode(episode['id'])
+            print(f"Episode closed: {close_status['status']}")
 
-        # Close the episode (includes recording a summary)
-        episode_status_summary = self.episode_manager.close_episode(episode.id)
-        # log the episode status summary
+            return {"status": "success", "episode_id": episode['id']}
 
-
-
+        except Exception as e:
+            print(f"\nError in episode: {str(e)}")
+            if 'episode' in locals() and episode:
+                # Try to record error in episode
+                try:
+                    error_args = {
+                        "entity_id": episode['id'],
+                        "properties": {
+                            "error": str(e),
+                            "status": "error"
+                        }
+                    }
+                    await self.knowledge_graph.call_tool("update_properties", error_args)
+                except:
+                    pass  # Don't let error handling errors mask the original error
+            raise

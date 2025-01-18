@@ -1,11 +1,11 @@
-import json
+import datetime
 from llm import LLM
-
 
 class QueryManager:
     def __init__(self, kg):
         self.kg = kg
-        self.prompt = {
+        self.llm = LLM()
+        self.prompt_sections = {
             "primary_instructions": "",
             "current_role": "",
             "available_roles": "",
@@ -17,30 +17,84 @@ class QueryManager:
             "current_plan": "",
             "this_episode": ""
         }
-        self.llm = LLM()
-        self.prompt = {}
 
-    # Prompt structure:
-        
-    def assemble_prompt(self):
-        # for each prompt section, run a corresponding internal method:
-        # - queries the KG to get relevant queries (or templates)
-        # - runs the query to get the information for the section. 
-        #   - (The other managers updated the KG when they performed their operations)
-        # - processes the information to create a text chunk
-        #   - (The )
-        # - appends the text to the prompt
-        self.prompt = {}
-        prompt_assembly_status = {}
-        # 
-        return prompt_assembly_status
+    async def assemble_prompt(self):
+        """Assemble the prompt by querying relevant info from knowledge graph"""
+        try:
+            # Get primary instructions
+            query_args = {
+                "sql": """
+                SELECT value FROM properties 
+                WHERE entity_id = 1276 
+                AND key = 'prompt_instructions'
+                """
+            }
+            result = await self.kg.call_tool("query_knowledge_graph_database", query_args)
+            if hasattr(result, 'results') and result.results:
+                self.prompt_sections["primary_instructions"] = result.results[0].value
+                
+            # Get current role
+            role_query_args = {
+                "sql": """
+                SELECT name, value FROM entities e
+                JOIN properties p ON e.id = p.entity_id
+                WHERE e.type = 'role' AND p.key = 'description'
+                ORDER BY e.id DESC LIMIT 1
+                """
+            }
+            role_result = await self.kg.call_tool("query_knowledge_graph_database", role_query_args)
+            if hasattr(role_result, 'results') and role_result.results:
+                self.prompt_sections["current_role"] = role_result.results[0].value
 
-    def run_query(self, query=None):
-        query = self._prompt_to_query(self.prompt)
-        response = self.llm.query(query | self.current.query)
-        return response
+            # Get prompt template
+            template_query_args = {
+                "sql": """
+                SELECT value FROM properties 
+                WHERE entity_id = 1277 
+                AND key = 'template'
+                """
+            }
+            template_result = await self.kg.call_tool("query_knowledge_graph_database", template_query_args)
+            if hasattr(template_result, 'results') and template_result.results:
+                template = template_result.results[0].value
+            else:
+                template = """
+                ROLE INSTRUCTIONS:
+                {primary_instructions}
+                
+                CURRENT STATE:
+                {current_role}
+                
+                AVAILABLE TASKS:
+                {available_tasks}
+                """
 
-    def _prompt_to_query(self):
-        # format the prompt dict as the query text
-        query = json.dumps(self.prompt)
-        return query
+            # Format template with available sections
+            prompt = template.format(**self.prompt_sections)
+            return prompt
+
+        except Exception as e:
+            print(f"Error assembling prompt: {str(e)}")
+            raise
+
+    async def query_llm(self, prompt, episode_id):
+        """Query the LLM with assembled prompt"""
+        try:
+            context = "You are a Memento agent assisting with knowledge synthesis and execution."
+            response = await self.llm.query(context, prompt)
+            
+            # Store response in knowledge graph
+            response_args = {
+                "entity_id": episode_id,
+                "properties": {
+                    "llm_response": response,
+                    "query_time": datetime.datetime.now().isoformat()
+                }
+            }
+            await self.kg.call_tool("update_properties", response_args)
+            
+            return {"status": "success", "response": response}
+
+        except Exception as e:
+            print(f"Error querying LLM: {str(e)}")
+            raise
