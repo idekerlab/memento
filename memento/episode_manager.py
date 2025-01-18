@@ -1,76 +1,69 @@
+import datetime
+from typing import Dict, Optional
+
 class EpisodeManager:
     def __init__(self, kg):
         self.kg = kg
 
-    async def new_episode(self):
-        """Create a new episode entity and set up its relationships"""
+    async def new_episode(self) -> Dict:
+        """Create a new episode and initialize its properties
+        
+        Returns:
+            Dict with episode details including id
+        """
         try:
-            # Create episode entity
-            episode_args = {
-                "type": "episode",
-                "name": "Episode",
-                "properties": {
-                    "status": "starting",
-                    "created_at": datetime.datetime.now().isoformat()
+            # Create episode entity with initial properties
+            episode_response = await self.kg.add_entity(
+                type="Episode",
+                name=f"Episode_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                properties={
+                    "status": "created",
+                    "created_at": datetime.datetime.now().isoformat(),
+                    "updated_at": datetime.datetime.now().isoformat()
                 }
-            }
-            result = await self.kg.call_tool("add_entity", episode_args)
-            if not hasattr(result, 'id'):
-                raise Exception("Failed to create episode entity")
+            )
             
-            episode_id = result.id
+            episode_id = episode_response['id']
             
-            # Query for previous episode
-            query_args = {
-                "sql": "SELECT id FROM entities WHERE type = 'episode' AND id != $1 ORDER BY id DESC LIMIT 1"
-            }
-            prev_result = await self.kg.call_tool("query_knowledge_graph_database", query_args)
+            # Find previous episode if any
+            query = f"SELECT id FROM entities WHERE type = 'Episode' AND id != {episode_id} ORDER BY id DESC LIMIT 1"
+            prev_response = await self.kg.query_database(query)
             
-            if hasattr(prev_result, 'results') and prev_result.results:
-                # Link to previous episode if it exists
-                link_args = {
-                    "source_id": episode_id,
-                    "target_id": prev_result.results[0].id,
-                    "type": "follows"
-                }
-                await self.kg.call_tool("add_relationship", link_args)
+            if prev_response['results']:
+                prev_id = prev_response['results'][0]['id']
+                # Link to previous episode
+                await self.kg.add_relationship(
+                    source_id=episode_id,
+                    target_id=prev_id,
+                    rel_type="follows"
+                )
             
-            # Query for in-context actions
-            action_query_args = {
-                "sql": "SELECT e.id FROM entities e JOIN properties p ON e.id = p.entity_id WHERE e.type = 'action' AND p.key = 'in_context' AND p.value = 'True'"
-            }
-            action_result = await self.kg.call_tool("query_knowledge_graph_database", action_query_args)
-            
-            if hasattr(action_result, 'results'):
-                # Link in-context actions
-                for action in action_result.results:
-                    action_link_args = {
-                        "source_id": episode_id,
-                        "target_id": action.id,
-                        "type": "includes"
-                    }
-                    await self.kg.call_tool("add_relationship", action_link_args)
-            
-            return {"id": episode_id, "status": "starting"}
-
+            return {"id": episode_id, "status": "success"}
+                
         except Exception as e:
             print(f"Error creating new episode: {str(e)}")
             raise
 
-    async def close_episode(self, episode_id):
-        """Update episode status and create summary"""
-        try:
-            update_args = {
-                "entity_id": episode_id,
-                "properties": {
-                    "status": "completed",
-                    "completed_at": datetime.datetime.now().isoformat()
-                }
-            }
-            await self.kg.call_tool("update_properties", update_args)
+    async def close_episode(self, episode_id: int) -> Dict:
+        """Update the episode with summary and closing information
+        
+        Args:
+            episode_id: ID of the episode to close
             
-            return {"id": episode_id, "status": "completed"}
-
+        Returns:
+            Dict with status summary
+        """
+        try:
+            await self.kg.update_properties(
+                entity_id=episode_id,
+                properties={
+                    "status": "closed",
+                    "closed_at": datetime.datetime.now().isoformat(),
+                    "updated_at": datetime.datetime.now().isoformat()
+                }
+            )
+            return {"status": "success", "message": "Episode closed successfully"}
+            
         except Exception as e:
-            print(f"Error closing episode {episode_id}: {str(e)}")
+            print(f"Error closing episode: {str(e)}")
             raise

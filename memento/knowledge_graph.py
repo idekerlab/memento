@@ -29,17 +29,7 @@ class KnowledgeGraph:
             'query_knowledge_graph_database': ['sql']
         }
         
-        # Create initialization task
         self._init_task = asyncio.create_task(self._initialize())
-        
-    async def _initialize(self) -> None:
-        """Initialize the knowledge graph client and verify tools"""
-        try:
-            await self._verify_tools()
-            self._initialized = True
-        except Exception as e:
-            self._initialized = False
-            raise KnowledgeGraphError(f"Failed to initialize knowledge graph: {str(e)}")
 
     async def _verify_tools(self) -> None:
         """Verify all required tools are available with correct schemas"""
@@ -79,6 +69,15 @@ class KnowledgeGraph:
         except Exception as e:
             raise ToolVerificationError(f"Tool verification failed: {str(e)}")
 
+    async def _initialize(self) -> None:
+        """Initialize the knowledge graph client and verify tools"""
+        try:
+            await self._verify_tools()
+            self._initialized = True
+        except Exception as e:
+            self._initialized = False
+            raise KnowledgeGraphError(f"Failed to initialize knowledge graph: {str(e)}")
+
     async def ensure_initialized(self) -> None:
         """Ensure the knowledge graph is initialized before operations"""
         if not self._initialized:
@@ -91,27 +90,97 @@ class KnowledgeGraph:
         """Add a new entity to the knowledge graph"""
         await self.ensure_initialized()
         try:
-            args = json.dumps({
+            args = {
                 "type": type,
                 "name": name,
                 "properties": properties or {}
-            })
-            result = await self.kg_client.call_tool("add_entity", args)
-            return result
+            }
+            response = await self.kg_client.call_tool("add_entity", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from add_entity")
         except Exception as e:
             raise KnowledgeGraphError(f"Failed to add entity: {str(e)}")
+
+    async def update_properties(self, entity_id: int, properties: Dict) -> Dict:
+        """Update properties for an entity"""
+        await self.ensure_initialized()
+        try:
+            args = {
+                "entity_id": entity_id,
+                "properties": properties
+            }
+            response = await self.kg_client.call_tool("update_properties", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from update_properties")
+        except Exception as e:
+            raise KnowledgeGraphError(f"Failed to update properties: {str(e)}")
+
+    async def add_relationship(self, source_id: int, target_id: int, rel_type: str, properties: Optional[Dict] = None) -> Dict:
+        """Add a relationship between entities"""
+        await self.ensure_initialized()
+        try:
+            args = {
+                "source_id": source_id,
+                "target_id": target_id,
+                "type": rel_type,
+                "properties": properties or {}
+            }
+            response = await self.kg_client.call_tool("add_relationship", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from add_relationship")
+        except Exception as e:
+            raise KnowledgeGraphError(f"Failed to add relationship: {str(e)}")
 
     async def query_database(self, sql: str) -> Dict[str, Any]:
         """Execute a read-only SQL query"""
         await self.ensure_initialized()
         try:
-            args = json.dumps({"sql": sql})
-            result = await self.kg_client.call_tool("query_knowledge_graph_database", args)
-            return result
+            args = {"sql": sql}
+            response = await self.kg_client.call_tool("query_knowledge_graph_database", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from query")
         except Exception as e:
             raise KnowledgeGraphError(f"Query failed: {str(e)}")
 
-    # Additional async wrapper methods would follow similar pattern...
+    async def get_relationships(self, source_id: Optional[int] = None, 
+                              target_id: Optional[int] = None, 
+                              rel_type: Optional[str] = None) -> Dict:
+        """Get relationships with optional filters"""
+        await self.ensure_initialized()
+        try:
+            args = {
+                "source_id": source_id,
+                "target_id": target_id,
+                "type": rel_type
+            }
+            response = await self.kg_client.call_tool("get_relationships", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from get_relationships")
+        except Exception as e:
+            raise KnowledgeGraphError(f"Failed to get relationships: {str(e)}")
+
+    async def get_properties(self, entity_id: Optional[int] = None, 
+                           relationship_id: Optional[int] = None,
+                           key: Optional[str] = None) -> Dict:
+        """Get properties for an entity or relationship"""
+        await self.ensure_initialized()
+        try:
+            args = {
+                "entity_id": entity_id,
+                "relationship_id": relationship_id,
+                "key": key
+            }
+            response = await self.kg_client.call_tool("get_properties", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from get_properties")
+        except Exception as e:
+            raise KnowledgeGraphError(f"Failed to get properties: {str(e)}")
 
     def __repr__(self) -> str:
         status = "initialized" if self._initialized else "uninitialized"

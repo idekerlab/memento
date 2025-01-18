@@ -1,4 +1,3 @@
-
 import datetime
 import json
 from typing import List, Dict, Optional
@@ -19,8 +18,12 @@ class Memento:
         self.episode_manager = EpisodeManager(self.knowledge_graph)
         self.plan_manager = PlanManager(self.knowledge_graph)
 
-    async def run_episode(self):
-        """Run one episode of the agent's loop with detailed logging and error handling."""
+    async def run_episode(self, stop_on_error: bool = False):
+        """Run one episode of the agent's loop with detailed logging and error handling.
+        
+        Args:
+            stop_on_error: If True, raises exceptions instead of trying to record them
+        """
         try:
             # Create new episode
             print(f"\nCreating new episode")
@@ -48,17 +51,19 @@ class Memento:
 
         except Exception as e:
             print(f"\nError in episode: {str(e)}")
+            if stop_on_error:
+                raise
+                
             if 'episode' in locals() and episode:
                 # Try to record error in episode
                 try:
-                    error_args = {
-                        "entity_id": episode['id'],
-                        "properties": {
+                    await self.knowledge_graph.update_properties(
+                        entity_id=episode['id'],
+                        properties={
                             "error": str(e),
                             "status": "error"
                         }
-                    }
-                    await self.knowledge_graph.call_tool("update_properties", error_args)
+                    )
                 except:
                     pass  # Don't let error handling errors mask the original error
             raise
