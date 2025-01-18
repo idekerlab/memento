@@ -11,9 +11,9 @@ class Memento:
     """
     The Memento agent orchestrates episodes of planning, action, and reflection.
     """
-    def __init__(self, kg_client):
+    async def __init__(self, kg_client):
         self.knowledge_graph = KnowledgeGraph(kg_client)     
-        self.query_manager = QueryManager(self.knowledge_graph)
+        self.query_manager = await QueryManager(self.knowledge_graph)
         self.task_manager = TaskManager(self.knowledge_graph)
         self.episode_manager = EpisodeManager(self.knowledge_graph)
         self.plan_manager = PlanManager(self.knowledge_graph)

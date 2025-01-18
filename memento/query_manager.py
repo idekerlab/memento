@@ -1,10 +1,10 @@
 import json
 from typing import Dict, Any
-from llm import LLM
 from datetime import datetime
+from llm import LLM
 
 class QueryManager:
-    def __init__(self, kg):
+    async def __init__(self, kg):
         self.kg = kg
         self.prompt = {
             "primary_instructions": "",
@@ -18,7 +18,29 @@ class QueryManager:
             "current_plan": "",
             "this_episode": ""
         }
-        self.llm = LLM()
+        
+        # Get LLM config from knowledge graph
+        config_query = """
+            SELECT p.key, p.value 
+            FROM entities e 
+            JOIN properties p ON e.id = p.entity_id 
+            WHERE e.type = 'LLMConfig' AND e.name = 'default_llm_config'
+        """
+        config_response = await self.kg.query_database(config_query)
+        if not config_response['results']:
+            raise Exception("No LLM configuration found in knowledge graph")
+            
+        # Convert config to dict
+        llm_config = {prop['key']: prop['value'] for prop in config_response['results']}
+        
+        # Initialize LLM with config
+        self.llm = LLM(
+            type=llm_config['type'],
+            model_name=llm_config['model_name'],
+            max_tokens=int(llm_config['max_tokens']),
+            seed=int(llm_config['seed']),
+            temperature=float(llm_config['temperature'])
+        )
 
     async def assemble_prompt(self) -> Dict[str, Any]:
         """Assemble the prompt by gathering information from the knowledge graph
@@ -66,7 +88,8 @@ class QueryManager:
                 ORDER BY e.id DESC LIMIT 5
             """
             episodes_response = await self.kg.query_database(episodes_query)
-            self.prompt["latest_episodes"] = episodes_response['results']
+            if 'results' in episodes_response:
+                self.prompt["latest_episodes"] = episodes_response['results']
             
             # Get current plan
             plan_query = "SELECT value FROM properties WHERE entity_id = 1275 AND key = 'current_plan'"
@@ -96,21 +119,25 @@ class QueryManager:
             await self.kg.update_properties(
                 entity_id=episode_id,
                 properties={
-                    "llm_query_start": datetime.datetime.now().isoformat()
+                    "llm_query_start": datetime.now().isoformat()
                 }
             )
             
             # Convert prompt dict to formatted string for LLM
             query_text = self._prompt_to_query(prompt)
             
-            # Query LLM
-            response = await self.llm.query(query_text)
+            # Query LLM with appropriate context
+            context = """You are a Memento agent - an AI system designed to maintain memory of 
+                        episodic, procedural, mission, and factual content across sessions. You 
+                        are capable of analyzing scientific hypotheses and experiment plans in 
+                        molecular biology, systems biology, genomics, proteomics, and related fields."""
+            response = await self.llm.query(context=context, prompt=query_text)
             
             # Record query completion and response
             await self.kg.update_properties(
                 entity_id=episode_id,
                 properties={
-                    "llm_query_complete": datetime.datetime.now().isoformat(),
+                    "llm_query_complete": datetime.now().isoformat(),
                     "llm_response": response
                 }
             )

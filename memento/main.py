@@ -6,7 +6,7 @@ import json
 async def memento_loop(kg_client):
     """Run a loop checking for episode requests"""
     print("\nMCP Client Started!")
-    agent = Memento(kg_client)
+    agent = await Memento(kg_client)  # Note the await here
     
     while True:
         try:
@@ -51,16 +51,21 @@ async def memento_loop(kg_client):
                     # Run the episode with error handling from KG
                     print("Memento Loop: Starting episode run")
                     stop_on_error = (error_handling == "stop_on_error")
-                    result = await agent.run_episode(stop_on_error=stop_on_error)
-                    print(f"Memento Loop: Episode run completed with result: {result}")
-                    
-                    # Update status to done
-                    done_args = {
-                        "entity_id": 1275,
-                        "properties": {"episode_status": "done"}
-                    }
-                    print(f'Memento Loop: Setting status to done')
-                    await kg_client.call_tool("update_properties", done_args)
+                    try:
+                        result = await agent.run_episode(stop_on_error=stop_on_error)
+                        print(f"Memento Loop: Episode run completed with result: {result}")
+                        
+                        # Update status to done
+                        done_args = {
+                            "entity_id": 1275,
+                            "properties": {"episode_status": "done"}
+                        }
+                        print(f'Memento Loop: Setting status to done')
+                        await kg_client.call_tool("update_properties", done_args)
+                    except Exception as e:
+                        if stop_on_error:
+                            raise
+                        print(f"Error in episode run (continuing): {str(e)}")
             else:
                 print("No valid content in response")
             
