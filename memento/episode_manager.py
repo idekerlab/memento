@@ -9,7 +9,9 @@ class EpisodeManager:
         # store essential control and status information, 
         # such as what role the agent will be
         # playing during the episode.
-        return episode.id
+
+        # return episode.id
+        return None
 
     def close_episode(self):
         # update the episode with a summary and

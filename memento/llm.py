@@ -4,7 +4,7 @@ import time
 from groq import Groq
 import google.generativeai as genai 
 import requests
-from memento.config import load_api_key, load_local_server_url
+from config import load_api_key, load_local_server_url
 import anthropic
 import json
 

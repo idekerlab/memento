@@ -21,16 +21,20 @@ class TaskManager:
         # prominant in the prompt instructions 
         #
         # 
+        return None
 
     def execute_tasks(self):
         # query the KG to get the requested tasks
         # execute each task
         # return a task execution summary
+        return None
 
     
     def _execute_task(self):
         # for each task type, call a corresponding internal method
+        return None
         
 
     def record_task_results(self):
         # attaches the results to the episode as "result" entities and in some cases updates corresponding Actions
+        return None

@@ -2,7 +2,7 @@ class PlanManager:
     def __init__(self, kg):
         self.kg = kg
 
-    def update_plan(self, episode.id):
+    def update_plan(self, episode_id):
         # get relevant SQL queries/templates and instructions for their use
         # get relevant relevant LLM prompt templates and instructions for their use.
         # find tasks that are marked as "in context"
@@ -13,3 +13,4 @@ class PlanManager:
         # have completed, etc.  New actions can be added and linked to other
         # actions. The overall design is that the agent's plans and much of 
         # its history are described by actions that are planned/in progress/completed
+        return None

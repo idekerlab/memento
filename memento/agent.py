@@ -20,7 +20,7 @@ class Memento:
         self.plan_manager = PlanManager(self.knowledge_graph)
 
 
-    def run_episode(self):
+    async def run_episode(self):
         """Run one episode of the agent's loop with detailed logging and error handling."""
 
         episode = self.episode_manager.new_episode()
