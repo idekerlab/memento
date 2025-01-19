@@ -46,6 +46,10 @@ def load_local_server_url(config_path=None):
     local_server_url = config.get('API_KEYS', 'LOCAL_MODEL_HOST', fallback=None)
     return local_server_url
 
+# "/Users/idekeradmin/Dropbox/GitHub/agent_kg/src/agent_kg/server.py"  
+if __name__ == "__main__":
+    config = load_config()
+    print(config)
 
 # def load_constant_from_config(keys):
 #     '''

@@ -11,12 +11,26 @@ class Memento:
     """
     The Memento agent orchestrates episodes of planning, action, and reflection.
     """
-    async def __init__(self, kg_client):
-        self.knowledge_graph = KnowledgeGraph(kg_client)     
-        self.query_manager = await QueryManager(self.knowledge_graph)
-        self.task_manager = TaskManager(self.knowledge_graph)
-        self.episode_manager = EpisodeManager(self.knowledge_graph)
-        self.plan_manager = PlanManager(self.knowledge_graph)
+    def __init__(self, knowledge_graph):
+        self.knowledge_graph = knowledge_graph
+        self.query_manager = None
+        self.task_manager = None 
+        self.episode_manager = None
+        self.plan_manager = None
+
+    @classmethod
+    async def create(cls, kg_client):
+        """Async factory method to create and initialize a Memento instance"""
+        knowledge_graph = KnowledgeGraph(kg_client)
+        instance = cls(knowledge_graph)
+        
+        # Initialize managers
+        instance.query_manager = await QueryManager(instance.knowledge_graph)
+        instance.task_manager = TaskManager(instance.knowledge_graph)
+        instance.episode_manager = EpisodeManager(instance.knowledge_graph)
+        instance.plan_manager = PlanManager(instance.knowledge_graph)
+        
+        return instance
 
     async def run_episode(self, stop_on_error: bool = False):
         """Run one episode of the agent's loop with detailed logging and error handling.

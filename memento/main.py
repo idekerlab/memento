@@ -6,7 +6,8 @@ import json
 async def memento_loop(kg_client):
     """Run a loop checking for episode requests"""
     print("\nMCP Client Started!")
-    agent = await Memento(kg_client)  # Note the await here
+    agent = await Memento.create(kg_client)  # Use the factory method 
+
     
     while True:
         try:
