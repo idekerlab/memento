@@ -6,6 +6,8 @@ from knowledge_graph import KnowledgeGraph
 from test_llm_config import test_primary_llm_config
 from test_knowledge_graph import test_knowledge_graph_initialization
 from test_llm import test_llm_initialization
+from test_task_manager import test_task_manager_basic
+from test_query_manager import test_query_manager_basic
 import sys
 
 # Update test_runner.py
@@ -31,7 +33,9 @@ async def run_tests(kg_client):
         tests = [
             ("KnowledgeGraph", test_knowledge_graph_initialization),
             ("Primary LLM Config", test_primary_llm_config),
-            ("LLM Initialization", test_llm_initialization)
+            ("LLM Initialization", test_llm_initialization),
+            ("TaskManager", test_task_manager_basic),
+            ("QueryManager", test_query_manager_basic)
         ]
         
         for test_name, test_func in tests:
