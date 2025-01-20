@@ -19,13 +19,12 @@ class Memento:
         self.plan_manager = None
 
     @classmethod
-    async def create(cls, kg_client):
+    async def create(cls, knowledge_graph):
         """Async factory method to create and initialize a Memento instance"""
-        knowledge_graph = KnowledgeGraph(kg_client)
         instance = cls(knowledge_graph)
         
         # Initialize managers
-        instance.query_manager = await QueryManager(instance.knowledge_graph)
+        instance.query_manager = await QueryManager.create(instance.knowledge_graph)
         instance.task_manager = TaskManager(instance.knowledge_graph)
         instance.episode_manager = EpisodeManager(instance.knowledge_graph)
         instance.plan_manager = PlanManager(instance.knowledge_graph)
@@ -46,12 +45,15 @@ class Memento:
 
             # Get prompt and query LLM
             prompt = await self.query_manager.assemble_prompt()
-            query_status = await self.query_manager.query_llm(prompt, episode['id'])
-            print(f"LLM query completed: {query_status['status']}")
+            query_status = await self.query_manager.query_llm(
+                context="You are a Memento agent...",  # TODO review context handling...
+                prompt=prompt,
+                episode_id=episode['id']
+            )
 
-            # Execute actions
-            action_status = await self.task_manager.execute_actions(episode['id'])
-            print(f"Actions executed: {action_status}")
+            # Execute tasks
+            task_status = await self.task_manager.execute_tasks(episode['id'])
+            print(f"Tasks executed: {task_status}")
 
             # Update the plan
             plan_status = await self.plan_manager.update_plan(episode['id'])

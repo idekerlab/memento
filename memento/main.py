@@ -1,4 +1,5 @@
 from agent import Memento
+from knowledge_graph import KnowledgeGraph
 from mcp_client import MCPClient
 import asyncio
 import json
@@ -6,7 +7,12 @@ import json
 async def memento_loop(kg_client):
     """Run a loop checking for episode requests"""
     print("\nMCP Client Started!")
-    agent = await Memento.create(kg_client)  # Use the factory method 
+
+    # Create KnowledgeGraph instance
+    knowledge_graph = KnowledgeGraph(kg_client)
+    await knowledge_graph.ensure_initialized()
+
+    agent = await Memento.create(knowledge_graph)  # Use the factory method 
 
     
     while True:

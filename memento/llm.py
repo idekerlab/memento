@@ -44,9 +44,11 @@ class LLM:
                 model=self.model_name,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                system=context,
                 messages=[
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "user",
+                        "content": f"{context}\n\n{prompt}"
+                    }
                 ]
             )
             return response.content[0].text

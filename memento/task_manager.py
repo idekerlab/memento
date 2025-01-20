@@ -1,3 +1,7 @@
+import json
+from typing import List, Dict, Optional
+
+
 class TaskManager:
     def __init__(self, kg):
         self.kg = kg
@@ -28,32 +32,52 @@ class TaskManager:
             
         return tasks
 
-    async def execute_tasks(self, tasks):
-        """Execute a list of tasks
+    async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
+        """Execute tasks stored in episode
         
         Args:
-            tasks: List of task specifications
+            episode_id: ID of episode containing tasks
             
         Returns:
-            Dict containing execution results
+            Dict containing execution status
         """
-        results = []
-        for task in tasks:
-            try:
-                result = await self._execute_task(task)
-                results.append({
-                    'task': task,
-                    'status': 'success',
-                    'result': result
-                })
-            except Exception as e:
-                results.append({
-                    'task': task,
-                    'status': 'error',
-                    'error': str(e)
-                })
+        try:
+            # Get tasks from episode
+            query = f"""
+                SELECT value 
+                FROM properties 
+                WHERE entity_id = {episode_id} 
+                AND key = 'tasks'
+            """
+            result = await self.kg.query_database(query)
+            if not result['results']:
+                return {"status": "error", "message": "No tasks found in episode"}
                 
-        return {'results': results}
+            tasks = json.loads(result['results'][0]['value'])
+            
+            # Execute tasks and record results
+            results = []
+            for task in tasks.get('tasks', []):
+                try:
+                    result = await self._execute_task(task)
+                    results.append({
+                        'task': task,
+                        'status': 'success',
+                        'result': result
+                    })
+                except Exception as e:
+                    results.append({
+                        'task': task,
+                        'status': 'error',
+                        'error': str(e)
+                    })
+            
+            # Record results in episode
+            await self.record_task_results(episode_id, {"results": results})
+            return {"status": "success"}
+            
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     async def _execute_task(self, task):
         """Execute a single task
@@ -99,10 +123,12 @@ class TaskManager:
             Dict indicating recording status
         """
         try:
+            # Properly JSON encode the results
+            json_results = json.dumps(results)
             await self.kg.update_properties(
                 entity_id=episode_id,
                 properties={
-                    'task_results': results
+                    'task_results': json_results
                 }
             )
             return {'status': 'success'}

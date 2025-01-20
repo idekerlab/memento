@@ -4,22 +4,30 @@ from datetime import datetime
 from llm import LLM
 
 class QueryManager:
-    async def __init__(self, kg):
+    def __init__(self, kg):
         self.kg = kg
         self.prompt = {
             "primary_instructions": "",
             "current_role": "",
-            "available_roles": "",
-            "available_tools": "",
-            "available_tasks": "",
-            "output_format": "",
+            "available_roles": [],
+            "available_tools": [],
             "summarized_episodes": "",
-            "latest_episodes": "",
+            "latest_episodes": [],
             "current_plan": "",
-            "this_episode": ""
+            "active_actions": [],
+            "output_format": ""
         }
-        
-        # Get LLM config from knowledge graph
+        self.llm = None
+
+    @classmethod
+    async def create(cls, kg):
+        """Async factory method to create and initialize a QueryManager instance"""
+        instance = cls(kg)
+        await instance._init_llm()
+        return instance
+
+    async def _init_llm(self):
+        """Initialize LLM from KG config"""
         config_query = """
             SELECT p.key, p.value 
             FROM entities e 
@@ -30,133 +38,204 @@ class QueryManager:
         if not config_response['results']:
             raise Exception("No LLM configuration found in knowledge graph")
             
-        # Convert config to dict
-        llm_config = {prop['key']: prop['value'] for prop in config_response['results']}
+        # Get raw config
+        raw_config = {prop['key']: prop['value'] for prop in config_response['results']}
         
-        # Initialize LLM with config
-        self.llm = LLM(
-            type=llm_config['type'],
-            model_name=llm_config['model_name'],
-            max_tokens=int(llm_config['max_tokens']),
-            seed=int(llm_config['seed']),
-            temperature=float(llm_config['temperature'])
-        )
+        # Filter to only valid LLM parameters
+        valid_params = ['type', 'model_name', 'max_tokens', 'seed', 
+                    'temperature', 'object_id', 'created', 'name', 'description']
+        filtered_config = {k: v for k, v in raw_config.items() if k in valid_params}
+        
+        # Initialize LLM with filtered config
+        self.llm = LLM(**filtered_config)
 
-    async def assemble_prompt(self) -> Dict[str, Any]:
-        """Assemble the prompt by gathering information from the knowledge graph
+    async def _get_current_role(self) -> str:
+        """Get current agent role from KG"""
+        query = "SELECT value FROM properties WHERE entity_id = 1275 AND key = 'current_role'"
+        response = await self.kg.query_database(query)
+        return response['results'][0]['value'] if response['results'] else ""
+
+    async def _get_available_roles(self) -> list:
+        """Get available roles with descriptions"""
+        query = """
+            SELECT e.name, p.value as description 
+            FROM entities e 
+            LEFT JOIN properties p ON e.id = p.entity_id AND p.key = 'description'
+            WHERE e.type = 'Role'
+        """
+        response = await self.kg.query_database(query)
+        return response.get('results', [])
+
+    async def _get_available_tools(self) -> list:
+        """Get available tools with descriptions"""
+        query = """
+            SELECT e.name, p.value as description 
+            FROM entities e 
+            LEFT JOIN properties p ON e.id = p.entity_id AND p.key = 'description'
+            WHERE e.type = 'Tool'
+        """
+        response = await self.kg.query_database(query)
+        return response.get('results', [])
+
+    async def _get_recent_episodes(self) -> list:
+        """Get recent episodes with summaries"""
+        query = """
+            SELECT e.name, p.value as summary 
+            FROM entities e 
+            JOIN properties p ON e.id = p.entity_id 
+            WHERE e.type = 'Episode' AND p.key = 'summary'
+            ORDER BY e.id DESC LIMIT 5
+        """
+        response = await self.kg.query_database(query)
+        return response.get('results', [])
+
+    async def _get_current_plan(self) -> str:
+        """Get current plan from KG"""
+        query = "SELECT value FROM properties WHERE entity_id = 1275 AND key = 'current_plan'"
+        response = await self.kg.query_database(query)
+        return response['results'][0]['value'] if response['results'] else ""
+
+    async def _get_active_actions(self) -> list:
+        """Get active actions with their properties"""
+        query = """
+            SELECT e.id, e.name, p.key, p.value
+            FROM entities e
+            JOIN properties p ON e.id = p.entity_id
+            WHERE e.type = 'Action'
+            AND EXISTS (
+                SELECT 1 FROM properties 
+                WHERE entity_id = e.id 
+                AND key = 'status' 
+                AND value = 'active'
+            )
+        """
+        response = await self.kg.query_database(query)
+        actions = {}
+        for row in response['results']:
+            action_id = row['id']
+            if action_id not in actions:
+                actions[action_id] = {'id': action_id, 'name': row['name']}
+            actions[action_id][row['key']] = row['value']
+        return list(actions.values())
+
+    async def assemble_prompt(self, components: list = None) -> Dict[str, Any]:
+        """Assemble prompt with specified components
         
+        Args:
+            components: List of components to include. If None, includes all.
+                      Valid components: ['role', 'roles', 'tools', 'episodes', 
+                                       'plan', 'actions']
         Returns:
-            Dict containing assembled prompt sections
+            Assembled prompt dictionary
         """
         try:
-            prompt_assembly_status = {}
+            # Default to minimal task-focused prompt if no components specified
+            if components is None:
+                components = ['actions']
+                self.prompt["primary_instructions"] = """IMPORTANT: Respond ONLY with a valid JSON object. 
+    Your response must contain nothing else - no explanations, no additional text.
+
+    Your task is to specify the updates needed to accomplish the active actions.
+
+    The response must exactly match this format:
+    {
+        "tasks": [
+            {
+                "type": "update_entity",
+                "entity_id": "<id>",
+                "properties": {
+                    "property_name": "property_value"
+                }
+            }
+        ]
+    }"""
+                self.prompt["output_format"] = {
+                    "tasks": [
+                        {
+                            "type": "update_entity",
+                            "entity_id": "<id>",
+                            "properties": {
+                                "property_name": "property_value"
+                            }
+                        }
+                    ]
+                }
             
-            # Get current role
-            role_query = "SELECT value FROM properties WHERE entity_id = 1275 AND key = 'current_role'"
-            role_response = await self.kg.query_database(role_query)
-            if role_response['results']:
-                self.prompt["current_role"] = role_response['results'][0]['value']
-            
-            # Get available roles with descriptions
-            roles_query = """
-                SELECT e.name, p.value as description 
-                FROM entities e 
-                LEFT JOIN properties p ON e.id = p.entity_id AND p.key = 'description'
-                WHERE e.type = 'Role'
-            """
-            roles_response = await self.kg.query_database(roles_query)
-            if 'results' in roles_response:
-                self.prompt["available_roles"] = roles_response['results']
-            
-            # Get available tools with descriptions
-            tools_query = """
-                SELECT e.name, p.value as description 
-                FROM entities e 
-                LEFT JOIN properties p ON e.id = p.entity_id AND p.key = 'description'
-                WHERE e.type = 'Tool'
-            """
-            tools_response = await self.kg.query_database(tools_query)
-            if 'results' in tools_response:
-                self.prompt["available_tools"] = tools_response['results']
-            
-            # Get recent episodes
-            episodes_query = """
-                SELECT e.name, p.value as summary 
-                FROM entities e 
-                JOIN properties p ON e.id = p.entity_id 
-                WHERE e.type = 'Episode' AND p.key = 'summary'
-                ORDER BY e.id DESC LIMIT 5
-            """
-            episodes_response = await self.kg.query_database(episodes_query)
-            if 'results' in episodes_response:
-                self.prompt["latest_episodes"] = episodes_response['results']
-            
-            # Get current plan
-            plan_query = "SELECT value FROM properties WHERE entity_id = 1275 AND key = 'current_plan'"
-            plan_response = await self.kg.query_database(plan_query)
-            if plan_response['results']:
-                self.prompt["current_plan"] = plan_response['results'][0]['value']
-            
-            prompt_assembly_status["status"] = "success"
-            return prompt_assembly_status
+            # Gather requested components
+            if 'role' in components:
+                self.prompt["current_role"] = await self._get_current_role()
+            if 'roles' in components:
+                self.prompt["available_roles"] = await self._get_available_roles()
+            if 'tools' in components:
+                self.prompt["available_tools"] = await self._get_available_tools()
+            if 'episodes' in components:
+                self.prompt["latest_episodes"] = await self._get_recent_episodes()
+            if 'plan' in components:
+                self.prompt["current_plan"] = await self._get_current_plan()
+            if 'actions' in components:
+                self.prompt["active_actions"] = await self._get_active_actions()
+
+            return self.prompt
             
         except Exception as e:
             print(f"Error assembling prompt: {str(e)}")
             raise
 
-    async def query_llm(self, prompt: Dict[str, Any], episode_id: int) -> Dict[str, Any]:
-        """Query the LLM with the assembled prompt
+    async def query_llm(self, context: str, prompt: Dict[str, Any], episode_id: int) -> Dict[str, str]:
+        """Query LLM and store tasks in episode
         
         Args:
-            prompt: The assembled prompt dictionary
-            episode_id: ID of the current episode
+            context: System context for LLM
+            prompt: Assembled prompt dictionary
+            episode_id: ID of current episode
             
         Returns:
-            Dict containing query status and results
+            Dict containing query status
         """
         try:
-            # Record that we're starting an LLM query
+            # Record start if we have episode ID
             await self.kg.update_properties(
                 entity_id=episode_id,
-                properties={
-                    "llm_query_start": datetime.now().isoformat()
-                }
+                properties={"llm_query_start": datetime.now().isoformat()}
             )
             
-            # Convert prompt dict to formatted string for LLM
-            query_text = self._prompt_to_query(prompt)
+            # Query LLM
+            prompt_text = json.dumps(prompt, indent=2)
+            response = await self.llm.query(context=context, prompt=prompt_text)
             
-            # Query LLM with appropriate context
-            context = """You are a Memento agent - an AI system designed to maintain memory of 
-                        episodic, procedural, mission, and factual content across sessions. You 
-                        are capable of analyzing scientific hypotheses and experiment plans in 
-                        molecular biology, systems biology, genomics, proteomics, and related fields."""
-            response = await self.llm.query(context=context, prompt=query_text)
+            # Parse JSON response and store in episode
+            try:
+                # First try direct parsing with strip
+                parsed = json.loads(response.strip())
+                
+            except json.JSONDecodeError:
+                # If direct parsing fails, try evaluating as a string literal
+                try:
+                    import ast
+                    parsed_str = ast.literal_eval(response)
+                    parsed = json.loads(parsed_str)
+                except:
+                    await self.kg.update_properties(
+                        entity_id=episode_id,
+                        properties={
+                            "llm_query_complete": datetime.now().isoformat(),
+                            "llm_response": response,
+                            "error": f"Could not parse valid JSON from response: {response}"
+                        }
+                    )
+                    return {"status": "error", "message": f"LLM response was not valid JSON\nResponse was: {response}"}
             
-            # Record query completion and response
+            # Store successful results in episode
             await self.kg.update_properties(
                 entity_id=episode_id,
                 properties={
                     "llm_query_complete": datetime.now().isoformat(),
-                    "llm_response": response
+                    "llm_response": response,
+                    "tasks": json.dumps(parsed)
                 }
             )
-            
-            return {"status": "success", "response": response}
-            
+            return {"status": "success"}
+                
         except Exception as e:
             print(f"Error in LLM query: {str(e)}")
-            raise
-
-    def _prompt_to_query(self, prompt: Dict[str, Any]) -> str:
-        """Convert the prompt dictionary to a formatted query string
-        
-        Args:
-            prompt: The prompt dictionary
-            
-        Returns:
-            Formatted query string
-        """
-        # Format the prompt dict as the query text
-        # For now, just convert to JSON string
-        return json.dumps(prompt, indent=2)
+            return {"status": "error", "message": str(e)}
