@@ -46,10 +46,11 @@ class Memento:
             # Get prompt and query LLM
             prompt = await self.query_manager.assemble_prompt()
             query_status = await self.query_manager.query_llm(
-                context="You are a Memento agent...",  # TODO review context handling...
+                context="You are a Memento agent - an ethical and helpful autonomous system designed to pursue goals set by a user. ", 
                 prompt=prompt,
                 episode_id=episode['id']
             )
+            print(f"LLM queried: {query_status}")
 
             # Execute tasks
             task_status = await self.task_manager.execute_tasks(episode['id'])

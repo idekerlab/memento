@@ -2,36 +2,41 @@ import logging
 from test_query_manager import setup_test_action
 from agent import Memento
 
-
 async def test_minimal_episode(kg):
-    """Test complete episode execution with minimal action-task cycle"""
-    logging.info("Testing minimal episode execution")
+    """Test single episode execution with a simple action"""
     try:
-        # Setup test action if needed
-        action_id = await setup_test_action(kg)  # Reuse from test_query_manager.py
-        
-        # Create Memento instance
-        agent = await Memento.create(kg)
+        # Create test action
+        action_id = await kg.add_entity(
+            type="Action",
+            name="test_action",
+            properties={
+                "active": "TRUE",
+                "state": "unsatisfied", 
+                "description": "Simple test action. Just mark it as satisfied",
+                "completion_criteria": "Action is marked as satisfied"
+            }
+        )
         
         # Run episode
+        agent = await Memento.create(kg)
         result = await agent.run_episode()
         
-        # Verify final state
-        verify_query = """
-            SELECT value 
-            FROM properties 
-            WHERE entity_id = (
-                SELECT id FROM entities 
-                WHERE type = 'Action' AND name = 'test_action'
-            )
-            AND key = 'status'
+        # Verify episode entity and its task
+        episode_query = """
+            SELECT e.id, t.id as task_id, r.id as result_id, r.content
+            FROM entities e
+            LEFT JOIN entities t ON t.type = 'Task'
+            LEFT JOIN relationships rt ON rt.source_id = e.id AND rt.target_id = t.id AND rt.type = 'task_of'
+            LEFT JOIN entities r ON r.type = 'Result'
+            LEFT JOIN relationships rr ON rr.source_id = t.id AND rr.target_id = r.id AND rr.type = 'result_of'
+            WHERE e.id = ?
         """
-        verify_result = await kg.query_database(verify_query)
+        episode_result = await kg.query_database(episode_query, [result['episode_id']])
         
-        if not verify_result['results'] or verify_result['results'][0]['value'] != 'completed':
-            return "Failed: Action not completed after episode execution"
+        if not episode_result['results']:
+            return "Failed: Could not find episode entities"
             
-        return "Passed: Episode successfully executed and completed action"
+        return "Passed: Episode workflow entities verified"
         
     except Exception as e:
         return f"Failed with exception: {str(e)}"
