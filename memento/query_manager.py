@@ -8,14 +8,13 @@ class QueryManager:
         self.kg = kg
         self.prompt = {
             "primary_instructions": "",
-            "current_role": "",
-            "available_roles": [],
-            "available_tools": [],
+            # "current_role": "",
+            # "available_roles": [],
+            # "available_tools": [],
             "summarized_episodes": "",
-            "latest_episodes": [],
-            "current_plan": "",
+            "recent_episodes": [],
             "active_actions": [],
-            "output_format": ""
+            "final_instruction": 'Now begin outputting your response, starting with: {"reasoning": "'
         }
         self.llm = None
 
@@ -89,12 +88,6 @@ class QueryManager:
         response = await self.kg.query_database(query)
         return response.get('results', [])
 
-    async def _get_current_plan(self) -> str:
-        """Get current plan from KG"""
-        query = "SELECT value FROM properties WHERE entity_id = 1275 AND key = 'current_plan'"
-        response = await self.kg.query_database(query)
-        return response['results'][0]['value'] if response['results'] else ""
-
     async def _get_active_actions(self) -> list:
         """Get active actions with their properties"""
         query = """
@@ -162,17 +155,15 @@ class QueryManager:
                 }
             
             # Gather requested components
-            if 'role' in components:
-                self.prompt["current_role"] = await self._get_current_role()
-            if 'roles' in components:
-                self.prompt["available_roles"] = await self._get_available_roles()
-            if 'tools' in components:
-                self.prompt["available_tools"] = await self._get_available_tools()
-            if 'episodes' in components:
-                self.prompt["latest_episodes"] = await self._get_recent_episodes()
-            if 'plan' in components:
-                self.prompt["current_plan"] = await self._get_current_plan()
-            if 'actions' in components:
+            # if 'role' in components:
+            #     self.prompt["current_role"] = await self._get_current_role()
+            # if 'roles' in components:
+            #     self.prompt["available_roles"] = await self._get_available_roles()
+            # if 'tools' in components:
+            #     self.prompt["available_tools"] = await self._get_available_tools()
+            if 'recent_episodes' in components:
+                self.prompt["recent_episodes"] = await self._get_recent_episodes()
+            if 'active_actions' in components:
                 self.prompt["active_actions"] = await self._get_active_actions()
 
             return self.prompt
