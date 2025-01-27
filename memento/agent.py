@@ -4,7 +4,6 @@ from typing import List, Dict, Optional
 from query_manager import QueryManager
 from task_manager import TaskManager
 from episode_manager import EpisodeManager
-from plan_manager import PlanManager
 from knowledge_graph import KnowledgeGraph
 
 class Memento:
@@ -27,7 +26,6 @@ class Memento:
         instance.query_manager = await QueryManager.create(instance.knowledge_graph)
         instance.task_manager = TaskManager(instance.knowledge_graph)
         instance.episode_manager = EpisodeManager(instance.knowledge_graph)
-        instance.plan_manager = PlanManager(instance.knowledge_graph)
         
         return instance
 
@@ -55,10 +53,6 @@ class Memento:
             # Execute tasks
             task_status = await self.task_manager.execute_tasks(episode['id'])
             print(f"Tasks executed: {task_status}")
-
-            # Update the plan
-            plan_status = await self.plan_manager.update_plan(episode['id'])
-            print(f"Plan updated: {plan_status}")
 
             # Close the episode
             close_status = await self.episode_manager.close_episode(episode['id'])

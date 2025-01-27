@@ -86,7 +86,7 @@ class KnowledgeGraph:
             except Exception as e:
                 raise KnowledgeGraphError(f"Knowledge graph not properly initialized: {str(e)}")
 
-    async def add_entity(self, type: str, name: str, properties: Optional[Dict] = None) -> Dict:
+    async def add_entity(self, type: str, name: Optional[str] = None, properties: Optional[Dict] = None) -> Dict:
         """Add a new entity to the knowledge graph"""
         await self.ensure_initialized()
         try:

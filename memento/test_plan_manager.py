@@ -1,7 +1,6 @@
 import logging
 import json
 import datetime
-from plan_manager import PlanManager
 
 async def test_plan_manager_minimal(kg):
     """Test basic plan manager functionality with a simple action update"""

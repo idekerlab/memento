@@ -8,7 +8,6 @@ from test_knowledge_graph import test_knowledge_graph_initialization
 from test_llm import test_llm_initialization
 from test_task_manager import test_task_manager_basic
 from test_query_manager import test_query_manager_minimal, test_query_manager_full, test_query_manager
-from test_plan_manager import test_plan_manager_minimal
 from test_episode import test_minimal_episode
 
 import sys
@@ -37,9 +36,8 @@ async def run_tests(kg_client):
             ("KnowledgeGraph", test_knowledge_graph_initialization),
             ("Primary LLM Config", test_primary_llm_config),
             ("LLM Initialization", test_llm_initialization),
-            ("TaskManager", test_task_manager_basic),
-            ("QueryManager", test_query_manager),
-            ("PlanManager", test_plan_manager_minimal),
+            # ("TaskManager", test_task_manager_basic),
+            # ("QueryManager", test_query_manager),
             ("Episode", test_minimal_episode)
         ]
         

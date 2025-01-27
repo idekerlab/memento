@@ -142,24 +142,19 @@ class QueryManager:
         return list(actions.values())
 
     async def assemble_prompt(self):
-        """Assemble core prompt components"""
         try:
-            # Read primary instructions
-            with open('primary_instructions.txt', 'r') as f:
+            # Use absolute path
+            instructions_path = "/users/idekeradmin/dropbox/github/memento/memento/primary_instructions.txt"
+            with open(instructions_path, 'r') as f:
                 instructions = f.read()
                 
-            # Get recent episodes and active actions
             recent_episodes = await self._get_recent_episodes()
             active_actions = await self._get_active_actions()
             
-            # Format prompt
-            prompt = instructions.format(
+            return instructions.format(
                 recent_episodes=json.dumps(recent_episodes, indent=2),
                 active_actions=json.dumps(active_actions, indent=2)
             )
-            
-            return prompt
-            
         except Exception as e:
             print(f"Error assembling prompt: {str(e)}")
             raise

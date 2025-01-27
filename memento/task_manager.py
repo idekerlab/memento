@@ -1,136 +1,91 @@
 import json
 from typing import List, Dict, Optional
 
-
 class TaskManager:
     def __init__(self, kg):
         self.kg = kg
-        self.tasks = {}
-
-    def parse_llm_response(self, llm_response):
-        """Parse LLM response into executable tasks
         
-        Args:
-            llm_response: Dict containing parsed LLM response
-            
-        Returns:
-            List of parsed tasks
-        """
-        if not isinstance(llm_response, dict) or 'tasks' not in llm_response:
-            raise ValueError("Invalid LLM response format")
-            
-        tasks = []
-        for task_data in llm_response['tasks']:
-            if not isinstance(task_data, dict) or 'type' not in task_data:
-                continue
-                
-            # Validate task type
-            if task_data['type'] not in ['create_entity', 'update_entity']:
-                continue
-                
-            tasks.append(task_data)
-            
-        return tasks
-
     async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
-        """Execute tasks stored in episode
-        
-        Args:
-            episode_id: ID of episode containing tasks
-            
-        Returns:
-            Dict containing execution status
-        """
         try:
-            # Get tasks from episode
-            query = f"""
-                SELECT value 
-                FROM properties 
-                WHERE entity_id = {episode_id} 
-                AND key = 'tasks'
-            """
-            result = await self.kg.query_database(query)
+            # Get tasks from episode reasoning
+            query = "SELECT value FROM properties WHERE entity_id = ? AND key = 'tasks'"
+            result = await self.kg.query_database(query, [episode_id])
             if not result['results']:
-                return {"status": "error", "message": "No tasks found in episode"}
+                return {"status": "error", "message": "No tasks found"}
                 
             tasks = json.loads(result['results'][0]['value'])
             
-            # Execute tasks and record results
+            # Remove redundant task_results storage
             results = []
-            for task in tasks.get('tasks', []):
+            for task_spec in tasks:
+                task_id = await self.kg.add_entity(
+                    type="Task",
+                    name=f"Task_{episode_id}_{task_spec['type']}",
+                    properties=task_spec
+                )
+                await self.kg.add_relationship(source_id=episode_id, target_id=task_id, type="task_of")
+                
                 try:
-                    result = await self._execute_task(task)
-                    results.append({
-                        'task': task,
-                        'status': 'success',
-                        'result': result
-                    })
+                    result = await self._execute_task(task_spec)
+                    result_id = await self.kg.add_entity(
+                        type="Result",
+                        name=f"Result_{task_id}",
+                        properties={"content": json.dumps(result), "status": "success"}
+                    )
                 except Exception as e:
-                    results.append({
-                        'task': task,
-                        'status': 'error',
-                        'error': str(e)
-                    })
+                    result_id = await self.kg.add_entity(
+                        type="Result", 
+                        name=f"Result_{task_id}",
+                        properties={"content": str(e), "status": "error"}
+                    )
+                await self.kg.add_relationship(source_id=task_id, target_id=result_id, type="result_of")
             
-            # Record results in episode
-            await self.record_task_results(episode_id, {"results": results})
             return {"status": "success"}
-            
+                
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
     async def _execute_task(self, task):
-        """Execute a single task
+        task_type = task['type']
         
-        Args:
-            task: Task specification dict
+        if task_type == 'create_entity':
+            return await self.kg.add_entity(**task['properties'])
             
-        Returns:
-            Dict containing task result
-        """
-        if task['type'] == 'create_entity':
-            if 'entity_type' not in task or 'name' not in task:
-                raise ValueError("Create entity task missing required fields")
-                
-            result = await self.kg.add_entity(
-                type=task['entity_type'],
-                name=task['name'],
-                properties=task.get('properties', {})
-            )
-            
-        elif task['type'] == 'update_entity':
-            if 'entity_id' not in task or 'properties' not in task:
-                raise ValueError("Update entity task missing required fields")
-                
-            result = await self.kg.update_properties(
+        elif task_type == 'update_entity':
+            return await self.kg.update_properties(
                 entity_id=task['entity_id'],
                 properties=task['properties']
             )
             
-        else:
-            raise ValueError(f"Unsupported task type: {task['type']}")
-            
-        return result
-
-    async def record_task_results(self, episode_id, results):
-        """Record task execution results in the episode
-        
-        Args:
-            episode_id: ID of current episode
-            results: Dict containing task execution results
-            
-        Returns:
-            Dict indicating recording status
-        """
-        try:
-            # Properly JSON encode the results
-            json_results = json.dumps(results)
-            await self.kg.update_properties(
-                entity_id=episode_id,
-                properties={
-                    'task_results': json_results
-                }
+        elif task_type == 'add_relationship':
+            return await self.kg.add_relationship(
+                source_id=task['source_id'],
+                target_id=task['target_id'],
+                type=task['type'],
+                properties=task.get('properties', {})
             )
-            return {'status': 'success'}
-        except Exception as e:
-            return {'status': 'error', 'error': str(e)}
+            
+        elif task_type == 'create_action':
+            return await self.kg.add_entity(
+                type="Action",
+                **task['properties']
+            )
+            
+        elif task_type == 'update_action':
+            return await self.kg.update_properties(
+                entity_id=task['entity_id'],
+                properties=task['properties']
+            )
+            
+        elif task_type == 'query_database':
+            return await self.kg.query_database(task['sql'])
+            
+        elif task_type == 'query_llm':
+            return await self.kg.query_llm(
+                template_id=task['template_id'],
+                llm_id=task['llm_id'],
+                arguments=task['arguments']
+            )
+            
+        else:
+            raise ValueError(f"Unsupported task type: {task_type}")
