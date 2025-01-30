@@ -117,14 +117,14 @@ class KnowledgeGraph:
         except Exception as e:
             raise KnowledgeGraphError(f"Failed to update properties: {str(e)}")
 
-    async def add_relationship(self, source_id: int, target_id: int, rel_type: str, properties: Optional[Dict] = None) -> Dict:
+    async def add_relationship(self, source_id: int, target_id: int, type: str, properties: Optional[Dict] = None) -> Dict:
         """Add a relationship between entities"""
         await self.ensure_initialized()
         try:
             args = {
                 "source_id": source_id,
                 "target_id": target_id,
-                "type": rel_type,
+                "type": type,
                 "properties": properties or {}
             }
             response = await self.kg_client.call_tool("add_relationship", args)
@@ -148,14 +148,14 @@ class KnowledgeGraph:
 
     async def get_relationships(self, source_id: Optional[int] = None, 
                               target_id: Optional[int] = None, 
-                              rel_type: Optional[str] = None) -> Dict:
+                              type: Optional[str] = None) -> Dict:
         """Get relationships with optional filters"""
         await self.ensure_initialized()
         try:
             args = {
                 "source_id": source_id,
                 "target_id": target_id,
-                "type": rel_type
+                "type": type
             }
             response = await self.kg_client.call_tool("get_relationships", args)
             if hasattr(response, 'content'):

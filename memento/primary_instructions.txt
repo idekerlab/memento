@@ -143,110 +143,110 @@ The 'tasks' field must be an array of task objects that specify tasks to be perf
 
 Valid task types are:
 
-{
+{{
     "type": "create_entity",
-    "properties": {
+    "properties": {{
         "type": "string: entity type",
         "name": "string: entity name",
-        "properties": {
+        "properties": {{
             "property_name": "value",
             ...
-        }
-    }
-}
+        }}
+    }}
+}}
 
 NOTE: all entities have "id" and "created" properties automatically assigned by the database operations. 
 create_entity can specify the entity name but *not* its id.
 
-{
+{{
     "type": "update_entity",
     "entity_id": "string: entity id",
-    "properties": {
+    "properties": {{
         "property_name": "value",
         ...
-    }
-}
+    }}
+}}
 
-{
+{{
     "type": "add_relationship",
     "source_id": "string: source entity id",
     "target_id": "string: target entity id",
     "type": "string: relationship type",
-    "properties": {  // optional
+    "properties": {{  // optional
         "property_name": "value",
         ...
-    }
-}
+    }}
+}}
 
-{
+{{
     "type": "create_action",
-    "properties": {
+    "properties": {{
         "name": "string: concise action name",
         "description": "string: detailed action description",
         "completion_criteria": "string: how to determine if action is satisfied",
         "active": "string: one of [TRUE or FALSE]",
         "state": "string: must be 'unsatisfied'"
-    }
-}
+    }}
+}}
 
-{
+{{
     "type": "update_action",
     "entity_id": "string: action entity id",
-    "properties": {
+    "properties": {{
         "active": "string: one of [TRUE, FALSE]",
         "state": "string: one of [unsatisfied, in-progress, satisfied, abandoned]",
         "state_reason": "string: explanation for state change"
-    }
-}
+    }}
+}}
 
 Example Response:
-{
+{{
     "reasoning": "I need to create a hypothesis entity and link it to the relevant experimental data. I'll then create an action to analyze this data for hypothesis generation.",
     "tasks": [
-        {
+        {{
             "type": "create_entity",
-            "properties": {
+            "properties": {{
                 "type": "Hypothesis",
                 "name": "Initial_Hypothesis_20250120",
-                "properties": {
-                    "status": "draft",
-                }
-            }
-        },
-        {
+                "properties": {{
+                    "status": "draft"
+                }}
+            }}
+        }},
+        {{
             "type": "create_action",
-            "properties": {
+            "properties": {{
                 "name": "Analyze Dataset id = 789 for hypothesis generation",
                 "description": "Perform hypothesis generation to populate Initial_Hypothesis_20250120 with an draft proposal based on Dataset id = 789",
                 "completion_criteria": "Hypothesis entity Initial_Hypothesis_20250120 updated with initial proposal",
                 "dependencies": [],
                 "state": "unsatisfied",
-                "active:: "TRUE"
-            }
-        }
+                "active": "TRUE"
+            }}
+        }}
     ]
-}
+}}
 
 
-{
+{{
     "type": "query_llm",
     "template_id": "string: prompt template entity id",
     "llm_id": "string: llm entity id",
-    "arguments": {
+    "arguments": {{
         "argument_name": "value",
         // For entity property reference:
-        "argument_name": {
+        "argument_name": {{
             "entity_id": "string: entity id",
             "property": "string: property name"
-        }
-    }
-}
+        }}
+    }}
+}}
 
-{
+{{
     "type": "query_database",
     "sql": "string: SELECT query for knowledge graph database",
     "description": "string: purpose of this query"  // helps track reasoning
-}
+}}
 
 NOTE: Database queries must be read-only SELECT statements against the knowledge graph tables:
 - entities (id, type, name)
@@ -254,10 +254,10 @@ NOTE: Database queries must be read-only SELECT statements against the knowledge
 - relationships (id, source_id, target_id, type)
 
 Example Response:
-{
+{{
     "reasoning": "I need to find all active hypothesis-related actions and their dependencies before creating new analysis tasks.",
     "tasks": [
-        {
+        {{
             "type": "query_database",
             "sql": """
                 SELECT e.id, e.name, p.value as state
@@ -273,9 +273,9 @@ Example Response:
                 AND e.name LIKE '%hypothesis%'
             """,
             "description": "Find unsatisfied hypothesis-related actions"
-        }
+        }}
     ]
-}
+}}
 </output_instructions>
 
 <recent_episodes>
@@ -285,7 +285,3 @@ Example Response:
 <active_actions>
 {active_actions}
 </active_actions>
-
-
-
-

@@ -21,10 +21,10 @@ async def test_minimal_episode(kg):
         result = await agent.run_episode()
         
         # Verify episode and entities
-        query = """
+        query = f"""
             WITH test_episode AS (
                 SELECT e.id FROM entities e
-                WHERE e.id = ?
+                WHERE e.id = {result['episode_id']}
             )
             SELECT 
                 e.id as episode_id,
@@ -40,7 +40,7 @@ async def test_minimal_episode(kg):
             LEFT JOIN properties rp ON rp.entity_id = r.id AND rp.key = 'content'
         """
         
-        verify = await kg.query_database(query, [result['episode_id']])
+        verify = await kg.query_database(query)
         if not verify['results']:
             return "Failed: Could not find episode workflow entities"
             

@@ -35,7 +35,7 @@ class EpisodeManager:
                 await self.kg.add_relationship(
                     source_id=episode_id,
                     target_id=prev_id,
-                    rel_type="follows"
+                    type="follows"
                 )
             
             return {"id": episode_id, "status": "success"}

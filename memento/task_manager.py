@@ -8,8 +8,8 @@ class TaskManager:
     async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
         try:
             # Get tasks from episode reasoning
-            query = "SELECT value FROM properties WHERE entity_id = ? AND key = 'tasks'"
-            result = await self.kg.query_database(query, [episode_id])
+            query = f"SELECT value FROM properties WHERE entity_id = {episode_id} AND key = 'tasks'"
+            result = await self.kg.query_database(query)
             if not result['results']:
                 return {"status": "error", "message": "No tasks found"}
                 
@@ -18,20 +18,22 @@ class TaskManager:
             # Remove redundant task_results storage
             results = []
             for task_spec in tasks:
-                task_id = await self.kg.add_entity(
+                task_object = await self.kg.add_entity(
                     type="Task",
                     name=f"Task_{episode_id}_{task_spec['type']}",
                     properties=task_spec
                 )
+                task_id = task_object["id"]
                 await self.kg.add_relationship(source_id=episode_id, target_id=task_id, type="task_of")
                 
                 try:
                     result = await self._execute_task(task_spec)
-                    result_id = await self.kg.add_entity(
+                    result_object = await self.kg.add_entity(
                         type="Result",
                         name=f"Result_{task_id}",
                         properties={"content": json.dumps(result), "status": "success"}
                     )
+                    result_id = result_object["id"]
                 except Exception as e:
                     result_id = await self.kg.add_entity(
                         type="Result", 

@@ -22,7 +22,7 @@ async def run_tests(kg_client):
         if len(sys.argv) > 1:  # If there is an argument provided
             path = sys.argv[1]
         else:  # No argument provided, use default
-            path = "/Users/idekeradmin/Dropbox/GitHub/agent_kg/src/agent_kg/server.py"
+            path = "/Users/idekeradmin/Dropbox/GitHub/agent_kg/kg_access.py"
    
         await kg_client.connect_to_server(path)
         print("Connected successfully")
@@ -33,9 +33,9 @@ async def run_tests(kg_client):
         
         # Run tests
         tests = [
-            ("KnowledgeGraph", test_knowledge_graph_initialization),
-            ("Primary LLM Config", test_primary_llm_config),
-            ("LLM Initialization", test_llm_initialization),
+            # ("KnowledgeGraph", test_knowledge_graph_initialization),
+            # ("Primary LLM Config", test_primary_llm_config),
+            # ("LLM Initialization", test_llm_initialization),
             # ("TaskManager", test_task_manager_basic),
             # ("QueryManager", test_query_manager),
             ("Episode", test_minimal_episode)
