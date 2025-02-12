@@ -38,4 +38,4 @@ The difference between Memento and classic knowledge representation based agents
 
 Multiple actions can be proposed at a given time, linked with dependencies, forming plans. Downstream planned actions can be revised, abandoned, etc. at each step. There may be many available actions, so the agent needs to prioritize at each step. 
 
-(Rest of the README content remains unchanged...)
+
