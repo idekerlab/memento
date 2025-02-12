@@ -1,0 +1,24 @@
+name: memento
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python>=3.11
+  - pandas>=2.2.2
+  - networkx=3.3
+  - pytest>=8.1.1
+  - sqlite >=3.45 
+  - fastapi >= 0.111
+  - pip
+  - pip:
+    - ndex2>=3.9.0
+    - ply>=3.11
+    - configparser>=7.1.0
+    - anthropic>=0.29.0
+    - google-generativeai>=0.6.0
+    - groq>=0.8.0
+    - openai>=1.32.0
+    
+   
+   

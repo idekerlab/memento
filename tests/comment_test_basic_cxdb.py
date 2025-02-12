@@ -10,7 +10,7 @@ sys.path.append(cwd)# Add the parent directory to the Python path
 print(sys.path)
 
 
-from app.cxdb import CXDB
+from memento.cxdb import CXDB
 from ndex2.cx2 import CX2Network
 
 class TestCXDB(unittest.TestCase):

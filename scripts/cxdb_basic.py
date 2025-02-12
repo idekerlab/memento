@@ -1,26 +1,40 @@
-import os
-import sys
+from cxdb import CXDB
 
-# Get the current working directory
-cwd = os.getcwd()
-print("\nCurrent working directory:", cwd)
+def main():
+    print("Creating CXDB instance...")
+    db = CXDB()
+    print("CXDB instance created successfully.")
 
-# Get the parent directory of the current working directory
-parent_dir = os.path.dirname(cwd)
-print("\nParent directory:", parent_dir)
+    print("\nAdding nodes...")
+    node1_id = db.add_node("Node1", "Type1", {"prop1": "value1"})
+    node2_id = db.add_node("Node2", "Type2", {"prop2": "value2"})
+    node3_id = db.add_node("Node3", "Type1", {"prop3": "value3"})
+    print(f"Added nodes with IDs: {node1_id}, {node2_id}, {node3_id}")
 
-# Get the grandparent directory (which should be the project root)
-project_root = os.path.dirname(parent_dir)
-print("\nProject root directory:", project_root)
+    print("\nAdding edges...")
+    db.add_edge(node1_id, node2_id, "RELATES_TO", {"edge_prop": "edge_value1"})
+    db.add_edge(node2_id, node3_id, "CONNECTS", {"edge_prop": "edge_value2"})
+    print("Edges added successfully.")
 
-# Add the project root to the Python path
-sys.path.insert(0, cwd)
-print("\nUpdated sys.path:", sys.path)
+    print("\nNodes:")
+    print(db.nodes)
+    print("\nEdges:")
+    print(db.edges)
 
-# Now try to import the CXDB class
-from app.cxdb import CXDB
+    print("\nGetting specific nodes...")
+    for node_id in [node1_id, node2_id, node3_id]:
+        node = db.get_node(node_id)
+        print(f"Node {node_id}: {node}")
 
-# Rest of your script
-my_db = CXDB()
-my_db.add_node("Node1", "Type1", {"prop1": "value1"})
-print(my_db.nodes)
+    print("\nGetting specific edges...")
+    edge1 = db.get_edge(node1_id, node2_id, "RELATES_TO")
+    edge2 = db.get_edge(node2_id, node3_id, "CONNECTS")
+    print(f"Edge 1: {edge1}")
+    print(f"Edge 2: {edge2}")
+
+    # TODO: Implement custom query functionality
+    print("\nNOTE: Cypher query execution is currently not working as expected.")
+    print("Custom query functionality needs to be implemented.")
+
+if __name__ == "__main__":
+    main()
