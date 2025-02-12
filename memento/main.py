@@ -23,7 +23,7 @@ async def memento_loop(kg_client):
                 "sql": """
                     SELECT key, value 
                     FROM properties 
-                    WHERE entity_id = 1275 
+                    WHERE entity_id = 1320 
                     AND key IN ('episode_status', 'error_handling')
                 """
             }
@@ -94,7 +94,7 @@ async def memento_loop(kg_client):
             await kg_client.call_tool("update_properties", error_args)
             await asyncio.sleep(5)  # Wait before retrying after error
 
-# "/Users/idekeradmin/Dropbox/GitHub/agent_kg/src/agent_kg/server.py"           
+# "/Users/idekeradmin/Dropbox/GitHub/agent_kg/kg_access.py"           
 async def main():
     # Make the MCP tools
     kg_client = MCPClient()  # No arguments here

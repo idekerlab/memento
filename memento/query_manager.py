@@ -4,57 +4,42 @@ from datetime import datetime
 from llm import LLM
 
 class QueryManager:
-    def __init__(self, kg):
+    def __init__(self, kg, agent_id):
         self.kg = kg
+        self.agent_id = agent_id
         self.prompt = {
             "primary_instructions": "",
-            # "current_role": "",
-            # "available_roles": [],
-            # "available_tools": [],
             "summarized_episodes": "",
             "recent_episodes": [],
             "active_actions": [],
             "final_instruction": 'Now begin outputting your response, starting with: {"reasoning": "'
         }
-        self.llm = None
+        self.llm = LLM(
+            type="Anthropic",
+            model_name="claude-3-5-sonnet-20241022",  
+            max_tokens=4000,
+            seed=123,
+            temperature=0.7
+        )
 
     @classmethod
-    async def create(cls, kg):
+    async def create(cls, kg, agent_id):
         """Async factory method to create and initialize a QueryManager instance"""
-        instance = cls(kg)
-        await instance._init_llm()
+        instance = cls(kg, agent_id)
         return instance
-
-    async def _init_llm(self):
-        """Initialize LLM from KG config"""
-        config_query = """
-            SELECT p.key, p.value 
-            FROM entities e 
-            JOIN properties p ON e.id = p.entity_id 
-            WHERE e.type = 'LLMConfig' AND e.name = 'default_llm_config'
-        """
-        config_response = await self.kg.query_database(config_query)
-        if not config_response['results']:
-            raise Exception("No LLM configuration found in knowledge graph")
-            
-        # Get raw config
-        raw_config = {prop['key']: prop['value'] for prop in config_response['results']}
-        
-        # Filter to only valid LLM parameters
-        valid_params = ['type', 'model_name', 'max_tokens', 'seed', 
-                    'temperature', 'object_id', 'created', 'name', 'description']
-        filtered_config = {k: v for k, v in raw_config.items() if k in valid_params}
-        
-        # Initialize LLM with filtered config
-        self.llm = LLM(**filtered_config)
 
     async def _get_recent_episodes(self) -> list:
         """Get recent episodes with properties, tasks and results"""
-        query = """
+        query = f"""
             WITH recent_episodes AS (
-                SELECT id, name FROM entities 
-                WHERE type = 'Episode'
-                ORDER BY id DESC LIMIT 5
+                SELECT e.id, e.name 
+                FROM entities e
+                JOIN properties p ON e.id = p.entity_id
+                WHERE e.type = 'Episode'
+                AND p.key = 'agent_id'
+                AND p.value = '{self.agent_id}'
+                ORDER BY e.id DESC 
+                LIMIT 5
             )
             SELECT 
                 e.id AS episode_id,
@@ -150,34 +135,37 @@ class QueryManager:
                 
             recent_episodes = await self._get_recent_episodes()
             active_actions = await self._get_active_actions()
+
+            instructions += "\n\nRECENT EPISODES:\n\n"
+            instructions += json.dumps(recent_episodes)
+            instructions += "\n\nACTIVE ACTIONS:\n\n"
+            instructions += json.dumps(active_actions)
             
-            return instructions.format(
-                recent_episodes=json.dumps(recent_episodes, indent=2),
-                active_actions=json.dumps(active_actions, indent=2)
-            )
+            return instructions
+        
         except Exception as e:
             print(f"Error assembling prompt: {str(e)}")
             raise
 
-    async def query_llm(self, context: str, prompt: Dict[str, Any], episode_id: int) -> Dict[str, str]:
+    async def query_llm(self, context: str, prompt: str, episode_id: int) -> Dict[str, str]:
         try:
             await self.kg.update_properties(
                 entity_id=episode_id,
                 properties={"llm_query_start": datetime.now().isoformat()}
             )
             
-            prompt_text = json.dumps(prompt, indent=2)
-            response = await self.llm.query(context=context, prompt=prompt_text)
+            response = await self.llm.query(context=context, prompt=prompt)
+            
+            # Clean up the response before parsing
+            response_clean = response.strip()
             
             try:
-                # First try direct parsing
-                parsed = json.loads(response.strip())
-                
+                # Try parsing the cleaned response
+                parsed = json.loads(response_clean)
             except json.JSONDecodeError:
-                # Try evaluating as string literal
                 try:
                     import ast
-                    parsed_str = ast.literal_eval(response)
+                    parsed_str = ast.literal_eval(response_clean)
                     parsed = json.loads(parsed_str)
                 except:
                     await self.kg.update_properties(

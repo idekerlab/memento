@@ -9,7 +9,7 @@ def load_config(config_path=None):
     if config_path is None:
             # try to get the configuration file location from the environment variable
         try:
-            config_path = os.environ['MEMENTO_CONFIG_PATH']
+            config_path = os.environy['MEMENTO_CONFIG_PATH']
         except KeyError:
             pass
         # default to the home directory

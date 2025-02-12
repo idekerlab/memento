@@ -2,8 +2,9 @@ import datetime
 from typing import Dict, Optional
 
 class EpisodeManager:
-    def __init__(self, kg):
+    def __init__(self, kg, agent_id):
         self.kg = kg
+        self.agent_id = agent_id
 
     async def new_episode(self) -> Dict:
         """Create a new episode and initialize its properties
@@ -19,14 +20,25 @@ class EpisodeManager:
                 properties={
                     "status": "created",
                     "created_at": datetime.datetime.now().isoformat(),
-                    "updated_at": datetime.datetime.now().isoformat()
+                    "updated_at": datetime.datetime.now().isoformat(),
+                    "agent_id": self.agent_id
                 }
             )
             
             episode_id = episode_response['id']
             
-            # Find previous episode if any
-            query = f"SELECT id FROM entities WHERE type = 'Episode' AND id != {episode_id} ORDER BY id DESC LIMIT 1"
+            # Find previous episode from same agent instance
+            query = f"""
+                SELECT e.id 
+                FROM entities e
+                JOIN properties p ON e.id = p.entity_id
+                WHERE e.type = 'Episode' 
+                AND e.id != {episode_id}
+                AND p.key = 'agent_id'
+                AND p.value = '{self.agent_id}'
+                ORDER BY e.id DESC 
+                LIMIT 1
+            """
             prev_response = await self.kg.query_database(query)
             
             if prev_response['results']:
@@ -39,7 +51,7 @@ class EpisodeManager:
                 )
             
             return {"id": episode_id, "status": "success"}
-                
+            
         except Exception as e:
             print(f"Error creating new episode: {str(e)}")
             raise

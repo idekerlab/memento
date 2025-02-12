@@ -4,28 +4,65 @@ from typing import List, Dict, Optional
 from query_manager import QueryManager
 from task_manager import TaskManager
 from episode_manager import EpisodeManager
-from knowledge_graph import KnowledgeGraph
+import random
 
 class Memento:
     """
     The Memento agent orchestrates episodes of planning, action, and reflection.
     """
+    # Word lists for generating instance IDs
+    FIRST_WORDS = [
+        'blue', 'red', 'green', 'gold', 'silver',
+        'bronze', 'aqua', 'indigo', 'orange', 'emerald'
+    ]
+    
+    SECOND_WORDS = [
+        'hawk', 'eagle', 'wolf', 'bear', 'fox',
+        'cat', 'deer', 'jay', 'mouse', 'ant'
+    ]
+
     def __init__(self, knowledge_graph):
         self.knowledge_graph = knowledge_graph
         self.query_manager = None
         self.task_manager = None 
         self.episode_manager = None
-        self.plan_manager = None
+        self.instance_id = None
+
+    async def _generate_unique_instance_id(self) -> str:
+        """Generate a unique instance ID, checking against existing episodes"""
+        max_attempts = 20  # Prevent infinite loop if all combinations are used
+        
+        for _ in range(max_attempts):
+            first = random.choice(self.FIRST_WORDS)
+            second = random.choice(self.SECOND_WORDS)
+            candidate_id = f"{first}_{second}"
+            
+            # Check if this ID exists in any episodes
+            query = f"""
+                SELECT COUNT(*) as count 
+                FROM properties 
+                WHERE key = 'instance_id' 
+                AND value = '{candidate_id}'
+            """
+            result = await self.knowledge_graph.query_database(query)
+            
+            if result['results'][0]['count'] == 0:
+                return candidate_id
+                
+        raise RuntimeError("Could not generate unique instance ID after maximum attempts")
 
     @classmethod
     async def create(cls, knowledge_graph):
         """Async factory method to create and initialize a Memento instance"""
         instance = cls(knowledge_graph)
-        
+
+        # Generate unique instance ID
+        instance.instance_id = await instance._generate_unique_instance_id()
+
         # Initialize managers
-        instance.query_manager = await QueryManager.create(instance.knowledge_graph)
+        instance.query_manager = await QueryManager.create(instance.knowledge_graph, instance.instance_id)
         instance.task_manager = TaskManager(instance.knowledge_graph)
-        instance.episode_manager = EpisodeManager(instance.knowledge_graph)
+        instance.episode_manager = EpisodeManager(instance.knowledge_graph, instance.instance_id)
         
         return instance
 

@@ -3,8 +3,8 @@ from config import load_api_key
 import json
 
 class LLM:
-    def __init__(self, type=None, model_name=None,
-                 max_tokens=None, seed=None, temperature=None,
+    def __init__(self, type=None, model_name="claude-3-5-sonnet-20241022",
+                 max_tokens=8096, seed=42, temperature=0.7,
                  object_id=None, created=None, name=None, description=None):
         self.type = type
         self.model_name = model_name

@@ -1,9 +1,11 @@
 import json
 from typing import List, Dict, Optional
+from llm import LLM
 
 class TaskManager:
     def __init__(self, kg):
         self.kg = kg
+        self.llm = LLM(type="Anthropic")
         
     async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
         try:
@@ -51,7 +53,7 @@ class TaskManager:
         task_type = task['type']
         
         if task_type == 'create_entity':
-            return await self.kg.add_entity(**task['properties'])
+            return await self.kg.add_entity(task['type'], name=task.get('name'), properties=task['properties'])
             
         elif task_type == 'update_entity':
             return await self.kg.update_properties(
@@ -68,26 +70,91 @@ class TaskManager:
             )
             
         elif task_type == 'create_action':
-            return await self.kg.add_entity(
-                type="Action",
-                **task['properties']
-            )
+            # Extract dependencies before creating action
+            depends_on = task['properties'].pop('depends_on', [])
             
-        elif task_type == 'update_action':
-            return await self.kg.update_properties(
-                entity_id=task['entity_id'],
-                properties=task['properties']
-            )
+            try:
+                # Create the action
+                action = await self.kg.add_entity(
+                    type="Action",
+                    properties=task['properties']
+                )
+                
+                # Add dependency relationships
+                for dep_id in depends_on:
+                    try:
+                        await self.kg.add_relationship(
+                            source_id=action['id'],
+                            target_id=dep_id,
+                            type='depends_on'
+                        )
+                    except Exception as e:
+                        # Clean up the partially created action and its relationships
+                        await self.kg.delete_entity(action['id'])
+                        raise Exception(f"Failed to create dependency relationship: {str(e)}")
+                        
+                return action
+                
+            except Exception as e:
+                # Clean up any partial state if action was created
+                if 'action' in locals():
+                    await self.kg.delete_entity(action['id'])
+                raise e
             
         elif task_type == 'query_database':
             return await self.kg.query_database(task['sql'])
             
         elif task_type == 'query_llm':
-            return await self.kg.query_llm(
-                template_id=task['template_id'],
-                llm_id=task['llm_id'],
-                arguments=task['arguments']
-            )
-            
+            try:
+                return await self.llm.query(
+                    context=task.get('context', ''),
+                    prompt=task['prompt']
+                )
+            except Exception as e:
+                raise Exception(f"LLM query failed: {str(e)}")  
+
+
+        elif task_type == 'query_llm_using_template':
+            try:
+                # Get template
+                template_result = await self.kg.get_properties(entity_id=task['template_id'])
+                if not template_result.get('properties'):
+                    raise Exception(f"Template {task['template_id']} not found")
+                
+                template_props = {p['key']: p['value'] for p in template_result['properties']}
+                template = template_props.get('template')
+                context = template_props.get('context', '')
+                
+                if not template:
+                    raise Exception(f"No template content found for {task['template_id']}")
+
+                # Resolve entity property references
+                resolved_args = {}
+                for arg_name, arg_value in task['arguments'].items():
+                    if isinstance(arg_value, dict) and 'entity_id' in arg_value:
+                        prop_result = await self.kg.get_properties(
+                            entity_id=arg_value['entity_id']
+                        )
+                        if not prop_result.get('properties'):
+                            raise Exception(f"Entity {arg_value['entity_id']} not found")
+                        
+                        props = {p['key']: p['value'] for p in prop_result['properties']}
+                        resolved_args[arg_name] = json.dumps(props)
+                        if resolved_args[arg_name] is None:
+                            raise Exception(
+                                f"Property {arg_value['property']} not found for entity {arg_value['entity_id']}"
+                            )
+                    else:
+                        resolved_args[arg_name] = arg_value
+
+                # Format template with resolved arguments
+                prompt = template.format(**resolved_args)
+                
+                # Execute LLM query
+                return await self.llm.query(context=context, prompt=prompt)
+                
+            except Exception as e:
+                raise Exception(f"Template LLM query failed: {str(e)}")
+                                  
         else:
             raise ValueError(f"Unsupported task type: {task_type}")
