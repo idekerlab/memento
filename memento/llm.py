@@ -1,5 +1,5 @@
 import anthropic
-from config import load_api_key
+from memento.config import load_api_key
 import json
 
 class LLM:

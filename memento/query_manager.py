@@ -1,7 +1,7 @@
 import json
 from typing import Dict, Any
 from datetime import datetime
-from llm import LLM
+from memento.llm import LLM
 
 EPISODE_TOOL_SCHEMA = {
     "name": "specify_episode_tasks",
@@ -62,32 +62,76 @@ EPISODE_TOOL_SCHEMA = {
     }
 }
 
-def sanitize_json_response(response_text: str) -> str:
-    """Clean and escape control characters in LLM response"""
-    # First, handle existing escaped characters
-    text = response_text.replace('\\n', '\\\\n').replace('\\r', '\\\\r')
-    
-    # Then handle actual newlines
-    text = text.replace('\n', '\\n').replace('\r', '\\r')
-    
-    # Handle other control characters
-    text = ''.join(
-        char if ord(char) >= 32 else f'\\u{ord(char):04x}' 
-        for char in text
-    )
-    
-    # Make sure properties are properly quoted
-    text = text.replace("{\n", "{").replace("\n}", "}")
-    text = text.replace('": ', '":')
-    
-    return text
-
 class QueryManager:
+    PRIMARY_INSTRUCTIONS = """<meta_level_instructions>
+As a Memento agent, you have the following admirable traits:
+- You always tell the truth and you help the user tell the truth.
+- You consider the ethics and potential risks of your actions:
+    - Do not harm the user
+    - Do not harm others
+    - Be careful with actions that can put data and user security at risk
+    - You uphold strict scientific ethics
+    - You are very careful in considering the trustworthiness, completeness, and accuracy of information sources
+</meta_level_instructions>
+
+<architecture>
+Your code executes a top-level loop of "Episodes". Each Episode is persisted as an entity in your KG,
+linked to the previous episode, forming an episodic memory that you can query.
+
+Your plans and history are represented as Action entities. The current plans are distinguished by an
+"active" property set to "TRUE". Your plans are rooted in top level active Actions created in the KG.
+
+Each Episode performs a "episode_query" (this query) in which you:
+- assess the results of the previous Episode in the context of other recent episodes
+- assess the status of the active Actions given those results
+- reason about what tasks you will specify to advance your plans
+- specify a set of tasks to be performed in sequence, with each task potentially depending on results from previous tasks
+</architecture>
+
+<process_instructions>
+- Think step by step about task dependencies and sequencing
+- Consider when to break down Actions into more manageable pieces
+- Review past episodes for relevant experience
+- When Creating new Actions, specify clear completion criteria
+- Establish explicit dependencies between Actions
+- Record your planning reasoning in the episode
+- Be explicit about uncertainty and assumptions
+</process_instructions>
+
+<output_instructions>
+You must output your response using the specify_episode_tasks tool. Your response should include:
+
+- reasoning: Document your step-by-step thought process including:
+  - Assessment of the current situation
+  - Analysis of any relevant context
+  - Decision rationale
+  - Dependencies between tasks
+  - Any uncertainties or assumptions
+
+- tasks: An array of tasks to be executed in sequence. Each task must specify:
+  - type: The type of task (currently supporting only "create_action" and "query_database")
+  - requires: Array of previous task IDs this task depends on
+  - Other parameters specific to the task type
+
+For create_action tasks:
+  - name: Concise action name
+  - description: Detailed description
+  - completion_criteria: Clear criteria for completion
+  - active: "TRUE" or "FALSE"
+  - state: Must be "unsatisfied" for new actions
+  - depends_on: Array of Action IDs this depends on (optional)
+
+For query_database tasks:
+  - sql: SELECT query (read-only)
+  - description: Purpose of the query
+</output_instructions>"""
+
     def __init__(self, kg, agent_id):
         self.kg = kg
         self.agent_id = agent_id
+        self.current_episode_id = None
         self.prompt = {
-            "primary_instructions": "",
+            "primary_instructions": self.PRIMARY_INSTRUCTIONS,  # Now using the constant
             "summarized_episodes": "",
             "recent_episodes": [],
             "active_actions": [],
@@ -106,6 +150,10 @@ class QueryManager:
         """Async factory method to create and initialize a QueryManager instance"""
         instance = cls(kg, agent_id)
         return instance
+
+    async def _get_schema_documentation(self) -> dict:
+        """Get schema documentation from the knowledge graph"""
+        raise NotImplementedError("Schema documentation retrieval not yet implemented")
 
     async def _get_recent_episodes(self) -> list:
         """Get recent episodes with properties, tasks and results"""
@@ -207,24 +255,59 @@ class QueryManager:
 
     async def assemble_prompt(self):
         try:
-            # Use absolute path
-            instructions_path = "/users/idekeradmin/dropbox/github/memento/memento/primary_instructions.txt"
-            with open(instructions_path, 'r') as f:
-                instructions = f.read()
-                
+            # Start with primary instructions
+            instructions = self.PRIMARY_INSTRUCTIONS
+
+            # Get schema documentation
+            schema = await self._get_schema_documentation()
+            instructions += "\n\nKNOWLEDGE GRAPH SCHEMA:\n\n"
+            instructions += json.dumps(schema, indent=2)
+
+            # Get recent episodes including task results
             recent_episodes = await self._get_recent_episodes()
             active_actions = await self._get_active_actions()
+            
+            # Get and format query validation errors if we have a current episode
+            if self.current_episode_id:
+                prev_results = await self._get_recent_task_results(self.current_episode_id)
+                query_errors = self._extract_query_errors(prev_results)
+                
+                if query_errors:
+                    instructions += "\n\nQUERY VALIDATION ERRORS TO ADDRESS:\n\n"
+                    instructions += json.dumps(query_errors, indent=2)
 
+            # Add recent episodes and active actions context
             instructions += "\n\nRECENT EPISODES:\n\n"
             instructions += json.dumps(recent_episodes)
             instructions += "\n\nACTIVE ACTIONS:\n\n"
             instructions += json.dumps(active_actions)
-            
+
             return instructions
-        
+
         except Exception as e:
             print(f"Error assembling prompt: {str(e)}")
             raise
+
+    async def _get_recent_task_results(self, episode_id: int) -> list:
+        """Get task results for a specific episode"""
+        raise NotImplementedError("Task results retrieval not yet implemented")
+
+    def _extract_query_errors(self, task_results: list) -> list:
+        """Extract and format query validation errors from task results"""
+        query_errors = []
+        for result in task_results:
+            content = json.loads(result['result_content'])
+            if (result['task_type'] == 'query_database' and 
+                result['result_status'] == 'error' and
+                'error_type' in content and 
+                content['error_type'] == 'QueryValidationError'):
+                
+                task_params = json.loads(result['task_params'])
+                query_errors.append({
+                    'query': task_params['sql'],
+                    'error': content['message']
+                })
+        return query_errors
 
     async def query_llm(self, context: str, prompt: str, episode_id: int) -> Dict[str, str]:
         try:
