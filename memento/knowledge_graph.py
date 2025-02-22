@@ -1,6 +1,9 @@
 import asyncio
 from typing import Dict, List, Optional, Any
 import json
+from ndex2.cx2 import CX2Network, RawCX2NetworkFactory
+import ndex2.client as nc2
+from config import load_ndex_credentials
 
 class KnowledgeGraphError(Exception):
     """Base exception class for KnowledgeGraph errors"""
@@ -186,3 +189,159 @@ class KnowledgeGraph:
         status = "initialized" if self._initialized else "uninitialized"
         tool_count = len(self._tools)
         return f"<KnowledgeGraph status={status} tools={tool_count}>"
+    
+    async def to_cx2(self) -> CX2Network:
+        """Convert current knowledge graph to CX2 format"""
+        cx2_network = CX2Network()
+        
+        # Get all entities and their properties
+        entities_query = """
+            SELECT e.id, e.type, e.name, 
+                   array_agg(json_build_object('key', p.key, 'value', p.value)) as properties
+            FROM entities e
+            LEFT JOIN properties p ON e.id = p.entity_id
+            GROUP BY e.id, e.type, e.name
+        """
+        entities = await self.query_database(entities_query)
+        
+        # Add nodes to CX2
+        for entity in entities['results']:
+            node_attrs = {
+                'name': entity['name'],
+                'type': entity['type']
+            }
+            # Add properties
+            if entity['properties']:
+                for prop in entity['properties']:
+                    if prop['key'] and prop['value']:  # Guard against NULL
+                        node_attrs[prop['key']] = prop['value']
+                        
+            cx2_network.add_node(int(entity['id']), node_attrs)
+            
+        # Get all relationships and their properties
+        rels_query = """
+            SELECT r.id, r.source_id, r.target_id, r.type,
+                   array_agg(json_build_object('key', p.key, 'value', p.value)) as properties
+            FROM relationships r
+            LEFT JOIN properties p ON r.id = p.relationship_id
+            GROUP BY r.id, r.source_id, r.target_id, r.type
+        """
+        relationships = await self.query_database(rels_query)
+        
+        # Add edges to CX2
+        for rel in relationships['results']:
+            edge_attrs = {
+                'interaction': rel['type']
+            }
+            # Add properties
+            if rel['properties']:
+                for prop in rel['properties']:
+                    if prop['key'] and prop['value']:  # Guard against NULL
+                        edge_attrs[prop['key']] = prop['value']
+                        
+            edge_id = cx2_network.add_edge(
+                source=int(rel['source_id']), 
+                target=int(rel['target_id'])
+            )
+            cx2_network.update_edge(edge_id, edge_attrs)
+            
+        return cx2_network
+
+    async def from_cx2(self, cx2_network: CX2Network) -> None:
+        """Load knowledge graph from CX2 format"""
+        # Clear existing data first
+        clear_queries = [
+            "DELETE FROM properties",
+            "DELETE FROM relationships",
+            "DELETE FROM entities"
+        ]
+        for query in clear_queries:
+            await self.query_database(query)
+            
+        # Import nodes/entities
+        for node_id, node_data in cx2_network.get_nodes().items():
+            node_attrs = node_data['v']
+            name = node_attrs.pop('name', f"Node_{node_id}")
+            node_type = node_attrs.pop('type', 'Default')
+            
+            # Create entity
+            entity = await self.add_entity(
+                type=node_type,
+                name=name
+            )
+            
+            # Add remaining attributes as properties
+            if node_attrs:
+                await self.update_properties(
+                    entity_id=entity['id'],
+                    properties=node_attrs
+                )
+                
+        # Import edges/relationships
+        for edge_id, edge_data in cx2_network.get_edges().items():
+            edge = cx2_network.get_edge(edge_id)
+            source_id = edge['s']
+            target_id = edge['t']
+            rel_type = edge_data['v'].get('interaction', 'interacts_with')
+            
+            # Create relationship
+            rel = await self.add_relationship(
+                source_id=source_id,
+                target_id=target_id,
+                type=rel_type
+            )
+            
+            # Add remaining attributes as properties
+            edge_attrs = edge_data['v'].copy()
+            edge_attrs.pop('interaction', None)  # Remove since we used it for type
+            if edge_attrs:
+                await self.update_properties(
+                    relationship_id=rel['id'],
+                    properties=edge_attrs
+                )
+
+    async def save_to_ndex(self, name: str = None, description: str = None) -> str:
+        """Save knowledge graph to NDEx, returns network UUID"""
+        username, password = load_ndex_credentials()
+        if not username or not password:
+            raise EnvironmentError("NDEX_USERNAME and NDEX_PASSWORD environment variables must be set")
+            
+        client = nc2.Ndex2(
+            "http://public.ndexbio.org",
+            username=username,
+            password=password
+        )
+        
+        # Convert to CX2
+        cx2_network = await self.to_cx2()
+        
+        # Add metadata
+        if name:
+            cx2_network.add_network_attribute('name', name)
+        if description:
+            cx2_network.add_network_attribute('description', description)
+            
+        # Upload to NDEx
+        response = client.save_new_cx2_network(cx2_network.to_cx2())
+        return response.split("/")[-1]  # Extract UUID
+
+    async def load_from_ndex(self, uuid: str) -> None:
+        """Load knowledge graph from NDEx network"""
+        username, password = load_ndex_credentials()
+        
+        if not username or not password:
+            raise EnvironmentError("NDEX_USERNAME and NDEX_PASSWORD environment variables must be set")
+            
+        client = nc2.Ndex2(
+            "http://public.ndexbio.org",
+            username=username,
+            password=password
+        )
+        
+        # Download from NDEx
+        response = client.get_network_as_cx2_stream(uuid)
+        factory = RawCX2NetworkFactory()
+        cx2_network = factory.get_cx2network(response.json())
+        
+        # Load into knowledge graph
+        await self.from_cx2(cx2_network)

@@ -16,7 +16,7 @@ class LLM:
         self.name = name
         self.description = description
 
-    async def query(self, context, prompt):
+    async def query(self, context, prompt, tools=None, tool_choice=None):
         """Main query method that routes to appropriate model"""
         self.max_tokens = int(self.max_tokens)
         self.temperature = float(self.temperature)
@@ -25,13 +25,13 @@ class LLM:
         # For now just handle Anthropic since that's what we're testing
         if self.type == 'Anthropic':
             try:
-                return self.query_anthropic(context, prompt)  # Don't await here
+                return self.query_anthropic(context, prompt, tools=None, tool_choice=None)  # Don't await here
             except Exception as e:
                 raise Exception(f"Query failed: {str(e)}")
         else:
             raise ValueError(f"Unsupported llm type: {self.type}")
 
-    def query_anthropic(self, context, prompt):
+    def query_anthropic(self, context, prompt, tools=None, tool_choice=None):
         """Synchronous wrapper around Anthropic API call"""
         key = load_api_key("ANTHROPIC_API_KEY")
         if not key:
@@ -40,19 +40,22 @@ class LLM:
         client = anthropic.Anthropic(api_key=key)
         
         try:
-            response = client.messages.create(
-                model=self.model_name,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": f"{context}\n\n{prompt}"
-                    }
-                ]
-            )
-            return response.content[0].text
+            messages = [{"role": "user", "content": f"{context}\n\n{prompt}"}]
             
+            kwargs = {
+                "model": self.model_name,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
+                "messages": messages
+            }
+            if tools:
+                kwargs["tools"] = tools
+            if tool_choice:
+                kwargs["tool_choice"] = tool_choice
+                
+            response = client.messages.create(**kwargs)
+            return response
+                
         except Exception as e:
             raise Exception(f"Anthropic API call failed: {str(e)}")
 

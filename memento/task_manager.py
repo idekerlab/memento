@@ -9,42 +9,72 @@ class TaskManager:
         
     async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
         try:
-            # Get tasks from episode reasoning
+            # Get tasks from episode
             query = f"SELECT value FROM properties WHERE entity_id = {episode_id} AND key = 'tasks'"
             result = await self.kg.query_database(query)
             if not result['results']:
                 return {"status": "error", "message": "No tasks found"}
                 
             tasks = json.loads(result['results'][0]['value'])
+            task_results = {}  # Store results by task ID
             
-            # Remove redundant task_results storage
-            results = []
-            for task_spec in tasks:
+            # Execute tasks in sequence
+            for i, task_spec in enumerate(tasks):
+                task_id = i + 1
+                
+                # Create task entity
                 task_object = await self.kg.add_entity(
                     type="Task",
                     name=f"Task_{episode_id}_{task_spec['type']}",
-                    properties=task_spec
+                    properties={
+                        **task_spec,
+                        "sequence_id": task_id
+                    }
                 )
-                task_id = task_object["id"]
-                await self.kg.add_relationship(source_id=episode_id, target_id=task_id, type="task_of")
+                await self.kg.add_relationship(source_id=episode_id, target_id=task_object["id"], type="task_of")
+                
+                # Check dependencies
+                if not await self._check_dependencies(task_spec, task_results):
+                    error_msg = "Skipping task due to failed dependencies"
+                    result_object = await self._store_error_result(task_object["id"], error_msg)
+                    task_results[task_id] = {
+                        "status": "error",
+                        "error": error_msg,
+                        "result_id": result_object["id"]
+                    }
+                    continue
                 
                 try:
+                    # Execute the task
                     result = await self._execute_task(task_spec)
+                    
+                    # Store successful result
                     result_object = await self.kg.add_entity(
                         type="Result",
-                        name=f"Result_{task_id}",
-                        properties={"content": json.dumps(result), "status": "success"}
+                        name=f"Result_{task_object['id']}",
+                        properties={
+                            "content": json.dumps(result),
+                            "status": "success"
+                        }
                     )
-                    result_id = result_object["id"]
+                    await self.kg.add_relationship(source_id=task_object["id"], target_id=result_object["id"], type="result_of")
+                    
+                    task_results[task_id] = {
+                        "status": "success",
+                        "result": result,
+                        "result_id": result_object["id"]
+                    }
+                    
                 except Exception as e:
-                    result_id = await self.kg.add_entity(
-                        type="Result", 
-                        name=f"Result_{task_id}",
-                        properties={"content": str(e), "status": "error"}
-                    )
-                await self.kg.add_relationship(source_id=task_id, target_id=result_id, type="result_of")
+                    error_msg = str(e)
+                    result_object = await self._store_error_result(task_object["id"], error_msg)
+                    task_results[task_id] = {
+                        "status": "error",
+                        "error": error_msg,
+                        "result_id": result_object["id"]
+                    }
             
-            return {"status": "success"}
+            return {"status": "success", "task_results": task_results}
                 
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -158,3 +188,34 @@ class TaskManager:
                                   
         else:
             raise ValueError(f"Unsupported task type: {task_type}")
+        
+    async def _check_dependencies(self, task_spec: Dict, task_results: Dict) -> bool:
+        """Check if all required tasks completed successfully"""
+        for req_id in task_spec.get('requires', []):
+            if req_id not in task_results:
+                return False
+            if task_results[req_id]["status"] == "error":
+                return False
+        return True
+
+    async def _store_error_result(self, task_id: str, error_msg: str) -> Dict:
+        """Store an error result for a task"""
+        try:
+            result_object = await self.kg.add_entity(
+                type="Result",
+                name=f"Result_{task_id}",
+                properties={
+                    "content": error_msg,
+                    "status": "error",
+                    "error_type": "TaskExecutionError"
+                }
+            )
+            await self.kg.add_relationship(
+                source_id=task_id,
+                target_id=result_object["id"],
+                type="result_of"
+            )
+            return result_object
+        except Exception as e:
+            print(f"Error storing error result: {str(e)}")
+            raise

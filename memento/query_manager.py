@@ -3,6 +3,85 @@ from typing import Dict, Any
 from datetime import datetime
 from llm import LLM
 
+EPISODE_TOOL_SCHEMA = {
+    "name": "specify_episode_tasks",
+    "description": "Specify the reasoning and tasks for this episode of the Memento agent",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "reasoning": {
+                "type": "string",
+                "description": "Step-by-step thought process explaining task choices and dependencies"
+            },
+            "tasks": {
+                "type": "array",
+                "items": {
+                    "oneOf": [{
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "create_action"},
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "integer"}
+                            },
+                            "name": {"type": "string"},
+                            "description": {"type": "string"},
+                            "completion_criteria": {"type": "string"},
+                            "active": {
+                                "type": "string", 
+                                "enum": ["TRUE", "FALSE"]
+                            },
+                            "state": {
+                                "type": "string",
+                                "enum": ["unsatisfied", "in-progress", "satisfied", "abandoned"]
+                            },
+                            "depends_on": {
+                                "type": "array",
+                                "items": {"type": "string"}
+                            }
+                        },
+                        "required": ["type", "requires", "name", "description", "completion_criteria", "active", "state"]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "query_database"},
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "integer"}
+                            },
+                            "sql": {"type": "string"},
+                            "description": {"type": "string"}
+                        },
+                        "required": ["type", "requires", "sql", "description"]
+                    }]
+                }
+            }
+        },
+        "required": ["reasoning", "tasks"]
+    }
+}
+
+def sanitize_json_response(response_text: str) -> str:
+    """Clean and escape control characters in LLM response"""
+    # First, handle existing escaped characters
+    text = response_text.replace('\\n', '\\\\n').replace('\\r', '\\\\r')
+    
+    # Then handle actual newlines
+    text = text.replace('\n', '\\n').replace('\r', '\\r')
+    
+    # Handle other control characters
+    text = ''.join(
+        char if ord(char) >= 32 else f'\\u{ord(char):04x}' 
+        for char in text
+    )
+    
+    # Make sure properties are properly quoted
+    text = text.replace("{\n", "{").replace("\n}", "}")
+    text = text.replace('": ', '":')
+    
+    return text
+
 class QueryManager:
     def __init__(self, kg, agent_id):
         self.kg = kg
@@ -154,46 +233,43 @@ class QueryManager:
                 properties={"llm_query_start": datetime.now().isoformat()}
             )
             
-            response = await self.llm.query(context=context, prompt=prompt)
-            
-            # Clean up the response before parsing
-            response_clean = response.strip()
-            
-            try:
-                # Try parsing the cleaned response
-                parsed = json.loads(response_clean)
-            except json.JSONDecodeError:
-                try:
-                    import ast
-                    parsed_str = ast.literal_eval(response_clean)
-                    parsed = json.loads(parsed_str)
-                except:
-                    await self.kg.update_properties(
-                        entity_id=episode_id,
-                        properties={
-                            "llm_query_complete": datetime.now().isoformat(),
-                            "llm_response": response,
-                            "error": f"Could not parse valid JSON from response: {response}"
-                        }
-                    )
-                    return {"status": "error", "message": f"LLM response was not valid JSON\nResponse was: {response}"}
+            # Use tool protocol
+            # First, include the system instruction about using tools
+            system_context = (
+                f"{context}\n\n"
+                "IMPORTANT: You must respond using the specify_episode_tasks function. "
+                "Your response must be a valid JSON object matching the schema."
+            )
+
+            tools = [{
+                "type": "function",
+                "function": EPISODE_TOOL_SCHEMA
+            }]
+
+            print(f'querying LLM with prompt of length {len(prompt)}')
+
+            response = await self.llm.query(
+                context=system_context,
+                prompt=prompt,
+                tools=tools,
+                tool_choice={"type": "function", "function": {"name": "specify_episode_tasks"}}
+                )
+            #print("Raw response from LLM:", response.content[0].text)try:
+            parsed = response.content[0].text
+            if isinstance(parsed, str):
+                parsed = json.loads(parsed)
                 
-            # Extract fields from parsed response
-            reasoning = parsed.get('reasoning', '')
-            tasks = parsed.get('tasks', [])
-            
-            # Store results in episode
             await self.kg.update_properties(
                 entity_id=episode_id,
                 properties={
                     "llm_query_complete": datetime.now().isoformat(),
-                    "llm_response": response,
-                    "reasoning": reasoning,
-                    "tasks": json.dumps(tasks)
+                    "llm_response": json.dumps(parsed),
+                    "reasoning": parsed["reasoning"],
+                    "tasks": json.dumps(parsed["tasks"])
                 }
             )
-            return {"status": "success"}
+            return {"status": "success"}            
                 
         except Exception as e:
-            print(f"Error in LLM query: {str(e)}")
+            print(f"Error in QueryManager query_llm: {str(e)}")
             return {"status": "error", "message": str(e)}

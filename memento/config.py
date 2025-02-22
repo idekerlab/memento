@@ -9,7 +9,7 @@ def load_config(config_path=None):
     if config_path is None:
             # try to get the configuration file location from the environment variable
         try:
-            config_path = os.environy['MEMENTO_CONFIG_PATH']
+            config_path = os.environ['MEMENTO_CONFIG_PATH']
         except KeyError:
             pass
         # default to the home directory
@@ -20,10 +20,11 @@ def load_config(config_path=None):
         raise FileNotFoundError(f"Configuration file not found at {config_path}")
     return config
 
-# def load_database_uri(config_path=None):
-#     config = load_config(config_path=config_path)
-#     uri = config.get('SQLITE', 'URI', fallback=None)
-#     return uri
+def load_ndex_credentials (config_path=None):
+    config = load_config(config_path=config_path)
+    username = config.get('NDEX', 'NDEX_USERNAME', fallback=None)
+    password = config.get('NDEX', 'NDEX_PASSWORD', fallback=None)
+    return username, password
  
 def load_api_key(key_name, config_path=None):
     config = load_config(config_path=config_path)
@@ -51,24 +52,4 @@ if __name__ == "__main__":
     config = load_config()
     print(config)
 
-# def load_constant_from_config(keys):
-#     '''
-#     keys: list of keys to be read from the config file
-#     '''
-#     # Create a ConfigParser object
-#     config = configparser.ConfigParser()
-    
-#     # Define the path to the configuration file
-#     config_file_path = os.path.expanduser('~/ae_config/config.ini')
-    
-#     # Read the configuration file
-#     config.read(config_file_path)
-#     if len(keys) == 1:
-#         return config.get('CONSTANT VAR', keys[0], fallback=None)
-#     else:
-#         return [config.get('CONSTANT VAR', key, fallback=None) for key in keys]
-    
-# Example usage
-# openai_key, groq_key = load_api_keys()
-# print("OpenAI API Key:", openai_key)
-# print("Groq API Key:", groq_key)
+
