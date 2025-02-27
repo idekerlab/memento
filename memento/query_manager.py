@@ -2,6 +2,8 @@ import json
 from typing import Dict, Any
 from datetime import datetime
 from memento.llm import LLM
+from memento.schema_manager import SchemaManager
+
 
 EPISODE_TOOL_SCHEMA = {
     "name": "specify_episode_tasks",
@@ -89,7 +91,9 @@ Each Episode performs a "episode_query" (this query) in which you:
 </architecture>
 
 <process_instructions>
-- Think step by step about task dependencies and sequencing
+- Think step by step about task dependencies and sequencing. 
+    - For example, remember the difference between a database query where you will pipe the result into subsequent tasks
+    vs one where you need to review the result of the query in the next Episode before taking further action.
 - Consider when to break down Actions into more manageable pieces
 - Review past episodes for relevant experience
 - When Creating new Actions, specify clear completion criteria
@@ -130,8 +134,9 @@ For query_database tasks:
         self.kg = kg
         self.agent_id = agent_id
         self.current_episode_id = None
+        self.schema_manager = SchemaManager(kg)
         self.prompt = {
-            "primary_instructions": self.PRIMARY_INSTRUCTIONS,  # Now using the constant
+            "primary_instructions": self.PRIMARY_INSTRUCTIONS,  
             "summarized_episodes": "",
             "recent_episodes": [],
             "active_actions": [],
@@ -150,10 +155,6 @@ For query_database tasks:
         """Async factory method to create and initialize a QueryManager instance"""
         instance = cls(kg, agent_id)
         return instance
-
-    async def _get_schema_documentation(self) -> dict:
-        """Get schema documentation from the knowledge graph"""
-        raise NotImplementedError("Schema documentation retrieval not yet implemented")
 
     async def _get_recent_episodes(self) -> list:
         """Get recent episodes with properties, tasks and results"""
@@ -259,7 +260,7 @@ For query_database tasks:
             instructions = self.PRIMARY_INSTRUCTIONS
 
             # Get schema documentation
-            schema = await self._get_schema_documentation()
+            schema = await self.schema_manager.get_schema_documentation()
             instructions += "\n\nKNOWLEDGE GRAPH SCHEMA:\n\n"
             instructions += json.dumps(schema, indent=2)
 

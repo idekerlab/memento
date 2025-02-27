@@ -63,7 +63,7 @@ async def test_prompt_assembly_structure(query_manager, schema_documentation, ta
     """Test that prompt contains all required sections in correct order"""
     
     # Mock the data gathering methods
-    query_manager._get_schema_documentation = AsyncMock(return_value=schema_documentation)
+    query_manager.schema_manager.get_schema_documentation = AsyncMock(return_value=schema_documentation)
     query_manager._get_recent_episodes = AsyncMock(return_value=[])
     query_manager._get_active_actions = AsyncMock(return_value=[])
     query_manager._get_recent_task_results = AsyncMock(return_value=task_results)

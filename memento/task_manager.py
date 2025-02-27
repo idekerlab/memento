@@ -1,10 +1,12 @@
 import json
 from typing import List, Dict, Optional
-from llm import LLM
+from memento.llm import LLM
+from memento.schema_manager import SchemaManager
 
 class TaskManager:
     def __init__(self, kg):
         self.kg = kg
+        self.schema_manager = SchemaManager(kg)
         self.llm = LLM(type="Anthropic")
         
     async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
@@ -25,7 +27,7 @@ class TaskManager:
                 # Create task entity
                 task_object = await self.kg.add_entity(
                     type="Task",
-                    name=f"Task_{episode_id}_{task_spec['type']}",
+                    name=f"Task_{episode_id}_{task_id}_{task_spec['type']}",
                     properties={
                         **task_spec,
                         "sequence_id": task_id
@@ -98,16 +100,31 @@ class TaskManager:
                 type=task['type'],
                 properties=task.get('properties', {})
             )
-            
+        
+        elif task_type == 'query_database':
+            return await self._execute_query_task(task)
+                    
         elif task_type == 'create_action':
-            # Extract dependencies before creating action
-            depends_on = task['properties'].pop('depends_on', [])
+            # Extract and remove depends_on if present, since it's handled separately
+            depends_on = []
+            if 'depends_on' in task:
+                depends_on = task.pop('depends_on')
             
             try:
                 # Create the action
+                # Collect properties from task fields
+                properties = {
+                    'name': task['name'],
+                    'description': task['description'],
+                    'completion_criteria': task['completion_criteria'],
+                    'active': task['active'],
+                    'state': task['state']
+                }
+                
                 action = await self.kg.add_entity(
                     type="Action",
-                    properties=task['properties']
+                    name=task['name'],
+                    properties=properties
                 )
                 
                 # Add dependency relationships
@@ -130,18 +147,6 @@ class TaskManager:
                 if 'action' in locals():
                     await self.kg.delete_entity(action['id'])
                 raise e
-            
-        elif task_type == 'query_database':
-            return await self.kg.query_database(task['sql'])
-            
-        elif task_type == 'query_llm':
-            try:
-                return await self.llm.query(
-                    context=task.get('context', ''),
-                    prompt=task['prompt']
-                )
-            except Exception as e:
-                raise Exception(f"LLM query failed: {str(e)}")  
 
 
         elif task_type == 'query_llm_using_template':
@@ -198,6 +203,63 @@ class TaskManager:
                 return False
         return True
 
+    async def _validate_query(self, query: str) -> tuple[bool, Optional[str]]:
+        """Validate a query using LLM reflection"""
+        
+        # Get current schema documentation
+        schema = await self.schema_manager.get_schema_documentation()
+        
+        validation_prompt = f"""
+    You are a query validator for a knowledge graph database with the following schema:
+    {json.dumps(schema, indent=2)}
+
+    Please validate this SQL query:
+    {query}
+
+    Respond with a JSON object containing:
+    - valid: boolean indicating if query is valid
+    - error: null if valid, otherwise a clear description of what's wrong
+    - vocabulary_issues: list of any undefined or misused terms
+
+    Example response for valid query:
+    {{"valid": true, "error": null, "vocabulary_issues": []}}
+
+    Example response for invalid query:
+    {{"valid": false, "error": "Query uses undefined property 'priority'", "vocabulary_issues": ["priority"]}}
+    """
+        try:
+            response = await self.llm.query(
+                context="You are a SQL query validator for a knowledge graph database.",
+                prompt=validation_prompt,
+                model="claude-3-haiku-20241022"
+            )
+            
+            # Parse response
+            validation = json.loads(response.content[0].text)
+            return validation["valid"], validation["error"]
+            
+        except json.JSONDecodeError as e:
+            return False, f"Invalid validator response format: {str(e)}"
+        except Exception as e:
+            return False, f"Validation failed: {str(e)}"
+
+    async def _execute_query_task(self, task: Dict) -> Dict:
+        """Execute a database query task with validation
+        
+        Args:
+            task: Task specification dictionary containing SQL query
+        
+        Returns:
+            Dict containing query results if successful
+        """
+        # First validate the query
+        is_valid, error_msg = await self._validate_query(task['sql'])
+        if not is_valid:
+            raise Exception(f"Query validation failed: {error_msg}")
+            
+        # Execute validated query
+        return await self.kg.query_database(task['sql'])
+      
     async def _store_error_result(self, task_id: str, error_msg: str) -> Dict:
         """Store an error result for a task"""
         try:
