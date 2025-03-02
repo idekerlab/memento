@@ -5,8 +5,9 @@ import sys
 import json
 from knowledge_graph import KnowledgeGraph
 from mcp_client import MCPClient
+import datetime
 
-async def run_from_snapshot(uuid: str="7b30e625-f065-11ef-b81d-005056ae3c32"):
+async def run_from_snapshot(uuid: str="12ae998d-f788-11ef-b81d-005056ae3c32"):
     """Load a snapshot and run StepRunner"""
     runner = None
     try:
@@ -47,7 +48,24 @@ async def run_from_snapshot(uuid: str="7b30e625-f065-11ef-b81d-005056ae3c32"):
             else:
                 print("\nSkipping task execution.")
                 await runner.complete_episode()
-            
+
+            # Check if user wants to snapshot the KG
+            snapshot_input = input("\nSnapshot the KG to NDEx? (y/n): ").lower()
+            if snapshot_input == 'y':
+                try:
+                    # Create backup with timestamp
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    name = f"Memento_KG_Snapshot_{timestamp}"
+                    description = "Snapshot of Memento knowledge graph state"
+                    
+                    print(f"Creating backup: {name}")
+                    uuid = await runner.knowledge_graph.save_to_ndex(name=name, description=description)
+                    print(f"Backup complete. NDEx UUID: {uuid}")
+        
+                except Exception as e:
+                    print(f"Error during snapshot: {str(e)}")
+                    raise
+
             # Check if user wants to continue
             continue_input = input("\nRun next episode? (y/n): ").lower()
             if continue_input != 'y':

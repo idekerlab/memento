@@ -7,13 +7,13 @@ from memento.schema_manager import SchemaManager
 
 EPISODE_TOOL_SCHEMA = {
     "name": "specify_episode_tasks",
-    "description": "Specify the reasoning and tasks for this episode of the Memento agent",
+    "description": "Specify the reasoning and task sequence for this Episode of the Memento agent",
     "parameters": {
         "type": "object",
         "properties": {
             "reasoning": {
                 "type": "string",
-                "description": "Step-by-step thought process explaining task choices and dependencies"
+                "description": "Step-by-step thought process using concise, causal language. Explain task choices and dependencies."
             },
             "tasks": {
                 "type": "array",
@@ -22,9 +22,14 @@ EPISODE_TOOL_SCHEMA = {
                         "type": "object",
                         "properties": {
                             "type": {"const": "create_action"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
                             "requires": {
                                 "type": "array",
-                                "items": {"type": "integer"}
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
                             },
                             "name": {"type": "string"},
                             "description": {"type": "string"},
@@ -37,30 +42,70 @@ EPISODE_TOOL_SCHEMA = {
                                 "type": "string",
                                 "enum": ["unsatisfied", "in-progress", "satisfied", "abandoned"]
                             },
-                            "depends_on": {
+                            "depends_on_action_var_names": {
                                 "type": "array",
-                                "items": {"type": "string"}
-                            }
+                                "items": {"type": "string"},
+                                "description": "names of output variables for Actions from previous Tasks"
+                            },
+                            "depends_on_action_ids": {
+                                "type": "array",
+                                "items": {"type": "integer"},
+                                "description": "ids of Actions existing prior to this episode"
+                            },                            
                         },
-                        "required": ["type", "requires", "name", "description", "completion_criteria", "active", "state"]
+                        "required": ["type", "output_var", "requires", "name", "description", "completion_criteria", "active", "state"],
+                        "output_schema": {
+                            "description": "Output from create_action task",
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "integer", "description": "ID of created action entity"},
+                                "name": {"type": "string", "description": "Name of created action"},
+                                "type": {"const": "Action"},
+                                "properties": {
+                                    "type": "object",
+                                    "properties": {
+                                        "description": {"type": "string"},
+                                        "completion_criteria": {"type": "string"},
+                                        "active": {"type": "string"},
+                                        "state": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
                     },
                     {
                         "type": "object",
                         "properties": {
                             "type": {"const": "query_database"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Name to assign to this task's output for reference by later tasks"
+                            },
                             "requires": {
                                 "type": "array",
-                                "items": {"type": "integer"}
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this task depends on"
                             },
                             "sql": {"type": "string"},
                             "description": {"type": "string"}
                         },
-                        "required": ["type", "requires", "sql", "description"]
+                        "required": ["type", "output_var", "requires", "sql", "description"],
+                        "output_schema": {
+                            "description": "Output from query_database task",
+                            "type": "object",
+                            "properties": {
+                                "success": {"type": "boolean"},
+                                "results": {
+                                    "type": "array",
+                                    "items": {"type": "object"},
+                                    "description": "Array of query result records"
+                                }
+                            }
+                        }
                     }]
                 }
             }
-        },
-        "required": ["reasoning", "tasks"]
+        }
     }
 }
 
@@ -72,58 +117,49 @@ As a Memento agent, you have the following admirable traits:
     - Do not harm the user
     - Do not harm others
     - Be careful with actions that can put data and user security at risk
-    - You uphold strict scientific ethics
-    - You are very careful in considering the trustworthiness, completeness, and accuracy of information sources
+- You uphold strict scientific ethics
+- You consider the trustworthiness, completeness, and accuracy of information
+- You reason step-by-step using concise causal language.
 </meta_level_instructions>
 
-<architecture>
-Your code executes a top-level loop of "Episodes". Each Episode is persisted as an entity in your KG,
-linked to the previous episode, forming an episodic memory that you can query.
-
-Your plans and history are represented as Action entities. The current plans are distinguished by an
-"active" property set to "TRUE". Your plans are rooted in top level active Actions created in the KG.
-
-Each Episode performs a "episode_query" (this query) in which you:
-- assess the results of the previous Episode in the context of other recent episodes
-- assess the status of the active Actions given those results
-- reason about what tasks you will specify to advance your plans
-- specify a set of tasks to be performed in sequence, with each task potentially depending on results from previous tasks
-</architecture>
-
-<process_instructions>
-- Think step by step about task dependencies and sequencing. 
-    - For example, remember the difference between a database query where you will pipe the result into subsequent tasks
-    vs one where you need to review the result of the query in the next Episode before taking further action.
-- Consider when to break down Actions into more manageable pieces
-- Review past episodes for relevant experience
-- When Creating new Actions, specify clear completion criteria
-- Establish explicit dependencies between Actions
-- Record your planning reasoning in the episode
-- Be explicit about uncertainty and assumptions
-</process_instructions>
+<process>
+Your state/memory (knowledge, history, plans) is persisted in a knowledge graph (KG) that you can query.
+History is a sequence of Episode entities, linked to 
+Dependency structures of Actions represent your plans, analogus to a human using a Gantt chart and related tools.
+Your current plans are "active". You work on Actions with no unsatisfied dependencies.
+In each Episode, you
+- assess your status, the state of your plans.
+- reason about needed updates/extensions to your plans.
+- reason about what Tasks you should do immediately and your expectations for near term next Episodes.
+- specify the sequence of Tasks to be performed immediately
+Tasks are executed, results recorded as Results, then the next Episode starts.
+Your recent history/working memory (Episodes, Tasks, Results) and all active Actions are provided below.
+You can explicitly recall knowledge into next Episode's working memory as Results of KG queries.
+You can pipe the Result of a Task to a subsequent Task in this Episode's specified Tasks.
+</process>
 
 <output_instructions>
 You must output your response using the specify_episode_tasks tool. Your response should include:
 
-- reasoning: Document your step-by-step thought process including:
-  - Assessment of the current situation
-  - Analysis of any relevant context
-  - Decision rationale
-  - Dependencies between tasks
-  - Any uncertainties or assumptions
+- reasoning:
+  - Situation assessment.
+  - Rationale supporting decisions.
+  - Expectations, including (reasonable) uncertainties.
 
-- tasks: An array of tasks to be executed in sequence. Each task must specify:
-  - type: The type of task (currently supporting only "create_action" and "query_database")
+- tasks: An array of Tasks to be executed in sequence. Each task must specify:
+  - type: The type of Task (currently supporting only "create_action" and "query_database")
   - requires: Array of previous task IDs this task depends on
+  - output_var: Name to assign to this task's output for reference by later tasks
   - Other parameters specific to the task type
 
 For create_action tasks:
-  - name: Concise action name
+  - name: Concise Action name
   - description: Detailed description
   - completion_criteria: Clear criteria for completion
   - active: "TRUE" or "FALSE"
-  - state: Must be "unsatisfied" for new actions
-  - depends_on: Array of Action IDs this depends on (optional)
+  - state: Must be "unsatisfied" for new Actions
+  - depends_on_action_var_names: Array of output_vars of Actions created in previous Tasks that this depends on (optional)
+  - depends_on_action_ids: Array of IDs of Actions created prior to this episode that this depends on (optional)
 
 For query_database tasks:
   - sql: SELECT query (read-only)

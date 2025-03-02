@@ -2,13 +2,47 @@ import json
 from typing import List, Dict, Optional
 from memento.llm import LLM
 from memento.schema_manager import SchemaManager
+import re
+
 
 class TaskManager:
     def __init__(self, kg):
         self.kg = kg
         self.schema_manager = SchemaManager(kg)
-        self.llm = LLM(type="Anthropic")
+        self.task_llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-latest")
+        self.sql_validation_llm = LLM(type="Anthropic", model_name="claude-3-5-haiku-latest")
+        self.task_outputs = {}  # Store named outputs
+
+    async def _resolve_variables(self, text: str, task_outputs: dict) -> str:
+        """Resolve ${var.field} references in text using task outputs"""
+        pattern = r'\${([^}]+)}'
         
+        def replace(match):
+            ref = match.group(1)
+            parts = ref.split('.')
+            var = parts[0]
+            if var not in task_outputs:
+                raise ValueError(f"Referenced output variable '{var}' not found")
+            
+            value = task_outputs[var]
+            for part in parts[1:]:
+                if isinstance(value, dict):
+                    if part not in value:
+                        raise ValueError(f"Field '{part}' not found in {var}")
+                    value = value[part]
+                elif isinstance(value, list):
+                    try:
+                        idx = int(part)
+                        value = value[idx]
+                    except (ValueError, IndexError):
+                        raise ValueError(f"Invalid array index '{part}' in {var}")
+                else:
+                    raise ValueError(f"Cannot access field '{part}' of {var}")
+            
+            return str(value)
+            
+        return re.sub(pattern, replace, text)
+            
     async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
         try:
             # Get tasks from episode
@@ -18,28 +52,36 @@ class TaskManager:
                 return {"status": "error", "message": "No tasks found"}
                 
             tasks = json.loads(result['results'][0]['value'])
-            task_results = {}  # Store results by task ID
+            self.task_outputs = {} # clear named results from previous episode
             
-            # Execute tasks in sequence
             for i, task_spec in enumerate(tasks):
-                task_id = i + 1
+                # Resolve any variable references in task fields
+                resolved_task = {}
+                for key, value in task_spec.items():
+                    if isinstance(value, str):
+                        resolved_task[key] = await self._resolve_variables(value, self.task_outputs)
+                    else:
+                        resolved_task[key] = value
+                
+                # Get the output variable name
+                task_output_var_name = task_spec.get('output_var')
                 
                 # Create task entity
                 task_object = await self.kg.add_entity(
                     type="Task",
-                    name=f"Task_{episode_id}_{task_id}_{task_spec['type']}",
+                    name=f"Task_{episode_id}_{task_output_var_name}_{task_spec['type']}",
                     properties={
                         **task_spec,
-                        "sequence_id": task_id
+                        "sequence_id": task_output_var_name
                     }
                 )
                 await self.kg.add_relationship(source_id=episode_id, target_id=task_object["id"], type="task_of")
                 
                 # Check dependencies
-                if not await self._check_dependencies(task_spec, task_results):
+                if not await self._check_dependencies(task_spec, self.task_outputs):
                     error_msg = "Skipping task due to failed dependencies"
                     result_object = await self._store_error_result(task_object["id"], error_msg)
-                    task_results[task_id] = {
+                    self.task_outputs[task_output_var_name] = {
                         "status": "error",
                         "error": error_msg,
                         "result_id": result_object["id"]
@@ -49,6 +91,7 @@ class TaskManager:
                 try:
                     # Execute the task
                     result = await self._execute_task(task_spec)
+                    self.task_outputs[task_output_var_name] = result
                     
                     # Store successful result
                     result_object = await self.kg.add_entity(
@@ -61,7 +104,7 @@ class TaskManager:
                     )
                     await self.kg.add_relationship(source_id=task_object["id"], target_id=result_object["id"], type="result_of")
                     
-                    task_results[task_id] = {
+                    self.task_outputs[task_output_var_name] = {
                         "status": "success",
                         "result": result,
                         "result_id": result_object["id"]
@@ -70,13 +113,13 @@ class TaskManager:
                 except Exception as e:
                     error_msg = str(e)
                     result_object = await self._store_error_result(task_object["id"], error_msg)
-                    task_results[task_id] = {
+                    self.task_outputs[task_output_var_name] = {
                         "status": "error",
                         "error": error_msg,
                         "result_id": result_object["id"]
                     }
             
-            return {"status": "success", "task_results": task_results}
+            return {"status": "success", "task_results": self.task_outputs}
                 
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -106,10 +149,14 @@ class TaskManager:
                     
         elif task_type == 'create_action':
             # Extract and remove depends_on if present, since it's handled separately
-            depends_on = []
-            if 'depends_on' in task:
-                depends_on = task.pop('depends_on')
-            
+            depends_on_action_var_names = []
+            if 'depends_on_action_var_names' in task:
+                depends_on_action_var_names = task.pop('depends_on_action_var_names')
+
+            depends_on_action_ids = []
+            if 'depends_on_action_ids' in task:
+                depends_on_action_ids = task.pop('depends_on_action_ids')
+
             try:
                 # Create the action
                 # Collect properties from task fields
@@ -128,7 +175,21 @@ class TaskManager:
                 )
                 
                 # Add dependency relationships
-                for dep_id in depends_on:
+                for var in depends_on_action_var_names:
+                    output = self.task_outputs[var]
+                    var_result = output["result"]
+                    try:
+                        await self.kg.add_relationship(
+                            source_id=action['id'],
+                            target_id=var_result['id'],
+                            type='depends_on'
+                        )
+                    except Exception as e:
+                        # Clean up the partially created action and its relationships
+                        await self.kg.delete_entity(action['id'])
+                        raise Exception(f"Failed to create dependency relationship: {str(e)}")
+
+                for dep_id in depends_on_action_ids:
                     try:
                         await self.kg.add_relationship(
                             source_id=action['id'],
@@ -139,7 +200,7 @@ class TaskManager:
                         # Clean up the partially created action and its relationships
                         await self.kg.delete_entity(action['id'])
                         raise Exception(f"Failed to create dependency relationship: {str(e)}")
-                        
+                                            
                 return action
                 
             except Exception as e:
@@ -186,7 +247,7 @@ class TaskManager:
                 prompt = template.format(**resolved_args)
                 
                 # Execute LLM query
-                return await self.llm.query(context=context, prompt=prompt)
+                return await self.task_llm.query(context=context, prompt=prompt)
                 
             except Exception as e:
                 raise Exception(f"Template LLM query failed: {str(e)}")
@@ -228,10 +289,9 @@ class TaskManager:
     {{"valid": false, "error": "Query uses undefined property 'priority'", "vocabulary_issues": ["priority"]}}
     """
         try:
-            response = await self.llm.query(
+            response = await self.sql_validation_llmllm.query(
                 context="You are a SQL query validator for a knowledge graph database.",
                 prompt=validation_prompt,
-                model="claude-3-haiku-20241022"
             )
             
             # Parse response

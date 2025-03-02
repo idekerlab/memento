@@ -314,6 +314,9 @@ class KnowledgeGraph:
         
         # Convert to CX2
         cx2_network = await self.to_cx2()
+        # If the KG was initialized from a CX2 network with visual properties, use those
+        if self.cx2_style is not None:
+            cx2_network.set_visual_properties(self.cx2_style)
         
         # Add metadata
         if name:
@@ -342,6 +345,8 @@ class KnowledgeGraph:
         response = client.get_network_as_cx2_stream(uuid)
         factory = RawCX2NetworkFactory()
         cx2_network = factory.get_cx2network(response.json())
+        # remember the network's style to use if saved back to NDEx
+        self.cx2_style = cx2_network.get_visual_properties()
         
         # Load into knowledge graph
         await self.from_cx2(cx2_network)
