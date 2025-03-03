@@ -25,7 +25,8 @@ class LLM:
         # For now just handle Anthropic since that's what we're testing
         if self.type == 'Anthropic':
             try:
-                return self.query_anthropic(context, prompt, tools=None, tool_choice=None)  # Don't await here
+                # Pass tools and tool_choice parameters correctly
+                return self.query_anthropic(context, prompt, tools=tools, tool_choice=tool_choice)
             except Exception as e:
                 raise Exception(f"Query failed: {str(e)}")
         else:

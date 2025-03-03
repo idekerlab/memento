@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from memento.llm import LLM
 from memento.schema_manager import SchemaManager
 import re
@@ -10,7 +10,7 @@ class TaskManager:
         self.kg = kg
         self.schema_manager = SchemaManager(kg)
         self.task_llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-latest")
-        self.sql_validation_llm = LLM(type="Anthropic", model_name="claude-3-5-haiku-latest")
+        self.sql_validation_llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-latest")
         self.task_outputs = {}  # Store named outputs
 
     async def _resolve_variables(self, text: str, task_outputs: dict) -> str:
@@ -264,44 +264,73 @@ class TaskManager:
                 return False
         return True
 
-    async def _validate_query(self, query: str) -> tuple[bool, Optional[str]]:
-        """Validate a query using LLM reflection"""
-        
-        # Get current schema documentation
-        schema = await self.schema_manager.get_schema_documentation()
-        
-        validation_prompt = f"""
-    You are a query validator for a knowledge graph database with the following schema:
-    {json.dumps(schema, indent=2)}
-
-    Please validate this SQL query:
-    {query}
-
-    Respond with a JSON object containing:
-    - valid: boolean indicating if query is valid
-    - error: null if valid, otherwise a clear description of what's wrong
-    - vocabulary_issues: list of any undefined or misused terms
-
-    Example response for valid query:
-    {{"valid": true, "error": null, "vocabulary_issues": []}}
-
-    Example response for invalid query:
-    {{"valid": false, "error": "Query uses undefined property 'priority'", "vocabulary_issues": ["priority"]}}
-    """
+    async def _validate_query(self, query: str) -> Tuple[bool, Optional[str]]:
+        """Validate a SQL query against the schema"""
         try:
-            response = await self.sql_validation_llmllm.query(
-                context="You are a SQL query validator for a knowledge graph database.",
+            # Prepare the validation prompt
+            validation_prompt = f"""
+            Validate the following SQL query against the schema:
+            
+            ```sql
+            {query}
+            ```
+            
+            Return only a JSON object with valid (boolean), error (string or null), and vocabulary_issues (array of strings).
+            """
+            
+            # Define the validation tool schema
+            SQL_VALIDATION_SCHEMA = {
+                "name": "validate_sql_query",
+                "description": "Validate a SQL query against the knowledge graph schema",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "valid": {
+                            "type": "boolean",
+                            "description": "Whether the query is valid or not"
+                        },
+                        "error": {
+                            "type": ["string", "null"],
+                            "description": "Error message if the query is invalid, null otherwise"
+                        },
+                        "vocabulary_issues": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of undefined terms used in the query"
+                        }
+                    },
+                    "required": ["valid", "error", "vocabulary_issues"]
+                }
+            }
+            
+            # Set up tools array
+            tools = [{
+                "type": "tool",
+                "tool": SQL_VALIDATION_SCHEMA
+            }]
+            
+            # Use tool protocol for the query
+            response = await self.sql_validation_llm.query(
+                context="You are a SQL query validator for a knowledge graph database. You must use the validate_sql_query function to respond.",
                 prompt=validation_prompt,
+                tools=tools,
+                tool_choice={"type": "tool", "tool": {"name": "validate_sql_query"}}
             )
             
             # Parse response
-            validation = json.loads(response.content[0].text)
+            parsed_response = response.content[0].text
+            if isinstance(parsed_response, str):
+                validation = json.loads(parsed_response)
+            else:
+                validation = parsed_response
+                
             return validation["valid"], validation["error"]
-            
-        except json.JSONDecodeError as e:
-            return False, f"Invalid validator response format: {str(e)}"
+        
         except Exception as e:
-            return False, f"Validation failed: {str(e)}"
+            print(f"Error validating query: {str(e)}")
+            return False, f"Validation error: {str(e)}"
 
     async def _execute_query_task(self, task: Dict) -> Dict:
         """Execute a database query task with validation

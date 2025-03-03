@@ -13,7 +13,7 @@ EPISODE_TOOL_SCHEMA = {
         "properties": {
             "reasoning": {
                 "type": "string",
-                "description": "Step-by-step thought process using concise, causal language. Explain task choices and dependencies."
+                "description": "Step-by-step thought process using markdown formatting. Include headers for 'Situation Assessment', 'Rationale', and 'Expectations' sections. Use plain markdown text format, not a JSON object."
             },
             "tasks": {
                 "type": "array",
@@ -180,7 +180,7 @@ For query_database tasks:
         }
         self.llm = LLM(
             type="Anthropic",
-            model_name="claude-3-5-sonnet-20241022",  
+            model_name="claude-3-7-sonnet-latest",  
             max_tokens=4000,
             seed=123,
             temperature=0.7
@@ -316,6 +316,18 @@ For query_database tasks:
             # Add recent episodes and active actions context
             instructions += "\n\nRECENT EPISODES:\n\n"
             instructions += json.dumps(recent_episodes)
+            # Check for any episode-level errors to include
+            episode_errors = []
+            for episode in recent_episodes:
+                if 'error' in episode.get('properties', {}):
+                    episode_errors.append({
+                        'episode_id': episode['id'],
+                        'error': episode['properties']['error']
+                    })
+
+            if episode_errors:
+                instructions += "\n\nPREVIOUS EPISODE ERRORS:\n\n"
+                instructions += json.dumps(episode_errors, indent=2)
             instructions += "\n\nACTIVE ACTIONS:\n\n"
             instructions += json.dumps(active_actions)
 
@@ -358,13 +370,19 @@ For query_database tasks:
             system_context = (
                 f"{context}\n\n"
                 "IMPORTANT: You must respond using the specify_episode_tasks function. "
-                "Your response must be a valid JSON object matching the schema."
+                "Your response must be a valid JSON object matching the schema. "
+                "The 'reasoning' field must be a plain markdown-formatted string, not a JSON object."
             )
 
             tools = [{
-                "type": "function",
-                "function": EPISODE_TOOL_SCHEMA
+                "type": "tool",
+                "tool": EPISODE_TOOL_SCHEMA
             }]
+
+            tool_choice = {
+                "type": "tool", 
+                "name": "specify_episode_tasks"
+            }
 
             print(f'querying LLM with prompt of length {len(prompt)}')
 
@@ -372,24 +390,89 @@ For query_database tasks:
                 context=system_context,
                 prompt=prompt,
                 tools=tools,
-                tool_choice={"type": "function", "function": {"name": "specify_episode_tasks"}}
-                )
-            #print("Raw response from LLM:", response.content[0].text)try:
-            parsed = response.content[0].text
-            if isinstance(parsed, str):
-                parsed = json.loads(parsed)
-                
-            await self.kg.update_properties(
-                entity_id=episode_id,
-                properties={
-                    "llm_query_complete": datetime.now().isoformat(),
-                    "llm_response": json.dumps(parsed),
-                    "reasoning": parsed["reasoning"],
-                    "tasks": json.dumps(parsed["tasks"])
-                }
+                tool_choice=tool_choice
             )
-            return {"status": "success"}            
+
+            raw_response = response.content[0].text
+            print(f"Received raw response of length: {len(raw_response)}")
+            
+            # Parse the raw response into a dict
+            try:
+                if isinstance(raw_response, str):
+                    parsed = json.loads(raw_response)
+                else:
+                    parsed = raw_response
+                    
+                # Check if reasoning is a nested object instead of a string
+                if isinstance(parsed.get("reasoning"), dict):
+                    # Convert the nested object to markdown string
+                    reasoning_dict = parsed["reasoning"]
+                    reasoning_md = ""
+                    
+                    for section, content in reasoning_dict.items():
+                        # Convert snake_case or camelCase to Title Case for headers
+                        header = ' '.join(word.capitalize() for word in section.replace('_', ' ').split())
+                        reasoning_md += f"## {header}\n\n{content}\n\n"
+                    
+                    parsed["reasoning"] = reasoning_md.strip()
+                    
+                # Update episode with parsed response
+                await self.kg.update_properties(
+                    entity_id=episode_id,
+                    properties={
+                        "llm_query_complete": datetime.now().isoformat(),
+                        "llm_response": json.dumps(parsed),
+                        "reasoning": parsed["reasoning"],
+                        "tasks": json.dumps(parsed["tasks"])
+                    }
+                )
+                return {"status": "success"}
                 
+            except json.JSONDecodeError as json_err:
+                # Log detailed error information for debugging
+                error_msg = f"JSON decode error: {str(json_err)}"
+                print(error_msg)
+                print(f"Error at position {json_err.pos}, line {json_err.lineno}, column {json_err.colno}")
+                
+                # Save the error and raw response to the episode - with robust error handling
+                try:
+                    await self.kg.update_properties(
+                        entity_id=episode_id,
+                        properties={
+                            "llm_query_complete": datetime.now().isoformat(),
+                            "llm_raw_response": raw_response,
+                            "error": error_msg
+                        }
+                    )
+                except Exception as save_err:
+                    # If we can't save the detailed error, make one last simple attempt
+                    print(f"Failed to save detailed error: {str(save_err)}")
+                    try:
+                        await self.kg.update_properties(
+                            entity_id=episode_id,
+                            properties={"error": "JSON parsing error (details could not be saved)"}
+                        )
+                    except:
+                        # At this point, we've done our best to save the error
+                        print("Could not save any error information to episode")
+                        
+                return {"status": "error", "message": error_msg}
+                    
         except Exception as e:
-            print(f"Error in QueryManager query_llm: {str(e)}")
-            return {"status": "error", "message": str(e)}
+            error_msg = f"Error in QueryManager query_llm: {str(e)}"
+            print(error_msg)
+            
+            # Save error to the episode - with fail-safe approach
+            try:
+                await self.kg.update_properties(
+                    entity_id=episode_id,
+                    properties={
+                        "llm_query_complete": datetime.now().isoformat(),
+                        "error": error_msg
+                    }
+                )
+            except Exception as inner_e:
+                print(f"Could not update episode with error: {str(inner_e)}")
+                # No further attempts to avoid cascading errors
+                
+            return {"status": "error", "message": error_msg}

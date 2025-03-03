@@ -79,3 +79,20 @@ class EpisodeManager:
         except Exception as e:
             print(f"Error closing episode: {str(e)}")
             raise
+
+    async def record_error(self, episode_id: int, error_message: str, error_type: str = "general") -> Dict:
+        """Record an error that occurred during episode execution"""
+        try:
+            await self.kg.update_properties(
+                entity_id=episode_id,
+                properties={
+                    "error": error_message,
+                    "error_type": error_type,
+                    "error_timestamp": datetime.datetime.now().isoformat(),
+                    "updated_at": datetime.datetime.now().isoformat()
+                }
+            )
+            return {"status": "success", "message": "Error recorded successfully"}
+        except Exception as e:
+            print(f"Error recording episode error: {str(e)}")
+            raise
