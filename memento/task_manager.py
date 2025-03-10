@@ -9,8 +9,8 @@ class TaskManager:
     def __init__(self, kg):
         self.kg = kg
         self.schema_manager = SchemaManager(kg)
-        self.task_llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-latest")
-        self.sql_validation_llm = LLM(type="Anthropic", model_name="claude-3-5-haiku-latest")
+        self.task_llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+        self.sql_validation_llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
         self.task_outputs = {}  # Store named outputs
 
     async def _resolve_variables(self, text: str, task_outputs: dict) -> str:
@@ -269,6 +269,30 @@ class TaskManager:
         
         # Get current schema documentation
         schema = await self.schema_manager.get_schema_documentation()
+
+        response_schema = {
+                            "name": "specify_episode_tasks",
+                            "description": "Specify the reasoning and task sequence for this Episode of the Memento agent",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "valid": {
+                                        "type": "boolean",
+                                        "description": "boolean indicating if query is valid."
+                                                },
+                                    "error": {
+                                        "type": "str",
+                                        "description": "if not valid, description of the problem, otherwise null"
+                                    },
+                                    "vocabulary_issues": {
+                                        "type": "str",
+
+                                    }
+
+
+                                }
+                            }
+        }
         
         validation_prompt = f"""
     You are a query validator for a knowledge graph database with the following schema:
@@ -277,7 +301,7 @@ class TaskManager:
     Please validate this SQL query:
     {query}
 
-    Respond with a JSON object containing:
+    Respond with ONLY a JSON object containing:
     - valid: boolean indicating if query is valid
     - error: null if valid, otherwise a clear description of what's wrong
     - vocabulary_issues: list of any undefined or misused terms
@@ -289,9 +313,21 @@ class TaskManager:
     {{"valid": false, "error": "Query uses undefined property 'priority'", "vocabulary_issues": ["priority"]}}
     """
         try:
-            response = await self.sql_validation_llmllm.query(
+            tools = [{
+                "type": "function",
+                "function": schema
+            }]
+
+            tool_choice = {
+                "type": "function", 
+                "function": {"name": "specify_episode_tasks"}
+            }
+        
+            response = await self.sql_validation_llm.query_and_parse_json(
                 context="You are a SQL query validator for a knowledge graph database.",
                 prompt=validation_prompt,
+                tools=tools,
+                tool_choice=tool_choice
             )
             
             # Parse response

@@ -1,0 +1,103 @@
+{
+    "name": "specify_episode_tasks",
+    "description": "Specify the reasoning and task sequence for this Episode of the Memento agent",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "reasoning": {
+                "type": "string",
+                "description": "Step-by-step thought process using concise, causal language. Formatted in markdown. Explain task choices and dependencies."
+            },
+            "tasks": {
+                "type": "array",
+                "items": {
+                    "oneOf": [{
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "create_action"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
+                            },
+                            "name": {"type": "string"},
+                            "description": {"type": "string"},
+                            "completion_criteria": {"type": "string"},
+                            "active": {
+                                "type": "string", 
+                                "enum": ["TRUE", "FALSE"]
+                            },
+                            "state": {
+                                "type": "string",
+                                "enum": ["unsatisfied", "in-progress", "satisfied", "abandoned"]
+                            },
+                            "depends_on_action_var_names": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "names of output variables for Actions from previous Tasks"
+                            },
+                            "depends_on_action_ids": {
+                                "type": "array",
+                                "items": {"type": "integer"},
+                                "description": "ids of Actions existing prior to this episode"
+                            }                            
+                        },
+                        "required": ["type", "output_var", "requires", "name", "description", "completion_criteria", "active", "state"],
+                        "output_schema": {
+                            "description": "Output from create_action task",
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "integer", "description": "ID of created action entity"},
+                                "name": {"type": "string", "description": "Name of created action"},
+                                "type": {"const": "Action"},
+                                "properties": {
+                                    "type": "object",
+                                    "properties": {
+                                        "description": {"type": "string"},
+                                        "completion_criteria": {"type": "string"},
+                                        "active": {"type": "string"},
+                                        "state": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "query_database"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Name to assign to this task's output for reference by later tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this task depends on"
+                            },
+                            "sql": {"type": "string"},
+                            "description": {"type": "string"}
+                        },
+                        "required": ["type", "output_var", "requires", "sql", "description"],
+                        "output_schema": {
+                            "description": "Output from query_database task",
+                            "type": "object",
+                            "properties": {
+                                "success": {"type": "boolean"},
+                                "results": {
+                                    "type": "array",
+                                    "items": {"type": "object"},
+                                    "description": "Array of query result records"
+                                }
+                            }
+                        }
+                    }]
+                }
+            }
+        }
+    }
+}

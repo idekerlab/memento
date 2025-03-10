@@ -1,182 +1,30 @@
 import json
+import os
 from typing import Dict, Any
 from datetime import datetime
 from memento.llm import LLM
 from memento.schema_manager import SchemaManager
 
 
-EPISODE_TOOL_SCHEMA = {
-    "name": "specify_episode_tasks",
-    "description": "Specify the reasoning and task sequence for this Episode of the Memento agent",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "reasoning": {
-                "type": "string",
-                "description": "Step-by-step thought process using concise, causal language. Formatted in markdown. Explain task choices and dependencies."
-            },
-            "tasks": {
-                "type": "array",
-                "items": {
-                    "oneOf": [{
-                        "type": "object",
-                        "properties": {
-                            "type": {"const": "create_action"},
-                            "output_var": {
-                                "type": "string",
-                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
-                            },
-                            "requires": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "Names of output variables from previous tasks that this Task depends on"
-                            },
-                            "name": {"type": "string"},
-                            "description": {"type": "string"},
-                            "completion_criteria": {"type": "string"},
-                            "active": {
-                                "type": "string", 
-                                "enum": ["TRUE", "FALSE"]
-                            },
-                            "state": {
-                                "type": "string",
-                                "enum": ["unsatisfied", "in-progress", "satisfied", "abandoned"]
-                            },
-                            "depends_on_action_var_names": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "names of output variables for Actions from previous Tasks"
-                            },
-                            "depends_on_action_ids": {
-                                "type": "array",
-                                "items": {"type": "integer"},
-                                "description": "ids of Actions existing prior to this episode"
-                            },                            
-                        },
-                        "required": ["type", "output_var", "requires", "name", "description", "completion_criteria", "active", "state"],
-                        "output_schema": {
-                            "description": "Output from create_action task",
-                            "type": "object",
-                            "properties": {
-                                "id": {"type": "integer", "description": "ID of created action entity"},
-                                "name": {"type": "string", "description": "Name of created action"},
-                                "type": {"const": "Action"},
-                                "properties": {
-                                    "type": "object",
-                                    "properties": {
-                                        "description": {"type": "string"},
-                                        "completion_criteria": {"type": "string"},
-                                        "active": {"type": "string"},
-                                        "state": {"type": "string"}
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "type": {"const": "query_database"},
-                            "output_var": {
-                                "type": "string",
-                                "description": "Name to assign to this task's output for reference by later tasks"
-                            },
-                            "requires": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "Names of output variables from previous tasks that this task depends on"
-                            },
-                            "sql": {"type": "string"},
-                            "description": {"type": "string"}
-                        },
-                        "required": ["type", "output_var", "requires", "sql", "description"],
-                        "output_schema": {
-                            "description": "Output from query_database task",
-                            "type": "object",
-                            "properties": {
-                                "success": {"type": "boolean"},
-                                "results": {
-                                    "type": "array",
-                                    "items": {"type": "object"},
-                                    "description": "Array of query result records"
-                                }
-                            }
-                        }
-                    }]
-                }
-            }
-        }
-    }
-}
-
 class QueryManager:
-    PRIMARY_INSTRUCTIONS = """<meta_level_instructions>
-You are a Memento agent.
-- You always tell the truth and you help the user tell the truth.
-- You consider the ethics and potential risks of your actions:
-    - Do not harm the user
-    - Do not harm others
-    - Be careful with actions that can put data and user security at risk
-- You uphold strict scientific ethics
-- You consider the trustworthiness, completeness, and accuracy of information
-- You reason step-by-step using concise causal language.
-</meta_level_instructions>
-
-<process>
-Your state/memory (knowledge, history, plans) is persisted in a knowledge graph (KG) that you can query.
-History is a sequence of Episode entities
-Dependency structures of Actions represent your plans, analogus to a human using a Gantt chart and related tools.
-Your current plans are "active". You work on Actions with no unsatisfied dependencies.
-In each Episode, you
-- assess your status, the state of your plans.
-- reason about needed updates/extensions to your plans.
-- reason about the workflow of Tasks you will perform in this episode
-- reason about expected outcomes and consequences for near term next Episodes.
-- specify the sequence of Tasks to be performed immediately
-Tasks are executed, results recorded as Results, then the next Episode starts.
-Your recent history/working memory (Episodes, Tasks, Results) is included below.
-ALL active Actions are provided below (you do not need to search for active Actions).
-You can explicitly recall knowledge into next Episode's working memory as Results of KG queries.
-You can pipe the Result of a Task to a subsequent Task in this Episode's specified Tasks.
-
-IMPORTANT: Be sure that you have the tools to accomplish your goals. If you do not, explain this in
-your reasoning and do not specify Tasks.  Tactically, be sure that you believe that for each Task, the selected 
-tool can actually accomplish the objective of the Task. If there is no appropriate tool, use a different strategy. 
-If you cannot find a good strategy, explain in your reasoning and do not specify Tasks.
-</process>
-
-<output_instructions>
-You must output your response using the specify_episode_tasks tool. Your response should include:
-
-- reasoning: Markdown text capturing your reasoning.
-
-- tasks: An array of Tasks to be executed in sequence. Each task must specify:
-  - type: The type of Task (currently supporting only "create_action" and "query_database")
-  - requires: Array of previous task IDs this task depends on
-  - output_var: Name to assign to this task's output for reference by later tasks
-  - Other parameters specific to the task type
-
-For create_action tasks:
-  - name: Concise Action name
-  - description: Detailed description
-  - completion_criteria: Clear criteria for completion
-  - active: "TRUE" or "FALSE"
-  - state: Must be "unsatisfied" for new Actions
-  - depends_on_action_var_names: Array of output_vars of Actions created in previous Tasks that this depends on (optional)
-  - depends_on_action_ids: Array of IDs of Actions created prior to this episode that this depends on (optional)
-
-For query_database tasks:
-  - sql: SELECT query (read-only)
-  - description: Purpose of the query
-</output_instructions>"""
-
     def __init__(self, kg, agent_id):
         self.kg = kg
         self.agent_id = agent_id
         self.current_episode_id = None
         self.schema_manager = SchemaManager(kg)
+        
+        # Load the primary instructions from file
+        primary_instructions_path = os.path.join(os.path.dirname(__file__), 'primary_instructions.txt')
+        with open(primary_instructions_path, 'r') as f:
+            self.primary_instructions = f.read()
+        
+        # Load the schema from file
+        schema_path = os.path.join(os.path.dirname(__file__), 'schema.json')
+        with open(schema_path, 'r') as f:
+            self.episode_tool_schema = json.load(f)
+        
         self.prompt = {
-            "primary_instructions": self.PRIMARY_INSTRUCTIONS,  
+            "primary_instructions": self.primary_instructions,  
             "summarized_episodes": "",
             "recent_episodes": [],
             "active_actions": [],
@@ -297,7 +145,7 @@ For query_database tasks:
     async def assemble_prompt(self):
         try:
             # Start with primary instructions
-            instructions = self.PRIMARY_INSTRUCTIONS
+            instructions = self.primary_instructions
 
             # Get schema documentation
             schema = await self.schema_manager.get_schema_documentation()
@@ -362,38 +210,77 @@ For query_database tasks:
             system_context = (
                 f"{context}\n\n"
                 "IMPORTANT: You must respond using the specify_episode_tasks function. "
-                "Your response must be a valid JSON object matching the schema."
+                "Your response must be a valid JSON object matching the schema. "
+                "Do not use triple quotes in your response."
             )
 
             tools = [{
                 "type": "function",
-                "function": EPISODE_TOOL_SCHEMA
+                "function": self.episode_tool_schema
             }]
+
+            tool_choice = {
+                "type": "function", 
+                "function": {"name": "specify_episode_tasks"}
+            }
 
             print(f'querying LLM with prompt of length {len(prompt)}')
 
-            response = await self.llm.query(
-                context=system_context,
-                prompt=prompt,
-                tools=tools,
-                tool_choice={"type": "function", "function": {"name": "specify_episode_tasks"}}
+            try:
+                # Use query_and_parse_json instead of query to handle JSON parsing issues
+                parsed, repair_info = await self.llm.query_and_parse_json(
+                    context=system_context,
+                    prompt=prompt,
+                    tools=tools,
+                    tool_choice=tool_choice
                 )
-            #print("Raw response from LLM:", response.content[0].text)try:
-            parsed = response.content[0].text
-            if isinstance(parsed, str):
-                parsed = json.loads(parsed)
                 
-            await self.kg.update_properties(
-                entity_id=episode_id,
-                properties={
+                # Store the parsed response and any repair information
+                properties_to_update = {
                     "llm_query_complete": datetime.now().isoformat(),
                     "llm_response": json.dumps(parsed),
                     "reasoning": parsed["reasoning"],
                     "tasks": json.dumps(parsed["tasks"])
                 }
-            )
-            return {"status": "success"}            
+                
+                # Add repair info if any repairs were made
+                if repair_info:
+                    properties_to_update["json_repair_info"] = repair_info
+                    print(f"Applied JSON repairs: {repair_info}")
+                
+                await self.kg.update_properties(
+                    entity_id=episode_id,
+                    properties=properties_to_update
+                )
+                
+                return {"status": "success"}
+                
+            except json.JSONDecodeError as json_err:
+                # Handle JSON decode errors specifically
+                error_msg = f"JSON decode error after repair attempts: {str(json_err)}"
+                await self.kg.update_properties(
+                    entity_id=episode_id,
+                    properties={
+                        "llm_query_complete": datetime.now().isoformat(),
+                        "error": error_msg
+                    }
+                )
+                return {"status": "error", "message": error_msg}
                 
         except Exception as e:
-            print(f"Error in QueryManager query_llm: {str(e)}")
-            return {"status": "error", "message": str(e)}
+            error_msg = f"Error in QueryManager query_llm: {str(e)}"
+            print(error_msg)
+            
+            # Try to update the episode with the error
+            try:
+                await self.kg.update_properties(
+                    entity_id=episode_id,
+                    properties={
+                        "llm_query_complete": datetime.now().isoformat(),
+                        "error": error_msg
+                    }
+                )
+            except Exception as inner_e:
+                print(f"Additionally failed to update episode with error: {str(inner_e)}")
+                
+            return {"status": "error", "message": error_msg}

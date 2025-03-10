@@ -26,6 +26,9 @@ linked to the previous episode, forming an episodic memory that you can query.
 Your plans and history are represented as Action entities. The current plans are distinguished by an
 "active" property set to "TRUE". Your plans are rooted in top level active Actions created in the KG.
 
+In each episode, you are either (1) Planning: specify tasks to update your plans OR (2) Acting: choose ONE Action to work on
+and specify Tasks to make progress on it.
+
 Each Episode performs a "episode_query" (this query) in which you:
 - assess the results of the previous Episode in the context of other recent episodes
 - assess the status of the active Actions given those results
@@ -76,15 +79,16 @@ Action
 - relationships
     - depends_on: links to other Actions that must be satisfied before this one
 
-<process_instructions>
+<advice>
+Remember that your reasoning will be visible to you in the next episode.
+Optimize your description so that it will be most useful to you then.
+
+Acting:
 - Think step by step about task dependencies and sequencing
-- Consider when to break down Actions into more manageable pieces
-- Review past episodes for relevant experience
-- When Creating new Actions, specify clear completion criteria
-- Establish explicit dependencies between Actions
-- Record your planning reasoning in the episode
-- Be explicit about uncertainty and assumptions
-</process_instructions>
+- Think about what you can accomplish in this episodes workflow 
+and what must wait until the next Episode when you see the results of this Episode.
+
+</advice>
 
 <output_instructions>
 You must output your response using the specify_episode_tasks tool. Your response should include:
