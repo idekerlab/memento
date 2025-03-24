@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 # Import LLM class
-from llm import LLM
+from app.llm import LLM
 
 # Setup mock responses
 class MockToolResponse:

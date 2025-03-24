@@ -1,7 +1,7 @@
 # test_ndex_backup.py
 import asyncio
-from knowledge_graph import KnowledgeGraph
-from mcp_client import MCPClient
+from app.knowledge_graph import KnowledgeGraph
+from app.mcp_client import MCPClient
 import datetime
 
 async def backup_kg():

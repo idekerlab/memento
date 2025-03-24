@@ -1,7 +1,7 @@
 # test_planning_step.py
 import asyncio
 import json
-from step import StepRunner
+from app.step import StepRunner
 
 async def test_planning():
     runner = StepRunner()

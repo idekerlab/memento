@@ -3,8 +3,8 @@ logging.basicConfig(level=logging.INFO)
 
 import json
 import sys
-from primary_llm import PrimaryLLMConfig
-from llm import LLM
+from app.primary_llm import PrimaryLLMConfig
+from app.llm import LLM
 import asyncio
 
 

@@ -1,6 +1,6 @@
-from agent import Memento
-from knowledge_graph import KnowledgeGraph
-from mcp_client import MCPClient
+from app.agent import Memento
+from app.knowledge_graph import KnowledgeGraph
+from app.mcp_client import MCPClient
 import asyncio
 import json
 from typing import Optional, Dict, Any

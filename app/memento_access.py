@@ -11,65 +11,69 @@ import os
 import json
 import datetime
 import asyncio
+import sys
+import traceback
 from typing import Dict, List, Optional, Any
 
 from mcp.server import FastMCP
 
-# Import Memento components
-from app.knowledge_graph import KnowledgeGraph
-from app.episode_manager import EpisodeManager
-from app.task_manager import TaskManager
-from app.config import load_ndex_credentials
-from app.mcp_client import MCPClient
-
-# Initialize logging
+# Initialize logging first so all imports can use it
 logging.basicConfig(
     level=getattr(logging, os.getenv('LOGLEVEL', 'INFO')),
-    format='%(asctime)s [%(levelname)s] %(message)s - %(filename)s:%(lineno)d'
+    format='%(asctime)s [%(levelname)s] %(message)s - %(filename)s:%(lineno)d',
+    stream=sys.stdout  # Ensure logs go to stdout for pytest capture
 )
 logger = logging.getLogger("memento_access")
+
+# Import Memento components
+try:
+    from app.knowledge_graph import KnowledgeGraph
+    from app.episode_manager import EpisodeManager
+    from app.task_manager import TaskManager
+    from app.config import load_ndex_credentials
+    from app.mcp_client import MCPClient
+    from app.utils.kg_connection import connect_to_kg_server, ConnectionError
+    logger.info("Successfully imported Memento components")
+except ImportError as e:
+    logger.error(f"Error importing Memento components: {e}")
+    traceback.print_exc()
+    raise
 
 # Create MCP server
 mcp = FastMCP("Memento Agent Access")
 
-# Initialize global components
+# Global component references
 kg_client = None
 knowledge_graph = None
 episode_manager = None
 task_manager = None
 agent_id = None
 
-# Flag to track initialization status
-initialized = False
-initialization_lock = asyncio.Lock()
+# Connection status
+connection_status = {
+    "initialized": False,
+    "error": None,
+    "last_attempt": None,
+    "mock_mode": False
+}
 
-async def ensure_initialized():
-    """Ensure the server is initialized before handling tool invocations"""
-    global kg_client, knowledge_graph, episode_manager, task_manager, agent_id, initialized
+# Initialize connection at startup
+async def initialize_server():
+    """Initialize server connections and components at startup"""
+    global kg_client, knowledge_graph, episode_manager, task_manager, agent_id, connection_status
     
-    if initialized:
-        return
-    
-    # Use a lock to prevent multiple simultaneous initialization attempts
-    async with initialization_lock:
-        if initialized:  # Check again in case another invocation finished initializing
-            return
+    try:
+        logger.info("Initializing Memento Access server at startup")
+        connection_status["last_attempt"] = datetime.datetime.now().isoformat()
         
+        # Try to connect to the KG server
         try:
-            logger.info("Initializing Memento Access server")
-            
-            # Connect to the knowledge graph MCP server
             server_url = os.getenv("KG_SERVER_URL", "/Users/idekeradmin/Dropbox/GitHub/agent_kg/kg_access.py")
             logger.info(f"Connecting to KG server at: {server_url}")
             
-            kg_client = MCPClient()
-            await kg_client.connect_to_server(server_url)
-            logger.info("Successfully connected to KG server")
-            
-            # Initialize knowledge graph
-            knowledge_graph = KnowledgeGraph(kg_client)
-            await knowledge_graph.ensure_initialized()
-            logger.info("Knowledge graph initialized")
+            # Set a connection timeout
+            kg_client, knowledge_graph = await connect_to_kg_server(server_url, timeout=15)
+            logger.info("Successfully connected to KG server and initialized knowledge graph")
             
             # Generate agent ID
             agent_id = f"agent_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -78,12 +82,141 @@ async def ensure_initialized():
             episode_manager = EpisodeManager(knowledge_graph, agent_id)
             task_manager = TaskManager(knowledge_graph)
             
-            logger.info(f"Memento Access server initialized with agent_id: {agent_id}")
-            initialized = True
+            connection_status["initialized"] = True
+            connection_status["error"] = None
+            connection_status["mock_mode"] = False
             
-        except Exception as e:
-            logger.error(f"Failed to initialize server: {e}")
-            raise
+            logger.info(f"Memento Access server initialized with agent_id: {agent_id}")
+            
+        except ConnectionError as e:
+            logger.error(f"Failed to connect to KG server: {e}")
+            connection_status["error"] = str(e)
+            connection_status["mock_mode"] = True
+            logger.warning("Falling back to mock mode")
+    
+    except Exception as e:
+        logger.error(f"Error during initialization: {e}")
+        connection_status["error"] = str(e)
+        connection_status["mock_mode"] = True
+        traceback.print_exc()
+
+# Create an initialization task to run after server startup
+@mcp.on_startup
+async def startup_event():
+    """Run initialization when the server starts"""
+    await initialize_server()
+
+# =================== Pass-through KG Tools ===================
+
+@mcp.tool()
+async def list_tables() -> str:
+    """Get a list of all tables in the knowledge graph database."""
+    try:
+        logger.info("Tool called: list_tables")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.info("Returning mock table list (mock mode active)")
+            return json.dumps({
+                "success": True,
+                "tables": ["entities", "relationships", "properties"],
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
+        
+        # Call the list_tables tool on the KG server
+        logger.info("Calling KG server list_tables tool")
+        response = await kg_client.call_tool("list_tables", {})
+        logger.info(f"KG server list_tables response received")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error listing tables: {e}")
+        traceback.print_exc()
+        return json.dumps({
+            "success": False,
+            "error": str(e)
+        })
+
+@mcp.tool()
+async def describe_table(table_name: str) -> str:
+    """Get detailed schema information for a specific table."""
+    try:
+        logger.info(f"Tool called: describe_table({table_name})")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.info(f"Returning mock description for {table_name} (mock mode active)")
+            if table_name == "entities":
+                return json.dumps({
+                    "success": True,
+                    "table_name": "entities",
+                    "columns": [
+                        {"column_name": "id", "data_type": "integer"},
+                        {"column_name": "type", "data_type": "character varying"},
+                        {"column_name": "name", "data_type": "character varying"},
+                        {"column_name": "created_at", "data_type": "timestamp"},
+                        {"column_name": "last_updated", "data_type": "timestamp"}
+                    ],
+                    "constraints": [
+                        {"constraint_type": "PRIMARY KEY", "column_name": "id"}
+                    ],
+                    "mock": True
+                })
+            elif table_name == "properties":
+                return json.dumps({
+                    "success": True,
+                    "table_name": "properties",
+                    "columns": [
+                        {"column_name": "id", "data_type": "integer"},
+                        {"column_name": "entity_id", "data_type": "integer"},
+                        {"column_name": "relationship_id", "data_type": "integer"},
+                        {"column_name": "key", "data_type": "character varying"},
+                        {"column_name": "value", "data_type": "text"},
+                        {"column_name": "value_type", "data_type": "character varying"}
+                    ],
+                    "constraints": [
+                        {"constraint_type": "PRIMARY KEY", "column_name": "id"},
+                        {"constraint_type": "FOREIGN KEY", "column_name": "entity_id", "foreign_table_name": "entities", "foreign_column_name": "id"},
+                        {"constraint_type": "FOREIGN KEY", "column_name": "relationship_id", "foreign_table_name": "relationships", "foreign_column_name": "id"}
+                    ],
+                    "mock": True
+                })
+            else:
+                return json.dumps({
+                    "success": False,
+                    "error": f"Table '{table_name}' does not exist",
+                    "mock": True
+                })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
+        
+        # Call the describe_table tool on the KG server
+        logger.info(f"Calling KG server describe_table tool for {table_name}")
+        response = await kg_client.call_tool("describe_table", {"table_name": table_name})
+        logger.info(f"KG server describe_table response received")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error describing table: {e}")
+        traceback.print_exc()
+        return json.dumps({
+            "success": False,
+            "error": str(e)
+        })
 
 # =================== NDEx Operations ===================
 
@@ -99,8 +232,25 @@ async def memento_save_knowledge_graph_to_ndex(name: Optional[str] = None, descr
         JSON string with UUID of the saved network
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info("Tool called: memento_save_knowledge_graph_to_ndex")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot save to NDEx in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot save to NDEx in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         # Check for NDEx credentials
         username, password = load_ndex_credentials()
@@ -131,6 +281,7 @@ async def memento_save_knowledge_graph_to_ndex(name: Optional[str] = None, descr
         })
     except Exception as e:
         logger.error(f"Error saving to NDEx: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -147,8 +298,25 @@ async def memento_load_knowledge_graph_from_ndex(uuid: str) -> str:
         JSON string with status of the operation
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info(f"Tool called: memento_load_knowledge_graph_from_ndex({uuid})")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot load from NDEx in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot load from NDEx in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         # Check for NDEx credentials
         username, password = load_ndex_credentials()
@@ -168,6 +336,7 @@ async def memento_load_knowledge_graph_from_ndex(uuid: str) -> str:
         })
     except Exception as e:
         logger.error(f"Error loading from NDEx: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -183,12 +352,27 @@ async def memento_create_new_episode() -> str:
         JSON string with the newly created episode ID and status
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info("Tool called: memento_create_new_episode")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot create episode in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot create episode in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         logger.info("Creating new episode")
-        # The episode_manager.new_episode() method already handles linking to previous episodes
-        # by querying for the most recent episode from the same agent and creating a "follows" relationship
         episode = await episode_manager.new_episode()
         logger.info(f"Created new episode with ID: {episode['id']}")
         
@@ -199,6 +383,7 @@ async def memento_create_new_episode() -> str:
         })
     except Exception as e:
         logger.error(f"Error creating episode: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -217,8 +402,25 @@ async def memento_specify_episode_tasks(episode_id: int, reasoning: str, tasks: 
         JSON string with status of the operation
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info(f"Tool called: memento_specify_episode_tasks(episode_id={episode_id})")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot specify tasks in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot specify tasks in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         logger.info(f"Specifying tasks for episode {episode_id}")
         # Validate episode exists
@@ -262,6 +464,7 @@ async def memento_specify_episode_tasks(episode_id: int, reasoning: str, tasks: 
         })
     except Exception as e:
         logger.error(f"Error specifying tasks: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -278,8 +481,25 @@ async def memento_execute_episode_tasks(episode_id: int) -> str:
         JSON string with execution results
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info(f"Tool called: memento_execute_episode_tasks(episode_id={episode_id})")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot execute tasks in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot execute tasks in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         logger.info(f"Executing tasks for episode {episode_id}")
         task_results = await task_manager.execute_tasks(episode_id)
@@ -291,6 +511,7 @@ async def memento_execute_episode_tasks(episode_id: int) -> str:
         })
     except Exception as e:
         logger.error(f"Error executing tasks: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -307,8 +528,25 @@ async def memento_close_episode(episode_id: int) -> str:
         JSON string with status of the operation
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info(f"Tool called: memento_close_episode(episode_id={episode_id})")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot close episode in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot close episode in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         logger.info(f"Closing episode {episode_id}")
         result = await episode_manager.close_episode(episode_id)
@@ -321,6 +559,7 @@ async def memento_close_episode(episode_id: int) -> str:
         })
     except Exception as e:
         logger.error(f"Error closing episode: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -339,8 +578,25 @@ async def memento_get_episode_plan(episode_id: int) -> str:
         JSON string with episode plan details
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info(f"Tool called: memento_get_episode_plan(episode_id={episode_id})")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot get episode plan in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot get episode plan in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         logger.info(f"Getting plan for episode {episode_id}")
         query = f"""
@@ -372,6 +628,7 @@ async def memento_get_episode_plan(episode_id: int) -> str:
         })
     except Exception as e:
         logger.error(f"Error getting episode plan: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -388,8 +645,25 @@ async def memento_get_recent_episodes(limit: int = 5) -> str:
         JSON string with recent episodes and their details
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info(f"Tool called: memento_get_recent_episodes(limit={limit})")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot get recent episodes in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot get recent episodes in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         logger.info(f"Getting recent episodes (limit: {limit})")
         # Query for recent episodes
@@ -411,6 +685,7 @@ async def memento_get_recent_episodes(limit: int = 5) -> str:
         })
     except Exception as e:
         logger.error(f"Error getting recent episodes: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -424,8 +699,25 @@ async def memento_get_active_actions() -> str:
         JSON string with active actions and their details
     """
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info("Tool called: memento_get_active_actions")
+        
+        # Check if in mock mode
+        if connection_status["mock_mode"]:
+            logger.warning("Cannot get active actions in mock mode")
+            return json.dumps({
+                "success": False,
+                "error": "Cannot get active actions in mock mode",
+                "mock": True
+            })
+        
+        # Check if initialized
+        if not connection_status["initialized"]:
+            logger.warning("Server not initialized, returning error")
+            return json.dumps({
+                "success": False,
+                "error": "Server not initialized",
+                "connection_status": connection_status
+            })
         
         logger.info("Getting active actions")
         # Query for active actions
@@ -464,41 +756,96 @@ async def memento_get_active_actions() -> str:
         })
     except Exception as e:
         logger.error(f"Error getting active actions: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
-# Add pass-through tools for direct knowledge graph access
+# =================== Diagnostic Tools ===================
+
 @mcp.tool()
-async def list_tables() -> str:
-    """Get a list of all tables in the knowledge graph database."""
+async def memento_health_check() -> str:
+    """Check the health of the Memento system and its dependencies"""
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info("Tool called: memento_health_check")
         
-        # Call the list_tables tool on the KG server
-        response = await kg_client.call_tool("list_tables", {})
-        return response.content[0].text
+        health_status = {
+            "success": True,
+            "memento_access": {
+                "status": "online",
+                "initialized": connection_status["initialized"]
+            },
+            "kg_client": {
+                "status": "unknown"
+            },
+            "connection_status": connection_status,
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        
+        # Check KG client if we have one
+        if kg_client is not None:
+            try:
+                # Try a simple operation with timeout
+                try:
+                    tools_task = asyncio.create_task(kg_client.get_available_tools())
+                    tools = await asyncio.wait_for(tools_task, timeout=5.0)
+                    health_status["kg_client"] = {
+                        "status": "online",
+                        "tools_available": len(tools)
+                    }
+                except asyncio.TimeoutError:
+                    health_status["kg_client"] = {
+                        "status": "timeout",
+                        "error": "KG client operation timed out"
+                    }
+                    health_status["success"] = False
+            except Exception as e:
+                health_status["kg_client"] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+                health_status["success"] = False
+        
+        return json.dumps(health_status)
     except Exception as e:
-        logger.error(f"Error listing tables: {e}")
+        logger.error(f"Error checking health: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
 @mcp.tool()
-async def describe_table(table_name: str) -> str:
-    """Get detailed schema information for a specific table."""
+async def memento_retry_initialization() -> str:
+    """Force a retry of the server initialization process"""
     try:
-        # Ensure server is initialized
-        await ensure_initialized()
+        logger.info("Tool called: memento_retry_initialization")
         
-        # Call the describe_table tool on the KG server
-        response = await kg_client.call_tool("describe_table", {"table_name": table_name})
-        return response.content[0].text
+        # Cleanup existing resources if needed
+        if kg_client is not None:
+            logger.info("Cleaning up existing KG client connection")
+            await kg_client.cleanup()
+        
+        # Reset status
+        connection_status["initialized"] = False
+        connection_status["error"] = None
+        connection_status["last_attempt"] = datetime.datetime.now().isoformat()
+        connection_status["mock_mode"] = False
+        
+        # Attempt initialization again
+        logger.info("Retrying initialization")
+        await initialize_server()
+        
+        return json.dumps({
+            "success": True,
+            "initialized": connection_status["initialized"],
+            "error": connection_status["error"],
+            "mock_mode": connection_status["mock_mode"]
+        })
     except Exception as e:
-        logger.error(f"Error describing table: {e}")
+        logger.error(f"Error retrying initialization: {e}")
+        traceback.print_exc()
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -506,5 +853,10 @@ async def describe_table(table_name: str) -> str:
 
 # Main function to run the server
 if __name__ == "__main__":
-    # Start the MCP server
-    asyncio.run(mcp.start())
+    try:
+        logger.info("Starting Memento Access server")
+        mcp.run()
+    except Exception as e:
+        logger.error(f"Error running server: {e}")
+        traceback.print_exc()
+        sys.exit(1)

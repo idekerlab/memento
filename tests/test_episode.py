@@ -1,6 +1,6 @@
 import logging
 from test_query_manager import setup_test_action
-from agent import Memento
+from app.agent import Memento
 
 async def test_minimal_episode(kg):
     """Test single episode execution with a simple test action"""

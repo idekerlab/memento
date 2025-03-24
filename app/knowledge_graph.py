@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Any
 import json
 from ndex2.cx2 import CX2Network, RawCX2NetworkFactory
 import ndex2.client as nc2
-from config import load_ndex_credentials
+from app.config import load_ndex_credentials
 
 class KnowledgeGraphError(Exception):
     """Base exception class for KnowledgeGraph errors"""

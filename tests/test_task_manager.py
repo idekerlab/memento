@@ -1,5 +1,5 @@
 import logging
-from task_manager import TaskManager
+from app.task_manager import TaskManager
 import json
 
 async def test_task_manager_basic(kg):

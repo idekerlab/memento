@@ -1,9 +1,9 @@
 import datetime
 import json
 from typing import List, Dict, Optional
-from query_manager import QueryManager
-from task_manager import TaskManager
-from episode_manager import EpisodeManager
+from app.query_manager import QueryManager
+from app.task_manager import TaskManager
+from app.episode_manager import EpisodeManager
 import random
 
 class Memento:

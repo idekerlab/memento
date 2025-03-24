@@ -1,6 +1,6 @@
 import logging
 import json
-from primary_llm import PrimaryLLMConfig
+from app.primary_llm import PrimaryLLMConfig
 
 async def verify_kg_setup(kg):
     """Verify KG has required LLM configuration"""

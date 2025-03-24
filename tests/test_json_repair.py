@@ -1,6 +1,6 @@
 import json
 import sys
-from llm import LLM
+from app.llm import LLM
 
 # Sample JSON with formatting issues (unquoted property names, triple quotes)
 SAMPLE_BAD_JSON = '''

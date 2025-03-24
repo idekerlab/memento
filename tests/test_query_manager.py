@@ -1,5 +1,5 @@
 import logging
-from query_manager import QueryManager
+from app.query_manager import QueryManager
 
 async def setup_test_action(kg):
     """Create or update test action in the KG"""

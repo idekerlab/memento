@@ -2,8 +2,8 @@
 """
 Test script for Memento MCP Server
 
-This script uses pytest to test the memento_access.py MCP server and verifies 
-that all tools are working correctly.
+This script uses pytest to test the episode and action management functions
+in the memento_access.py MCP server.
 
 Usage:
     pytest test_memento_mcp.py
@@ -22,6 +22,7 @@ from app.mcp_client import MCPClient
 os.environ['MEMENTO_CONFIG_PATH'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'memento_config/config.ini')
 
 # Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ANSI color codes for prettier output
@@ -36,7 +37,6 @@ def log_test_step(message):
     logger.info(f"TEST STEP: {message}")
     print(f"{BLUE}ℹ {message}{RESET}")
 
-# Use pytest_asyncio.fixture instead of pytest.fixture for async fixtures
 @pytest_asyncio.fixture(scope="function")
 async def mcp_client():
     """Fixture to create and connect an MCP client"""
@@ -48,100 +48,27 @@ async def mcp_client():
     yield client
     
     # Cleanup
+    log_test_step("Cleaning up connection...")
     await client.cleanup()
 
 @pytest_asyncio.fixture(scope="function")
 async def clean_db(mcp_client):
     """Fixture to ensure a clean database state."""
     # For now, this is just a placeholder that does nothing
-    # In a production version, you might want to reset or clean your database
     yield
 
+# Start with a health check
 @pytest.mark.asyncio
-async def test_list_tables(mcp_client, clean_db):
-    """Test listing all tables in the database."""
-    log_test_step("Starting table listing test")
+async def test_health_check(mcp_client):
+    """Test the health check endpoint"""
+    log_test_step("Checking Memento system health")
     
-    response = await mcp_client.call_tool("list_tables", {})
+    response = await mcp_client.call_tool("memento_health_check", {})
     result = json.loads(response.content[0].text)
     
     assert result['success']
-    assert isinstance(result['tables'], list)
-    # Verify core tables exist
-    core_tables = {'entities', 'relationships', 'properties'}
-    assert all(table in result['tables'] for table in core_tables)
-
-@pytest.mark.asyncio
-async def test_describe_table_entities(mcp_client, clean_db):
-    """Test describing the entities table schema."""
-    log_test_step("Starting entities table description test")
-    
-    response = await mcp_client.call_tool(
-        "describe_table",
-        {"table_name": "entities"}
-    )
-    result = json.loads(response.content[0].text)
-    
-    assert result['success']
-    assert result['table_name'] == 'entities'
-    
-    # Verify expected columns exist
-    columns = {col['column_name'] for col in result['columns']}
-    expected_columns = {'id', 'type', 'name', 'created_at', 'last_updated'}
-    assert expected_columns.issubset(columns)
-    
-    # Verify primary key constraint
-    constraints = result['constraints']
-    has_pk = any(
-        c['constraint_type'] == 'PRIMARY KEY' and c['column_name'] == 'id'
-        for c in constraints
-    )
-    assert has_pk
-
-@pytest.mark.asyncio
-async def test_describe_table_properties(mcp_client, clean_db):
-    """Test describing the properties table schema."""
-    log_test_step("Starting properties table description test")
-    
-    response = await mcp_client.call_tool(
-        "describe_table",
-        {"table_name": "properties"}
-    )
-    result = json.loads(response.content[0].text)
-    
-    assert result['success']
-    assert result['table_name'] == 'properties'
-    
-    # Verify expected columns
-    columns = {col['column_name'] for col in result['columns']}
-    expected_columns = {
-        'id', 'entity_id', 'relationship_id', 
-        'key', 'value', 'value_type'
-    }
-    assert expected_columns.issubset(columns)
-    
-    # Verify foreign key constraints
-    constraints = result['constraints']
-    foreign_keys = [
-        c for c in constraints 
-        if c['constraint_type'] == 'FOREIGN KEY'
-    ]
-    assert len(foreign_keys) >= 2  # Should have FKs to entities and relationships
-
-@pytest.mark.asyncio
-async def test_describe_invalid_table(mcp_client, clean_db):
-    """Test describing a non-existent table."""
-    log_test_step("Starting invalid table description test")
-    
-    response = await mcp_client.call_tool(
-        "describe_table",
-        {"table_name": "nonexistent_table"}
-    )
-    result = json.loads(response.content[0].text)
-    
-    assert not result['success']
-    assert 'error' in result
-    assert 'does not exist' in result['error']
+    assert result['memento_access']['status'] == 'online'
+    log_test_step(f"Health check result: {result}")
 
 @pytest.mark.asyncio
 async def test_create_episode(mcp_client, clean_db):
@@ -154,6 +81,7 @@ async def test_create_episode(mcp_client, clean_db):
     assert result['success']
     assert 'episode_id' in result
     assert isinstance(result['episode_id'], int)
+    log_test_step(f"Created episode with ID: {result['episode_id']}")
     
     return result['episode_id']
 
@@ -188,6 +116,7 @@ async def test_specify_tasks(mcp_client, clean_db):
     result = json.loads(response.content[0].text)
     
     assert result['success']
+    log_test_step(f"Successfully specified tasks for episode {episode_id}")
     return episode_id
 
 @pytest.mark.asyncio
@@ -248,6 +177,7 @@ async def test_episode_execution_lifecycle(mcp_client, clean_db):
     )
     result = json.loads(response.content[0].text)
     assert result['success']
+    log_test_step("Successfully completed full episode lifecycle")
 
 @pytest.mark.asyncio
 async def test_get_recent_episodes(mcp_client, clean_db):
@@ -267,6 +197,7 @@ async def test_get_recent_episodes(mcp_client, clean_db):
     assert 'episodes' in result
     assert isinstance(result['episodes'], list)
     assert len(result['episodes']) > 0
+    log_test_step(f"Retrieved {len(result['episodes'])} recent episodes")
 
 @pytest.mark.asyncio
 async def test_get_active_actions(mcp_client, clean_db):
@@ -279,6 +210,7 @@ async def test_get_active_actions(mcp_client, clean_db):
     assert result['success']
     assert 'actions' in result
     assert isinstance(result['actions'], list)
+    log_test_step(f"Retrieved {len(result['actions'])} active actions")
 
 if __name__ == "__main__":
     # For manual testing without pytest
@@ -290,6 +222,12 @@ if __name__ == "__main__":
             await client.connect_to_server(server_path)
             
             print(f"{GREEN}✓ Connected to server{RESET}")
+            
+            # Check health first
+            print(f"{BLUE}ℹ Testing health check...{RESET}")
+            response = await client.call_tool("memento_health_check", {})
+            result = json.loads(response.content[0].text)
+            print(f"{BLUE}ℹ Health check result: {result}{RESET}")
             
             # Get available tools
             tools = await client.get_available_tools()

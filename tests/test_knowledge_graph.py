@@ -1,5 +1,5 @@
 import logging
-from knowledge_graph import KnowledgeGraph
+from app.knowledge_graph import KnowledgeGraph
 
 async def test_knowledge_graph_initialization(kg):
     """Test KnowledgeGraph basic operations"""
