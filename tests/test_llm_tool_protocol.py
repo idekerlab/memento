@@ -17,7 +17,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 # Import LLM class
-from memento.llm import LLM
+from app.llm import LLM
 
 # Sample tool schema for testing
 SAMPLE_TOOL_SCHEMA = {

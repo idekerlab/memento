@@ -16,8 +16,8 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 # Import LLM class
-from memento.llm import LLM
-from memento.config import load_api_key
+from app.llm import LLM
+from app.config import load_api_key
 
 # Sample tool schema for testing
 CALCULATOR_TOOL_SCHEMA = {

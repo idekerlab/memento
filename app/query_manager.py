@@ -2,8 +2,8 @@ import json
 import os
 from typing import Dict, Any
 from datetime import datetime
-from memento.llm import LLM
-from memento.schema_manager import SchemaManager
+from app.llm import LLM
+from app.schema_manager import SchemaManager
 
 
 class QueryManager:

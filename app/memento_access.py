@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 memento_access.py - MCP server for Memento agent operations
 
@@ -7,20 +8,19 @@ including import/export to NDEx for saving and loading agent state.
 
 import logging
 import os
-import asyncio
 import json
 import datetime
+import asyncio
 from typing import Dict, List, Optional, Any
-import traceback
 
 from mcp.server import FastMCP
 
 # Import Memento components
-from memento.knowledge_graph import KnowledgeGraph
-from memento.episode_manager import EpisodeManager
-from memento.task_manager import TaskManager
-from memento.config import load_ndex_credentials
-from memento.mcp_client import MCPClient
+from app.knowledge_graph import KnowledgeGraph
+from app.episode_manager import EpisodeManager
+from app.task_manager import TaskManager
+from app.config import load_ndex_credentials
+from app.mcp_client import MCPClient
 
 # Initialize logging
 logging.basicConfig(
@@ -32,25 +32,29 @@ logger = logging.getLogger("memento_access")
 # Create MCP server
 mcp = FastMCP("Memento Agent Access")
 
-# Global instances
+# Initialize global components
 kg_client = None
 knowledge_graph = None
 episode_manager = None
 task_manager = None
-agent_id = None  # Will be set to a unique ID for the agent instance
-initialization_lock = asyncio.Lock()
-initialized = False
+agent_id = None
 
-# Ensure server is initialized before handling any tool invocations
+# Flag to track initialization status
+initialized = False
+initialization_lock = asyncio.Lock()
+
 async def ensure_initialized():
     """Ensure the server is initialized before handling tool invocations"""
     global kg_client, knowledge_graph, episode_manager, task_manager, agent_id, initialized
     
+    if initialized:
+        return
+    
     # Use a lock to prevent multiple simultaneous initialization attempts
     async with initialization_lock:
-        if initialized:
+        if initialized:  # Check again in case another invocation finished initializing
             return
-            
+        
         try:
             logger.info("Initializing Memento Access server")
             
@@ -78,14 +82,13 @@ async def ensure_initialized():
             initialized = True
             
         except Exception as e:
-            logger.error(f"Failed to initialize server: {str(e)}")
-            logger.error(traceback.format_exc())
+            logger.error(f"Failed to initialize server: {e}")
             raise
-    
+
 # =================== NDEx Operations ===================
 
 @mcp.tool()
-async def save_memento_knowledge_graph_to_ndex(name: Optional[str] = None, description: Optional[str] = None) -> str:
+async def memento_save_knowledge_graph_to_ndex(name: Optional[str] = None, description: Optional[str] = None) -> str:
     """Save the currently loaded memento knowledge graph to NDEx
     
     Args:
@@ -127,15 +130,14 @@ async def save_memento_knowledge_graph_to_ndex(name: Optional[str] = None, descr
             "description": description
         })
     except Exception as e:
-        logger.error(f"Error saving to NDEx: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error saving to NDEx: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
 @mcp.tool()
-async def load_memento_knowledge_graph_from_ndex(uuid: str) -> str:
+async def memento_load_knowledge_graph_from_ndex(uuid: str) -> str:
     """Load a memento knowledge graph from NDEx
     
     Args:
@@ -165,8 +167,7 @@ async def load_memento_knowledge_graph_from_ndex(uuid: str) -> str:
             "message": f"Successfully loaded knowledge graph from NDEx network {uuid}"
         })
     except Exception as e:
-        logger.error(f"Error loading from NDEx: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error loading from NDEx: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -175,7 +176,7 @@ async def load_memento_knowledge_graph_from_ndex(uuid: str) -> str:
 # =================== Episode Operations ===================
 
 @mcp.tool()
-async def create_new_memento_episode() -> str:
+async def memento_create_new_episode() -> str:
     """Create a new episode in the memento knowledge graph and link it to the most recent episode
     
     Returns:
@@ -197,15 +198,14 @@ async def create_new_memento_episode() -> str:
             "status": episode["status"]
         })
     except Exception as e:
-        logger.error(f"Error creating episode: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error creating episode: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
 @mcp.tool()
-async def specify_memento_episode_tasks(episode_id: int, reasoning: str, tasks: List[Dict]) -> str:
+async def memento_specify_episode_tasks(episode_id: int, reasoning: str, tasks: List[Dict]) -> str:
     """Specify the reasoning and tasks for a memento episode
     
     Args:
@@ -261,15 +261,14 @@ async def specify_memento_episode_tasks(episode_id: int, reasoning: str, tasks: 
             "message": f"Successfully specified tasks for episode {episode_id}"
         })
     except Exception as e:
-        logger.error(f"Error specifying tasks: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error specifying tasks: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
 @mcp.tool()
-async def execute_memento_episode_tasks(episode_id: int) -> str:
+async def memento_execute_episode_tasks(episode_id: int) -> str:
     """Execute all tasks for the specified memento episode
     
     Args:
@@ -291,15 +290,14 @@ async def execute_memento_episode_tasks(episode_id: int) -> str:
             "execution_results": task_results
         })
     except Exception as e:
-        logger.error(f"Error executing tasks: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error executing tasks: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
 @mcp.tool()
-async def close_memento_episode(episode_id: int) -> str:
+async def memento_close_episode(episode_id: int) -> str:
     """Close a memento episode
     
     Args:
@@ -322,8 +320,7 @@ async def close_memento_episode(episode_id: int) -> str:
             "message": result["message"]
         })
     except Exception as e:
-        logger.error(f"Error closing episode: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error closing episode: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
@@ -332,7 +329,7 @@ async def close_memento_episode(episode_id: int) -> str:
 # =================== Query Operations ===================
 
 @mcp.tool()
-async def get_memento_episode_plan(episode_id: int) -> str:
+async def memento_get_episode_plan(episode_id: int) -> str:
     """Get the reasoning and tasks for a memento episode
     
     Args:
@@ -374,15 +371,14 @@ async def get_memento_episode_plan(episode_id: int) -> str:
             "plan": plan
         })
     except Exception as e:
-        logger.error(f"Error getting episode plan: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error getting episode plan: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
 @mcp.tool()
-async def get_recent_memento_episodes(limit: int = 5) -> str:
+async def memento_get_recent_episodes(limit: int = 5) -> str:
     """Get recent episodes from the memento knowledge graph
     
     Args:
@@ -414,15 +410,14 @@ async def get_recent_memento_episodes(limit: int = 5) -> str:
             "episodes": response['results']
         })
     except Exception as e:
-        logger.error(f"Error getting recent episodes: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error getting recent episodes: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
 @mcp.tool()
-async def get_active_memento_actions() -> str:
+async def memento_get_active_actions() -> str:
     """Get all active actions from the memento knowledge graph. These are the agent's goals and sub-goals.
     
     Returns:
@@ -468,25 +463,48 @@ async def get_active_memento_actions() -> str:
             "actions": actions
         })
     except Exception as e:
-        logger.error(f"Error getting active actions: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error getting active actions: {e}")
         return json.dumps({
             "success": False,
             "error": str(e)
         })
 
-# Main function to run the server as a standalone application
-async def run_server():
-    """Run the MCP server as a standalone application"""
+# Add pass-through tools for direct knowledge graph access
+@mcp.tool()
+async def list_tables() -> str:
+    """Get a list of all tables in the knowledge graph database."""
     try:
-        # Initialize the server
+        # Ensure server is initialized
         await ensure_initialized()
-        logger.info("Starting Memento Access server")
-        return await mcp.run_async()
+        
+        # Call the list_tables tool on the KG server
+        response = await kg_client.call_tool("list_tables", {})
+        return response.content[0].text
     except Exception as e:
-        logger.error(f"Server error: {str(e)}")
-        logger.error(traceback.format_exc())
-        raise
+        logger.error(f"Error listing tables: {e}")
+        return json.dumps({
+            "success": False,
+            "error": str(e)
+        })
 
+@mcp.tool()
+async def describe_table(table_name: str) -> str:
+    """Get detailed schema information for a specific table."""
+    try:
+        # Ensure server is initialized
+        await ensure_initialized()
+        
+        # Call the describe_table tool on the KG server
+        response = await kg_client.call_tool("describe_table", {"table_name": table_name})
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error describing table: {e}")
+        return json.dumps({
+            "success": False,
+            "error": str(e)
+        })
+
+# Main function to run the server
 if __name__ == "__main__":
-    asyncio.run(run_server())
+    # Start the MCP server
+    asyncio.run(mcp.start())

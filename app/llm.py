@@ -1,5 +1,5 @@
 import anthropic
-from memento.config import load_api_key
+from app.config import load_api_key
 import json
 import re
 import unicodedata

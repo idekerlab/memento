@@ -1,7 +1,7 @@
 import json
 from typing import List, Dict, Optional
-from memento.llm import LLM
-from memento.schema_manager import SchemaManager
+from app.llm import LLM
+from app.schema_manager import SchemaManager
 import re
 
 

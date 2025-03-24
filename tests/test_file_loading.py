@@ -11,15 +11,17 @@ class TestFileLoading(unittest.TestCase):
     
     def test_file_existence(self):
         """Test that the required files exist"""
-        schema_path = os.path.join(os.path.dirname(__file__), 'schema.json')
-        primary_instructions_path = os.path.join(os.path.dirname(__file__), 'primary_instructions.txt')
+        # Update paths to point to files in app directory
+        schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'schema.json')
+        primary_instructions_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'primary_instructions.txt')
         
         self.assertTrue(os.path.exists(schema_path), f"Schema file not found at {schema_path}")
         self.assertTrue(os.path.exists(primary_instructions_path), f"Primary instructions file not found at {primary_instructions_path}")
     
     def test_schema_json_validity(self):
         """Test that schema.json contains valid JSON"""
-        schema_path = os.path.join(os.path.dirname(__file__), 'schema.json')
+        # Update path to point to file in app directory
+        schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'schema.json')
         
         with open(schema_path, 'r') as f:
             try:
@@ -32,7 +34,8 @@ class TestFileLoading(unittest.TestCase):
     
     def test_primary_instructions_content(self):
         """Test that primary_instructions.txt exists and has valid content"""
-        primary_instructions_path = os.path.join(os.path.dirname(__file__), 'primary_instructions.txt')
+        # Update path to point to file in app directory
+        primary_instructions_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'primary_instructions.txt')
         
         with open(primary_instructions_path, 'r') as f:
             content = f.read()
@@ -42,7 +45,7 @@ class TestFileLoading(unittest.TestCase):
     
     def test_query_manager_loading(self):
         """Test that QueryManager can load the files"""
-        from memento.query_manager import QueryManager
+        from app.query_manager import QueryManager
         
         # Create a mock KG
         mock_kg = MagicMock()

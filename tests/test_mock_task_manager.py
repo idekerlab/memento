@@ -1,9 +1,11 @@
 # test_task_manager.py
 
 import pytest
+import sys
+import os
 from unittest.mock import Mock, AsyncMock, patch
 import json
-from memento.task_manager import TaskManager
+from app.task_manager import TaskManager
 
 @pytest.fixture
 def mock_kg():

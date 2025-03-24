@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
-from memento.query_manager import QueryManager
+from app.query_manager import QueryManager
 import json
 
 @pytest.fixture
@@ -93,7 +93,7 @@ async def test_prompt_assembly_structure(query_manager, schema_documentation, ta
 async def test_query_error_extraction(query_manager, task_results):
     """Test extraction and formatting of query errors"""
     query_manager.current_episode_id = 1
-    query_manager._get_recent_task_results = Mock(return_value=task_results)
+    query_manager._get_recent_task_results = AsyncMock(return_value=task_results)
     
     errors = query_manager._extract_query_errors(task_results)
     
@@ -104,7 +104,8 @@ async def test_query_error_extraction(query_manager, task_results):
 @pytest.mark.asyncio
 async def test_prompt_with_no_errors(query_manager, schema_documentation):
     """Test prompt assembly with no validation errors"""
-    query_manager._get_schema_documentation = AsyncMock(return_value=schema_documentation)
+    # Fix: use schema_manager instead of directly calling _get_schema_documentation
+    query_manager.schema_manager.get_schema_documentation = AsyncMock(return_value=schema_documentation)
     query_manager._get_recent_episodes = AsyncMock(return_value=[])
     query_manager._get_active_actions = AsyncMock(return_value=[])
     query_manager._get_recent_task_results = AsyncMock(return_value=[])

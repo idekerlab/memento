@@ -12,9 +12,9 @@ class TestQueryManagerRefactor(unittest.TestCase):
         
     def test_file_loading(self):
         """Test that the query manager can load files correctly"""
-        # Check that the files exist
-        schema_path = os.path.join(os.path.dirname(__file__), 'schema.json')
-        primary_instructions_path = os.path.join(os.path.dirname(__file__), 'primary_instructions.txt')
+        # Check that the files exist - update paths to point to app directory
+        schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'schema.json')
+        primary_instructions_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'primary_instructions.txt')
         
         self.assertTrue(os.path.exists(schema_path), f"Schema file not found at {schema_path}")
         self.assertTrue(os.path.exists(primary_instructions_path), f"Primary instructions file not found at {primary_instructions_path}")
@@ -33,7 +33,7 @@ class TestQueryManagerRefactor(unittest.TestCase):
     
     async def async_test_query_manager_init(self):
         """Test that QueryManager loads files during initialization"""
-        from memento.query_manager import QueryManager
+        from app.query_manager import QueryManager
         
         # Create mock KG
         mock_kg = AsyncMock()

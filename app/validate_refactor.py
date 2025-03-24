@@ -30,7 +30,7 @@ except Exception as e:
 
 # Try to create a QueryManager instance
 try:
-    from memento.query_manager import QueryManager
+    from app.query_manager import QueryManager
     
     # Create a mock KG
     class MockKG:
