@@ -20,22 +20,43 @@
    - Fixed agent ID format to match test expectations
    - Made mark_entity async to properly await KG operations
    - Fixed entity_id handling in mark_entity to handle both integer IDs and entity dictionaries
-
-### In Progress
-- Working on fixing remaining test issues
-- Need to implement proper entity cleanup in tests to avoid duplicate key errors
+5. Created tests for episode_tools.py:
+   - Test episode creation
+   - Test task specification
+   - Test task execution
+   - Test episode closure
+   - Test error handling for invalid episodes and tasks
+6. Created tests for query_tools.py:
+   - Test retrieving episode plans
+   - Test retrieving recent episodes
+   - Test retrieving active actions
+   - Test error handling for non-existent episodes
+7. Fixed test issues:
+   - Enhanced episode_tools.create_new_episode to return correct status
+   - Added UUID-based unique name generation to prevent duplicate key errors
+   - Improved mark_entity to handle failures gracefully
+   - Added filtering in tests to handle pre-existing database state
+   - All tests now pass successfully
 
 ### Next Steps
-1. Create tests for episode_tools.py
-2. Create tests for query_tools.py
-3. Postpone NDEx testing until other functionality is robust
+1. ✅ Create tests for ndex_tools.py
+   - Created unit tests for save_to_ndex and load_from_ndex operations
+   - Added tests for missing credentials scenarios
+   - Created integration test for end-to-end NDEx functionality
+2. ✅ Fix issue with loading knowledge graph from NDEx
+   - Fixed issue with CX2 node IDs being used directly as Memento entity IDs
+   - Added mapping between CX2 node IDs and Memento entity IDs
+   - All tests now pass, including the integration test
+3. Consider adding integration tests that test the full workflow
+4. Implement any additional features or improvements needed
 
 ### Implementation Notes
 - Using test run IDs to mark and cleanup test entities
 - Direct testing against KG without mocks
 - Focusing on happy path testing first
-- NDEx testing postponed until NDEx account is set up
+- NDEx testing implemented with both unit tests and integration tests
 - Using unique entity names in tests to avoid duplicate key errors
+- Integration tests for NDEx operations are skipped by default but can be enabled with environment variables
 
 ### Key Design Decisions
 1. Split functionality into focused modules for better maintainability and token-efficient editing
@@ -51,3 +72,5 @@
 3. Format validation tests should be flexible enough to accommodate minor format changes
 4. Entity ID handling needs careful attention (int vs dict)
 5. Using unique entity names in tests prevents conflicts with existing data
+6. Database relationships must be handled carefully - delete relationships before deleting entities to avoid foreign key constraint violations
+7. When importing data from external formats (like CX2), maintain a mapping between external IDs and internal database IDs to ensure proper relationship creation

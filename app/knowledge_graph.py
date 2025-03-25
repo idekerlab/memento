@@ -18,6 +18,7 @@ class KnowledgeGraph:
         self.kg_client = kg_client
         self._tools: Dict[str, Dict] = {}
         self._initialized = False
+        self.cx2_style = None
         
         # Required tools with their expected input schema properties
         self.required_tools = {
@@ -286,6 +287,9 @@ class KnowledgeGraph:
         for query in clear_queries:
             await self.query_database(query)
             
+        # Map of original CX2 node IDs to new Memento entity IDs
+        node_id_map = {}
+            
         # Import nodes/entities
         for node_id, node_data in cx2_network.get_nodes().items():
             node_attrs = node_data['v']
@@ -298,6 +302,9 @@ class KnowledgeGraph:
                 name=name
             )
             
+            # Store mapping from original CX2 node ID to new Memento entity ID
+            node_id_map[int(node_id)] = entity['id']
+            
             # Add remaining attributes as properties
             if node_attrs:
                 await self.update_properties(
@@ -308,25 +315,34 @@ class KnowledgeGraph:
         # Import edges/relationships
         for edge_id, edge_data in cx2_network.get_edges().items():
             edge = cx2_network.get_edge(edge_id)
-            source_id = edge['s']
-            target_id = edge['t']
+            original_source_id = edge['s']
+            original_target_id = edge['t']
             rel_type = edge_data['v'].get('interaction', 'interacts_with')
             
-            # Create relationship
-            rel = await self.add_relationship(
-                source_id=source_id,
-                target_id=target_id,
-                type=rel_type
-            )
-            
-            # Add remaining attributes as properties
-            edge_attrs = edge_data['v'].copy()
-            edge_attrs.pop('interaction', None)  # Remove since we used it for type
-            if edge_attrs:
-                await self.update_properties(
-                    relationship_id=rel['id'],
-                    properties=edge_attrs
-                )
+            # Map original CX2 node IDs to new Memento entity IDs
+            if original_source_id in node_id_map and original_target_id in node_id_map:
+                source_id = node_id_map[original_source_id]
+                target_id = node_id_map[original_target_id]
+                
+                # Create relationship
+                try:
+                    rel = await self.add_relationship(
+                        source_id=source_id,
+                        target_id=target_id,
+                        type=rel_type
+                    )
+                    
+                    # Add remaining attributes as properties
+                    edge_attrs = edge_data['v'].copy()
+                    edge_attrs.pop('interaction', None)  # Remove since we used it for type
+                    if edge_attrs:
+                        await self.update_properties(
+                            relationship_id=rel['id'],
+                            properties=edge_attrs
+                        )
+                except Exception as e:
+                    # Log error but continue with other relationships
+                    print(f"Error creating relationship: {e}")
 
     async def save_to_ndex(self, name: str = None, description: str = None) -> str:
         """Save knowledge graph to NDEx, returns network UUID"""

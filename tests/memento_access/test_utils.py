@@ -5,7 +5,8 @@ Provides common functionality for test run identification and cleanup.
 
 import logging
 import datetime
-from typing import Optional
+import uuid
+from typing import Optional, Dict, Any
 
 from app.knowledge_graph import KnowledgeGraph
 
@@ -16,21 +17,42 @@ class TestRunManager:
     
     def __init__(self, knowledge_graph: KnowledgeGraph):
         self.kg = knowledge_graph
-        self.test_run_id = f"test_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # Use a UUID to ensure uniqueness
+        self.test_run_id = f"test_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         logger.info(f"Created test run with ID: {self.test_run_id}")
+        
+    def generate_unique_name(self, prefix: str) -> str:
+        """Generate a unique name for a test entity"""
+        return f"{prefix}_{self.test_run_id}_{uuid.uuid4().hex[:6]}"
     
     async def mark_entity(self, entity_id) -> None:
         """Mark an entity as belonging to this test run"""
         # Handle both integer entity_id and dictionary with entity info
         entity_id_value = entity_id['id'] if isinstance(entity_id, dict) else entity_id
         
-        await self.kg.update_properties(
-            entity_id=entity_id_value,
-            properties={
-                "test_run_id": self.test_run_id,
-                "test_created_at": datetime.datetime.now().isoformat()
-            }
-        )
+        try:
+            await self.kg.update_properties(
+                entity_id=entity_id_value,
+                properties={
+                    "test_run_id": self.test_run_id,
+                    "test_created_at": datetime.datetime.now().isoformat()
+                }
+            )
+        except Exception as e:
+            # Log the error but don't fail the test
+            # This can happen with relationships which may not support properties
+            logger.warning(f"Could not mark entity {entity_id_value} for cleanup: {e}")
+            
+            # Still track the ID for cleanup
+            query = f"""
+                INSERT INTO properties (entity_id, key, value)
+                SELECT {entity_id_value}, 'test_run_id', '{self.test_run_id}'
+                WHERE EXISTS (SELECT 1 FROM entities WHERE id = {entity_id_value})
+            """
+            try:
+                await self.kg.query_database(query)
+            except Exception as inner_e:
+                logger.warning(f"Could not insert property via query: {inner_e}")
     
     async def cleanup(self) -> None:
         """Remove all entities and their properties created during this test run"""

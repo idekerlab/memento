@@ -24,10 +24,15 @@ class EpisodeTools:
         episode = await self.components.episode_manager.new_episode()
         logger.info(f"Created new episode with ID: {episode['id']}")
         
+        # Get the actual status from the episode properties
+        status_query = f"SELECT value FROM properties WHERE entity_id = {episode['id']} AND key = 'status'"
+        status_result = await self.components.knowledge_graph.query_database(status_query)
+        status = status_result['results'][0]['value'] if status_result['results'] else "open"
+        
         return {
             "success": True,
             "episode_id": episode["id"],
-            "status": episode["status"]
+            "status": status
         }
     
     async def specify_episode_tasks(self, episode_id: int, reasoning: str, tasks: List[Dict]) -> Dict:

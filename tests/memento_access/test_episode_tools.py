@@ -6,6 +6,7 @@ Tests episode creation, task specification, execution, and closure.
 import pytest
 import logging
 import json
+import datetime
 from typing import Dict, List
 
 from app.memento_access.episode_tools import EpisodeTools
@@ -15,10 +16,34 @@ from tests.memento_access.test_utils import TestRunManager
 logger = logging.getLogger(__name__)
 
 @pytest.mark.asyncio
-async def test_create_new_episode(components: MementoComponents, test_run_manager: TestRunManager):
+async def test_create_new_episode(components: MementoComponents, test_run_manager: TestRunManager, monkeypatch):
     """Test creating a new episode"""
     # Initialize episode tools
     episode_tools = EpisodeTools(components)
+    
+    # Mock the episode_manager.new_episode method to use a unique name
+    original_new_episode = components.episode_manager.new_episode
+    
+    async def mock_new_episode():
+        # Generate a unique name for the episode
+        unique_name = test_run_manager.generate_unique_name("Episode")
+        
+        # Create the episode with the unique name
+        episode = await components.knowledge_graph.add_entity(
+            type="Episode",
+            name=unique_name,
+            properties={
+                "agent_id": components.agent_id,
+                "created_at": datetime.datetime.now().isoformat(),
+                "status": "open",
+                "updated_at": datetime.datetime.now().isoformat()
+            }
+        )
+        
+        return episode
+    
+    # Apply the monkeypatch
+    monkeypatch.setattr(components.episode_manager, "new_episode", mock_new_episode)
     
     # Create a new episode
     result = await episode_tools.create_new_episode()

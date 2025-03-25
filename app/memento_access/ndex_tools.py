@@ -25,6 +25,7 @@ class NDExTools:
         # Check for NDEx credentials
         username, password = load_ndex_credentials()
         if not username or not password:
+            logger.warning("NDEx credentials not found")
             return {
                 "success": False,
                 "error": "NDEx credentials not found. Please configure NDEX_USERNAME and NDEX_PASSWORD in your config file."
@@ -38,17 +39,24 @@ class NDExTools:
         if not description:
             description = f"Snapshot of Memento knowledge graph state created on {datetime.datetime.now().isoformat()}"
         
-        logger.info(f"Saving knowledge graph to NDEx with name: {name}")
-        # Save to NDEx
-        uuid = await self.components.knowledge_graph.save_to_ndex(name=name, description=description)
-        logger.info(f"Knowledge graph saved to NDEx with UUID: {uuid}")
-        
-        return {
-            "success": True,
-            "uuid": uuid,
-            "name": name,
-            "description": description
-        }
+        try:
+            logger.info(f"Saving knowledge graph to NDEx with name: {name}")
+            # Save to NDEx
+            uuid = await self.components.knowledge_graph.save_to_ndex(name=name, description=description)
+            logger.info(f"Knowledge graph saved to NDEx with UUID: {uuid}")
+            
+            return {
+                "success": True,
+                "uuid": uuid,
+                "name": name,
+                "description": description
+            }
+        except Exception as e:
+            logger.error(f"Error saving to NDEx: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Failed to save to NDEx: {str(e)}"
+            }
     
     async def load_from_ndex(self, uuid: str) -> Dict:
         """Load a knowledge graph from NDEx"""
@@ -57,15 +65,23 @@ class NDExTools:
         # Check for NDEx credentials
         username, password = load_ndex_credentials()
         if not username or not password:
+            logger.warning("NDEx credentials not found")
             return {
                 "success": False,
                 "error": "NDEx credentials not found. Please configure NDEX_USERNAME and NDEX_PASSWORD in your config file."
             }
         
-        await self.components.knowledge_graph.load_from_ndex(uuid)
-        logger.info(f"Successfully loaded knowledge graph from NDEx")
-        
-        return {
-            "success": True,
-            "message": f"Successfully loaded knowledge graph from NDEx network {uuid}"
-        }
+        try:
+            await self.components.knowledge_graph.load_from_ndex(uuid)
+            logger.info(f"Successfully loaded knowledge graph from NDEx")
+            
+            return {
+                "success": True,
+                "message": f"Successfully loaded knowledge graph from NDEx network {uuid}"
+            }
+        except Exception as e:
+            logger.error(f"Error loading from NDEx: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Failed to load from NDEx: {str(e)}"
+            }
