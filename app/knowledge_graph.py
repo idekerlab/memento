@@ -136,6 +136,34 @@ class KnowledgeGraph:
             raise KnowledgeGraphError("Invalid response format from add_relationship")
         except Exception as e:
             raise KnowledgeGraphError(f"Failed to add relationship: {str(e)}")
+            
+    async def delete_entity(self, id: int) -> Dict:
+        """Delete an entity from the knowledge graph"""
+        await self.ensure_initialized()
+        try:
+            args = {
+                "id": id
+            }
+            response = await self.kg_client.call_tool("delete_entity", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from delete_entity")
+        except Exception as e:
+            raise KnowledgeGraphError(f"Failed to delete entity: {str(e)}")
+            
+    async def delete_relationship(self, id: int) -> Dict:
+        """Delete a relationship from the knowledge graph"""
+        await self.ensure_initialized()
+        try:
+            args = {
+                "id": id
+            }
+            response = await self.kg_client.call_tool("delete_relationship", args)
+            if hasattr(response, 'content'):
+                return json.loads(response.content[0].text)
+            raise KnowledgeGraphError("Invalid response format from delete_relationship")
+        except Exception as e:
+            raise KnowledgeGraphError(f"Failed to delete relationship: {str(e)}")
 
     async def query_database(self, sql: str) -> Dict[str, Any]:
         """Execute a read-only SQL query"""

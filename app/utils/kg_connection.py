@@ -8,10 +8,7 @@ to the Knowledge Graph MCP server with proper error handling and timeouts.
 import os
 import logging
 import asyncio
-from typing import Optional, Tuple
-
-from app.mcp_client import MCPClient
-from app.knowledge_graph import KnowledgeGraph
+from typing import Optional, Tuple, Dict, Any
 
 # Initialize logging
 logger = logging.getLogger("memento.kg_connection")
@@ -23,7 +20,7 @@ class ConnectionError(Exception):
 async def connect_to_kg_server(
     server_url: Optional[str] = None, 
     timeout: int = 10
-) -> Tuple[MCPClient, KnowledgeGraph]:
+) -> Tuple:
     """
     Connect to the Knowledge Graph MCP server and initialize KnowledgeGraph.
     
@@ -38,6 +35,10 @@ async def connect_to_kg_server(
     Raises:
         ConnectionError: If connection fails
     """
+    # Imported here to avoid circular imports
+    from app.mcp_client import MCPClient
+    from app.knowledge_graph import KnowledgeGraph
+    
     # Use provided URL, env var, or fallback
     if not server_url:
         server_url = os.getenv(
@@ -73,8 +74,10 @@ async def connect_to_kg_server(
             raise ConnectionError(f"Knowledge graph initialization failed: {e}")
             
     except Exception as e:
-        logger.error(f"Error connecting to KG server: {e}")
-        raise ConnectionError(f"Failed to connect to KG server: {e}")
+        if not isinstance(e, ConnectionError):
+            logger.error(f"Error connecting to KG server: {e}")
+            raise ConnectionError(f"Failed to connect to KG server: {e}")
+        raise
 
 async def test_kg_connection(server_url: Optional[str] = None) -> bool:
     """
@@ -98,6 +101,37 @@ async def test_kg_connection(server_url: Optional[str] = None) -> bool:
     except Exception as e:
         logger.error(f"KG connection test failed: {e}")
         return False
+    finally:
+        # Clean up resources
+        if kg_client:
+            await kg_client.cleanup()
+
+async def execute_kg_query(query: str, server_url: Optional[str] = None, timeout: int = 10) -> Dict[str, Any]:
+    """
+    Execute a SQL query against the Knowledge Graph database.
+    
+    Args:
+        query: SQL query to execute
+        server_url: URL of the KG MCP server
+        timeout: Connection and query timeout in seconds
+        
+    Returns:
+        Dictionary with query results
+    
+    Raises:
+        ConnectionError: If connection fails
+        Exception: For any other errors
+    """
+    kg_client = None
+    try:
+        # Connect to KG server
+        kg_client, knowledge_graph = await connect_to_kg_server(server_url, timeout)
+        
+        # Execute query with timeout
+        query_task = asyncio.create_task(knowledge_graph.query_database(query))
+        result = await asyncio.wait_for(query_task, timeout=timeout)
+        
+        return result
     finally:
         # Clean up resources
         if kg_client:

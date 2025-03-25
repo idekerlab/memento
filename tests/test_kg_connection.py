@@ -14,7 +14,7 @@ from pathlib import Path
 # Add the parent directory to the path so we can import app modules
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.utils.kg_connection import connect_to_kg_server, test_kg_connection
+from app.utils.kg_connection import connect_to_kg_server, test_kg_connection, execute_kg_query
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,6 +75,25 @@ async def test_connection_with_queries():
         logger.error(f"Error in query test: {e}")
         return False
 
+async def test_execute_kg_query():
+    """Test the execute_kg_query utility function"""
+    logger.info("Testing execute_kg_query utility")
+    
+    try:
+        # Test with a simple query
+        result = await execute_kg_query("SELECT 1 as test")
+        logger.info(f"Query result: {result}")
+        
+        if result and result.get('success', False):
+            logger.info("execute_kg_query test successful")
+            return True
+        else:
+            logger.error("execute_kg_query test failed")
+            return False
+    except Exception as e:
+        logger.error(f"Error in execute_kg_query test: {e}")
+        return False
+
 async def main():
     """Run all tests"""
     logger.info("Starting KG connection tests")
@@ -87,6 +106,10 @@ async def main():
     if basic_test:
         query_test = await test_connection_with_queries()
         logger.info(f"Query test {'PASSED' if query_test else 'FAILED'}")
+        
+        # Test execute_kg_query utility
+        execute_query_test = await test_execute_kg_query()
+        logger.info(f"execute_kg_query test {'PASSED' if execute_query_test else 'FAILED'}")
     
     logger.info("KG connection tests completed")
 

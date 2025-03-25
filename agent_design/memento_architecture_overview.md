@@ -41,7 +41,13 @@ Memento is an AI agent system that maintains memory of episodic, procedural, mis
 - `step.py`: Provides step-by-step control over agent execution
 - `run_from_snapshot.py`: Runs an agent from a saved KG snapshot
 - `config.py`: Handles configuration loading (API keys, NDEx credentials)
-- `memento_access.py`: MCP server for Memento operations (episodes, NDEx integration)
+- `memento_access.py`: Entry point for the Memento Access MCP server
+- `memento_access/`: Package containing modular components of the Memento Access server:
+  - `__init__.py`: MCP tool definitions and server initialization
+  - `initialization.py`: Component setup and management
+  - `episode_tools.py`: Episode operations
+  - `ndex_tools.py`: NDEx operations
+  - `query_tools.py`: Query operations
 
 ### Knowledge Graph Server Files (in agent_kg repository)
 
@@ -137,6 +143,53 @@ To test the Memento system:
 2. Check logs for detailed error information
 3. Ensure PostgreSQL database is running and accessible
 4. Verify config.ini is properly configured
+
+## Key API Reference
+
+### KnowledgeGraph API
+
+The `KnowledgeGraph` class provides a wrapper around the knowledge graph MCP server. Key methods include:
+
+#### Entity Operations
+- `async add_entity(type: str, name: Optional[str] = None, properties: Optional[Dict] = None) -> Dict`
+  - Creates a new entity in the knowledge graph
+  - Returns a dictionary containing the entity information including its ID
+
+- `async update_properties(entity_id: int, properties: Dict) -> Dict`
+  - Updates properties for an entity or relationship
+  - Expects an integer entity_id, not a dictionary
+  
+- `async delete_entity(id: int) -> Dict`
+  - Deletes an entity from the knowledge graph
+  - Expects an integer entity ID
+
+#### Relationship Operations
+- `async add_relationship(source_id: int, target_id: int, type: str, properties: Optional[Dict] = None) -> Dict`
+  - Creates a relationship between two entities
+  - Returns a dictionary containing the relationship information
+
+- `async get_relationships(source_id: Optional[int] = None, target_id: Optional[int] = None, type: Optional[str] = None) -> Dict`
+  - Retrieves relationships with optional filtering
+  
+- `async delete_relationship(id: int) -> Dict`
+  - Deletes a relationship from the knowledge graph
+  - Expects an integer relationship ID
+
+#### Query Operations
+- `async query_database(sql: str) -> Dict[str, Any]`
+  - Executes a read-only SQL query against the knowledge graph database
+  - Returns query results in a standardized format
+
+- `async get_properties(entity_id: Optional[int] = None, relationship_id: Optional[int] = None, key: Optional[str] = None) -> Dict`
+  - Retrieves properties for entities or relationships with optional filtering
+
+#### NDEx Integration
+- `async save_to_ndex(name: str = None, description: str = None) -> str`
+  - Saves the knowledge graph to NDEx
+  - Returns the UUID of the saved network
+
+- `async load_from_ndex(uuid: str) -> None`
+  - Loads a knowledge graph from NDEx using the provided UUID
 
 ---
 

@@ -1,74 +1,53 @@
-# Memento Status Report - March 25, 2025
+# Status Update - March 25, 2024
 
-## Current Status Summary
+## Current Task: Refactoring memento_access.py
 
-The Memento system has been updated to address the MCP server connection issues identified in the previous session. Here's a summary of the changes and current status:
+### Completed Steps
+1. Created new modular structure in app/memento_access/
+   - initialization.py: Component setup and management
+   - episode_tools.py: Episode operations
+   - ndex_tools.py: NDEx operations
+   - query_tools.py: Query operations
+   - __init__.py: MCP tool definitions
+2. Removed KG pass-through tools
+3. Created test infrastructure:
+   - tests/memento_access/test_utils.py: Test run management and cleanup
+   - tests/memento_access/conftest.py: Pytest fixtures and configuration
+   - tests/memento_access/test_initialization.py: Tests for initialization module
+4. Fixed initialization test issues:
+   - Removed problematic event loop code from conftest.py
+   - Enhanced cleanup_components to properly clean up resources
+   - Fixed agent ID format to match test expectations
+   - Made mark_entity async to properly await KG operations
+   - Fixed entity_id handling in mark_entity to handle both integer IDs and entity dictionaries
 
-### Updates Made
-
-1. **Created KG Connection Module**: 
-   - Implemented a new `kg_connection.py` module in the `app/utils` directory
-   - Extracted the successful connection logic from `StepRunner` with proper error handling and timeouts
-   - Added connection test utilities to verify KG server functionality
-
-2. **Refactored MCP Server Initialization**:
-   - Modified `memento_access.py` to use the new connection module
-   - Implemented startup initialization rather than lazy initialization on first tool call
-   - Added mock mode for tools when connection fails
-   - Added diagnostic and error recovery tools
-
-3. **Added Robust Testing**:
-   - Created `test_kg_connection.py` to directly test connection module
-   - Created `test_memento_access.py` to test the MCP server functionality
-   - Added proper timeouts and comprehensive logging
-
-### Key Architectural Improvements
-
-1. **Simplified Connection Process**:
-   - Replaced complex async initialization with a simpler linear approach
-   - Moved initialization to server startup rather than on first tool call
-   - Implemented proper timeout handling for all connections
-
-2. **Connection Status Tracking**:
-   - Added a global connection status object to track initialization state
-   - Clear indication of mock mode when connection fails
-   - Detailed error information available via the health check tool
-
-3. **Error Recovery**:
-   - Added a `memento_retry_initialization` tool to attempt reconnection
-   - Implemented proper cleanup of failed connections
-   - Added mock mode to allow basic functionality even when KG is unavailable
-
-### Current Issues
-
-The following issues should be addressed in the next development session:
-
-1. **Error Recovery Testing**: Need to test error recovery in various failure scenarios
-2. **Transaction Handling**: Consider adding transaction support for multi-step operations
-3. **Mock Data Improvements**: Enhance mock mode with more realistic test data
+### In Progress
+- Working on fixing remaining test issues
+- Need to implement proper entity cleanup in tests to avoid duplicate key errors
 
 ### Next Steps
+1. Create tests for episode_tools.py
+2. Create tests for query_tools.py
+3. Postpone NDEx testing until other functionality is robust
 
-In the next development session, we recommend:
+### Implementation Notes
+- Using test run IDs to mark and cleanup test entities
+- Direct testing against KG without mocks
+- Focusing on happy path testing first
+- NDEx testing postponed until NDEx account is set up
+- Using unique entity names in tests to avoid duplicate key errors
 
-1. **Thorough Testing**:
-   - Run the test scripts to verify the fixes
-   - Test in different failure scenarios
-   - Validate with the StepRunner and full application workflows
+### Key Design Decisions
+1. Split functionality into focused modules for better maintainability and token-efficient editing
+2. Test cleanup strategy: mark entities with test run ID and clean up after tests
+3. Using pytest-asyncio for async test support
+4. Direct KG testing approach instead of mocks
+5. Keeping code lean and focused to maintain token efficiency
+6. Proper error handling in async cleanup to ensure resources are released
 
-2. **Knowledge Graph Operations**:
-   - Improve error handling in KnowledgeGraph class
-   - Add batch operations for performance
-   - Consider caching for frequently accessed data
-
-3. **Episode Manager Enhancements**:
-   - Improve episode linking and chain traversal
-   - Add query tools for episode history analysis
-   - Support for episode summaries and metadata
-
-4. **Documentation Updates**:
-   - Document the new connection approach
-   - Add examples for common operations
-   - Update architecture overview to reflect changes
-
-By addressing these items, we can ensure that the Memento system reliably maintains its state across sessions and provides a solid foundation for agent operations.
+### Key Insights from Testing
+1. Async method calls must be properly awaited, especially in test fixtures
+2. Test entity cleanup is critical to avoid test interference
+3. Format validation tests should be flexible enough to accommodate minor format changes
+4. Entity ID handling needs careful attention (int vs dict)
+5. Using unique entity names in tests prevents conflicts with existing data
