@@ -47,8 +47,13 @@
    - Fixed issue with CX2 node IDs being used directly as Memento entity IDs
    - Added mapping between CX2 node IDs and Memento entity IDs
    - All tests now pass, including the integration test
-3. Consider adding integration tests that test the full workflow
-4. Implement any additional features or improvements needed
+3. ✅ Fix JSON serialization issues with MCP tools
+   - Added DateTimeEncoder to properly serialize datetime objects
+   - Changed tool functions to return dictionaries directly instead of JSON strings
+   - Added debug logging to help diagnose JSON serialization issues
+   - This should fix the "Unexpected non-whitespace character after JSON" error in Claude Desktop
+4. Consider adding integration tests that test the full workflow
+5. Implement any additional features or improvements needed
 
 ### Implementation Notes
 - Using test run IDs to mark and cleanup test entities
