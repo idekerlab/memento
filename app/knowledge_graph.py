@@ -177,6 +177,20 @@ class KnowledgeGraph:
             raise KnowledgeGraphError("Invalid response format from query")
         except Exception as e:
             raise KnowledgeGraphError(f"Query failed: {str(e)}")
+            
+    async def clear_database(self) -> None:
+        """Clear all data from the knowledge graph database"""
+        await self.ensure_initialized()
+        try:
+            clear_queries = [
+                "DELETE FROM properties",
+                "DELETE FROM relationships",
+                "DELETE FROM entities"
+            ]
+            for query in clear_queries:
+                await self.query_database(query)
+        except Exception as e:
+            raise KnowledgeGraphError(f"Failed to clear database: {str(e)}")
 
     async def get_relationships(self, source_id: Optional[int] = None, 
                               target_id: Optional[int] = None, 

@@ -28,11 +28,46 @@ class MementoService:
         except Exception as e:
             return {"success": False, "error": str(e)}
             
-    async def initialize_empty(self, initial_action_desc: str) -> Dict[str, Any]:
+    async def check_kg_has_data(self) -> Dict[str, Any]:
+        """Check if the knowledge graph has any existing data."""
+        try:
+            if not self.runner:
+                self.runner = StepRunner()
+                await self.runner.connect(self.kg_server_url)
+                
+            # Query to check if there's any data in the KG
+            query = "SELECT COUNT(*) as count FROM entities"
+            response = await self.runner.knowledge_graph.query_database(query)
+            
+            count = 0
+            if response.get('results') and len(response.get('results')) > 0:
+                count = response['results'][0].get('count', 0)
+                
+            return {"success": True, "has_data": count > 0, "count": count}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+            
+    async def clear_knowledge_graph(self) -> Dict[str, Any]:
+        """Clear all data from the knowledge graph."""
+        try:
+            if not self.runner:
+                self.runner = StepRunner()
+                await self.runner.connect(self.kg_server_url)
+                
+            await self.runner.knowledge_graph.clear_database()
+            return {"success": True, "message": "Knowledge graph cleared"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    async def initialize_empty(self, initial_action_desc: str, clear_kg: bool = True) -> Dict[str, Any]:
         """Initialize the system with an empty KG and initial action."""
         try:
             self.runner = StepRunner()
             await self.runner.connect(self.kg_server_url)
+            
+            # Clear the KG if requested
+            if clear_kg:
+                await self.runner.knowledge_graph.clear_database()
             
             # Create the initial action
             kg = self.runner.knowledge_graph
@@ -49,40 +84,45 @@ class MementoService:
             return {"success": False, "error": str(e)}
     
     async def get_ndex_networks(self) -> Dict[str, Any]:
-        """Get available networks from NDEx account."""
+        """Get available networks from NDEx account using the ndex2 API."""
         try:
-            if not self.runner:
-                self.runner = StepRunner()
-                await self.runner.connect(self.kg_server_url)
+            # Get NDEx credentials
+            ndex_username, ndex_password = load_ndex_credentials()
             
-            config = load_config()
-            ndex_user, _ = load_ndex_credentials()
-            
-            # Query NDEx for networks
-            query = f"""
-                SELECT 
-                    n.uuid, n.name, n.description, n.creation_time
-                FROM 
-                    ndex_network_summary n
-                WHERE 
-                    n.owner = '{ndex_user}'
-                ORDER BY 
-                    n.creation_time DESC
-            """
-            response = await self.runner.knowledge_graph.query_database(query)
-            
-            networks = []
-            for row in response.get('results', []):
-                networks.append({
-                    "uuid": row.get("uuid"),
-                    "name": row.get("name"),
-                    "description": row.get("description"),
-                    "creation_time": row.get("creation_time")
-                })
+            if not ndex_username or not ndex_password:
+                return {"success": False, "error": "NDEx credentials not configured", "networks": []}
                 
-            return {"success": True, "networks": networks}
+            # Create NDEx client
+            import ndex2.client as nc2
+            client = nc2.Ndex2(
+                "http://public.ndexbio.org",
+                username=ndex_username,
+                password=ndex_password
+            )
+            
+            try:
+                # Get networks for this user
+                network_summaries = client.get_user_network_summaries(ndex_username)
+                
+                # Format the networks to match the expected structure
+                networks = []
+                for network in network_summaries:
+                    networks.append({
+                        "uuid": network.get("externalId"),
+                        "name": network.get("name", "Unnamed Network"),
+                        "description": network.get("description", ""),
+                        "creation_time": network.get("creationTime", 0)
+                    })
+                    
+                return {"success": True, "networks": networks}
+            except Exception as ndex_error:
+                return {
+                    "success": False, 
+                    "error": f"NDEx API error: {str(ndex_error)}", 
+                    "networks": []
+                }
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": f"Error: {str(e)}", "networks": []}
             
     async def start_next_episode(self) -> Dict[str, Any]:
         """Create the next episode."""
@@ -207,23 +247,43 @@ class MementoService:
             if not self.initialized or not self.runner:
                 return {"success": False, "error": "System not initialized"}
                 
+            # Check credentials before attempting to save
+            ndex_username, ndex_password = load_ndex_credentials()
+            if not ndex_username or not ndex_password:
+                return {
+                    "success": False, 
+                    "error": "NDEx credentials not configured. Cannot save snapshot."
+                }
+            
             # Create backup with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             name = f"Memento_KG_Snapshot_{timestamp}"
             description = "Snapshot of Memento knowledge graph state"
             
-            uuid = await self.runner.knowledge_graph.save_to_ndex(name=name, description=description)
-            
-            return {
-                "success": True,
-                "snapshot": {
-                    "uuid": uuid,
-                    "name": name,
-                    "description": description
+            try:
+                uuid = await self.runner.knowledge_graph.save_to_ndex(name=name, description=description)
+                
+                return {
+                    "success": True,
+                    "snapshot": {
+                        "uuid": uuid,
+                        "name": name,
+                        "description": description
+                    }
                 }
-            }
+            except Exception as ndex_error:
+                if "401" in str(ndex_error):
+                    return {
+                        "success": False, 
+                        "error": "NDEx authentication failed. Please check your NDEx credentials."
+                    }
+                else:
+                    return {
+                        "success": False, 
+                        "error": f"NDEx error: {str(ndex_error)}"
+                    }
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": f"Error saving snapshot: {str(e)}"}
     
     async def cleanup(self) -> None:
         """Clean up resources."""
@@ -260,21 +320,49 @@ class MementoService:
             if not self.runner or not self.runner.agent or not self.runner.agent.query_manager:
                 return {}
                 
-            # This is a simplified approximation - in a real implementation,
-            # we would need to access the actual prompt assembly logic
+            # Get the actual prompt content from the query manager
             prompt = await self.runner.agent.query_manager.assemble_prompt()
+            print("DEBUG: Assembled prompt:", prompt[:200] + "..." if prompt else "None")
             
-            # Very simplified parsing of prompt sections
+            # Load primary instructions from file
+            primary_instructions = ""
+            try:
+                with open("app/primary_instructions.txt", "r") as f:
+                    primary_instructions = f.read()
+            except Exception as file_err:
+                print(f"DEBUG: Error loading primary instructions: {file_err}")
+            
+            # Load schema
+            schema = ""
+            try:
+                with open("app/schema.json", "r") as f:
+                    schema = f.read()
+            except Exception as schema_err:
+                print(f"DEBUG: Error loading schema: {schema_err}")
+            
+            # Get active actions
+            active_actions = await self._get_active_actions()
+            print(f"DEBUG: Active actions content: {active_actions[:200] + '...' if len(active_actions) > 200 else active_actions}")
+            
+            # Get recent episodes (last 3)
+            recent_episodes = await self._get_recent_episodes(3)
+                
             sections = {
-                "primary_instructions": "Primary agent instructions",
-                "schema": "Knowledge graph schema",
-                "active_actions": await self._get_active_actions(),
-                "recent_episodes": "Recent episode summaries",
+                "primary_instructions": primary_instructions,
+                "schema": schema,
+                "active_actions": active_actions,
+                "recent_episodes": recent_episodes,
                 "errors": ""
             }
             
+            # Debug output
+            for key, value in sections.items():
+                content_preview = value[:50] + "..." if value and len(value) > 50 else value or "Empty"
+                print(f"DEBUG: Prompt section '{key}': {content_preview}")
+            
             return sections
         except Exception as e:
+            print(f"DEBUG: Error in _get_prompt_sections: {e}")
             return {
                 "primary_instructions": "",
                 "schema": "",
@@ -289,25 +377,108 @@ class MementoService:
             if not self.runner or not self.runner.knowledge_graph:
                 return ""
                 
+            # Try both true as string and True as boolean
             query = """
-                SELECT e.id, p.value as description, p2.value as state
+                SELECT e.id, p.value as description, p2.value as state, p3.value as active_value
                 FROM entities e
                 JOIN properties p ON e.id = p.entity_id AND p.key = 'description'
                 JOIN properties p2 ON e.id = p2.entity_id AND p2.key = 'state'
                 JOIN properties p3 ON e.id = p3.entity_id AND p3.key = 'active'
-                WHERE e.type = 'Action' AND p3.value = 'true'
+                WHERE e.type = 'Action' AND (p3.value = 'true' OR p3.value = 'True')
                 ORDER BY e.id
             """
+            
+            print("DEBUG: Querying for active actions with true/True")
             response = await self.runner.knowledge_graph.query_database(query)
+            
+            # If no results, try with boolean true
+            if not response.get('results') or len(response.get('results')) == 0:
+                query = """
+                    SELECT e.id, p.value as description, p2.value as state, p3.value as active_value
+                    FROM entities e
+                    JOIN properties p ON e.id = p.entity_id AND p.key = 'description'
+                    JOIN properties p2 ON e.id = p2.entity_id AND p2.key = 'state'
+                    JOIN properties p3 ON e.id = p3.entity_id AND p3.key = 'active'
+                    WHERE e.type = 'Action'
+                    ORDER BY e.id
+                """
+                print("DEBUG: No results with true/True, querying all actions")
+                response = await self.runner.knowledge_graph.query_database(query)
+            
+            actions_count = len(response.get('results', []))
+            print(f"DEBUG: Found {actions_count} actions")
             
             actions_text = "Active Actions:\n\n"
             
+            if actions_count == 0:
+                actions_text += "No active actions found.\n"
+                return actions_text
+            
             for row in response.get('results', []):
-                actions_text += f"Action {row.get('id')}: {row.get('description')} [State: {row.get('state')}]\n"
+                active_value = row.get('active_value', 'unknown')
+                print(f"DEBUG: Action {row.get('id')} active value: {active_value}")
+                actions_text += f"Action {row.get('id')}: {row.get('description')} [State: {row.get('state')}] [Active: {active_value}]\n"
                 
             return actions_text
-        except:
-            return "Could not retrieve active actions"
+        except Exception as e:
+            print(f"DEBUG: Error in _get_active_actions: {e}")
+            return f"Could not retrieve active actions: {str(e)}"
+            
+    async def _get_recent_episodes(self, limit: int = 3) -> str:
+        """Get recent episodes as formatted string."""
+        try:
+            if not self.runner or not self.runner.knowledge_graph:
+                return ""
+                
+            query = f"""
+                SELECT e.id, p.value as creation_time
+                FROM entities e
+                LEFT JOIN properties p ON e.id = p.entity_id AND p.key = 'creation_time'
+                WHERE e.type = 'Episode'
+                ORDER BY e.id DESC
+                LIMIT {limit}
+            """
+            
+            print("DEBUG: Querying for recent episodes")
+            response = await self.runner.knowledge_graph.query_database(query)
+            
+            episodes_count = len(response.get('results', []))
+            print(f"DEBUG: Found {episodes_count} recent episodes")
+            
+            if episodes_count == 0:
+                return "No recent episodes."
+                
+            episodes_text = f"Recent Episodes (last {limit}):\n\n"
+            
+            for row in response.get('results', []):
+                # For each episode, get its tasks
+                episode_id = row.get('id')
+                creation_time = row.get('creation_time', 'unknown')
+                
+                try:
+                    creation_datetime = datetime.datetime.fromisoformat(creation_time)
+                    formatted_time = creation_datetime.strftime("%Y-%m-%d %H:%M:%S")
+                except:
+                    formatted_time = creation_time
+                
+                # Get a summary of tasks for this episode
+                tasks_query = f"""
+                    SELECT COUNT(*) as task_count
+                    FROM entities t
+                    JOIN relationships r ON t.id = r.target_id
+                    WHERE r.source_id = {episode_id} AND r.type = 'task_of'
+                    AND t.type = 'Task'
+                """
+                
+                tasks_response = await self.runner.knowledge_graph.query_database(tasks_query)
+                task_count = tasks_response['results'][0].get('task_count', 0) if tasks_response.get('results') else 0
+                
+                episodes_text += f"Episode {episode_id}: Created {formatted_time}, {task_count} tasks\n"
+                
+            return episodes_text
+        except Exception as e:
+            print(f"DEBUG: Error in _get_recent_episodes: {e}")
+            return f"Could not retrieve recent episodes: {str(e)}"
     
     async def _get_episode_data(self, episode_id: int) -> Dict[str, Any]:
         """Get reasoning, tasks, and results for an episode."""
@@ -338,7 +509,7 @@ class MementoService:
             
             # Get results
             query = f"""
-                SELECT r.id, r.entity_id as task_id, p.value as content, p2.value as status
+                SELECT r.id, t.id as task_id, p.value as content, p2.value as status
                 FROM entities r
                 JOIN relationships rel ON r.id = rel.target_id
                 JOIN entities t ON t.id = rel.source_id

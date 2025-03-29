@@ -189,6 +189,135 @@ class MementoUI {
     }
     
     /**
+     * Show a confirmation dialog with custom options
+     * @param {string} message - Message to display
+     * @param {Array} options - Array of option objects, each with label and value properties
+     * @returns {Promise} - Resolves to the value of the selected option
+     */
+    showConfirmDialog(message, options) {
+        console.log('Showing confirmation dialog with message:', message);
+        
+        // First, create a unique dialog ID to avoid conflicts
+        const dialogId = 'dialog-' + Date.now();
+        
+        // Remove any existing dialog
+        const existingDialog = document.querySelector('.dialog-overlay');
+        if (existingDialog) {
+            document.body.removeChild(existingDialog);
+        }
+        
+        return new Promise((resolve) => {
+            // Create dialog container with inline styles to ensure visibility
+            const overlay = document.createElement('div');
+            overlay.id = dialogId;
+            overlay.className = 'dialog-overlay';
+            
+            // Force critical styles inline to override any potential CSS issues
+            Object.assign(overlay.style, {
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: '9999', // Very high z-index to ensure it's on top
+                pointerEvents: 'auto'
+            });
+            
+            // Create dialog box
+            const dialog = document.createElement('div');
+            dialog.className = 'dialog-box';
+            
+            // Force critical styles inline
+            Object.assign(dialog.style, {
+                backgroundColor: 'white',
+                padding: '30px',
+                borderRadius: '8px',
+                maxWidth: '500px',
+                width: '90%',
+                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+                position: 'relative',
+                zIndex: '10000' // Even higher than the overlay
+            });
+            
+            // Add message
+            const messageEl = document.createElement('p');
+            messageEl.textContent = message;
+            Object.assign(messageEl.style, {
+                marginBottom: '20px',
+                fontSize: '1.1rem',
+                lineHeight: '1.5',
+                color: '#343a40'
+            });
+            dialog.appendChild(messageEl);
+            
+            // Add buttons
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'dialog-buttons';
+            Object.assign(buttonContainer.style, {
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '15px',
+                marginTop: '25px'
+            });
+            
+            // Add buttons with click handlers
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option.label;
+                button.className = option.primary ? 'primary-button' : 'secondary-button';
+                
+                Object.assign(button.style, {
+                    padding: '10px 20px',
+                    fontSize: '1rem',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    border: 'none',
+                    backgroundColor: option.primary ? '#4a6fa5' : '#6b8cae',
+                    color: 'white',
+                    fontWeight: option.primary ? 'bold' : 'normal'
+                });
+                
+                // Add hover effect
+                button.onmouseover = () => {
+                    button.style.backgroundColor = option.primary ? '#3d5d8a' : '#5a7694';
+                };
+                button.onmouseout = () => {
+                    button.style.backgroundColor = option.primary ? '#4a6fa5' : '#6b8cae';
+                };
+                
+                button.onclick = () => {
+                    console.log('Dialog option selected:', option.value);
+                    if (document.getElementById(dialogId)) {
+                        document.body.removeChild(overlay);
+                    }
+                    resolve(option.value);
+                };
+                
+                buttonContainer.appendChild(button);
+            });
+            
+            // Assemble the dialog
+            dialog.appendChild(buttonContainer);
+            overlay.appendChild(dialog);
+            
+            // Add to document
+            document.body.appendChild(overlay);
+            console.log('Dialog added to DOM with ID:', dialogId);
+            
+            // Set a timeout to check if dialog is still in DOM after a brief delay
+            setTimeout(() => {
+                if (!document.getElementById(dialogId)) {
+                    console.warn('Dialog removed unexpectedly from DOM');
+                }
+            }, 100);
+        });
+    }
+    
+    /**
      * Render the list of NDEx networks
      * @param {Array} networks - List of networks from API
      */

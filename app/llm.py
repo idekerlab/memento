@@ -74,8 +74,8 @@ class LLM:
                         print(f"Skipping tool with unsupported type: {tool}")
                 
                 kwargs["tools"] = anthropic_tools
-                print(f"Original tools: {tools}")
-                print(f"Converted tools for Anthropic: {anthropic_tools}")
+                #print(f"Original tools: {tools}")
+                #print(f"Converted tools for Anthropic: {anthropic_tools}")
             
             # Format tool_choice correctly for Anthropic
             if tool_choice:

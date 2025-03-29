@@ -59,14 +59,36 @@ class MementoAPI {
     }
 
     /**
+     * Check if the knowledge graph has any data
+     * @returns {Promise} - Promise with KG status information
+     */
+    async checkKgStatus() {
+        return this._request('/api/kg/status');
+    }
+    
+    /**
+     * Clear all data from the knowledge graph
+     * @returns {Promise} - Promise with clearing result
+     */
+    async clearKnowledgeGraph() {
+        return this._request('/api/kg/clear', {
+            method: 'POST'
+        });
+    }
+    
+    /**
      * Initialize the system with an empty KG and initial action
      * @param {string} initialActionDesc - Description of the initial action
+     * @param {boolean} clearKg - Whether to clear the KG first (default: true)
      * @returns {Promise} - Promise with initialization result
      */
-    async initializeEmpty(initialActionDesc) {
+    async initializeEmpty(initialActionDesc, clearKg = true) {
         return this._request('/api/init/empty', {
             method: 'POST',
-            body: JSON.stringify({ initial_action_desc: initialActionDesc })
+            body: JSON.stringify({ 
+                initial_action_desc: initialActionDesc,
+                clear_kg: clearKg
+            })
         });
     }
 

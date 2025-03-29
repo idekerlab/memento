@@ -119,9 +119,100 @@ class MementoApp {
      * @param {string} initialAction - Description of the initial action
      */
     async _initializeEmpty(initialAction) {
+        console.log('Initializing empty KG with action:', initialAction);
+        
         try {
+            // First check if the KG has any data
+            const statusCheck = ui.showStatus('Checking knowledge graph status...', 'info', 0);
+            let statusResponse;
+            let hasData = false;
+            let entityCount = 0;
+            let clearKg = true;
+            
+            try {
+                statusResponse = await api.checkKgStatus();
+                console.log('KG Status Check Response:', statusResponse);
+                
+                // Check if we have valid data and entity count
+                if (statusResponse && statusResponse.success) {
+                    hasData = statusResponse.has_data === true;
+                    entityCount = statusResponse.count || 0;
+                    console.log(`KG has data: ${hasData}, Entity count: ${entityCount}`);
+                }
+            } catch (error) {
+                console.error('Error checking KG status:', error);
+                hasData = true;
+                entityCount = "unknown number of";
+            }
+            
+            statusCheck.close();
+            
+            // Set page title to draw attention
+            const originalTitle = document.title;
+            document.title = 'Confirm Knowledge Graph Reset';
+            
+            // Prepare message based on KG status
+            const message = hasData 
+                ? `The knowledge graph contains ${entityCount} entities. Are you sure you want to clear it and start with an empty KG?`
+                : `Are you sure you want to initialize with an empty knowledge graph?`;
+            
+            console.log('Showing confirmation dialog with message:', message);
+            
+            // Use our custom dialog
+            let choice;
+            try {
+                choice = await ui.showConfirmDialog(
+                    message,
+                    [
+                        { label: 'Cancel', value: 'cancel' },
+                        { label: 'Save Snapshot & Clear', value: 'snapshot' },
+                        { label: 'Clear without Snapshot', value: 'clear', primary: true }
+                    ]
+                );
+                console.log('Dialog choice:', choice);
+            } catch (dialogError) {
+                console.error('Error showing custom dialog:', dialogError);
+                // Fallback to standard confirm dialog
+                const confirmResult = window.confirm(message + "\n\nClick OK to proceed, Cancel to abort");
+                choice = confirmResult ? 'clear' : 'cancel';
+                console.log('Fallback confirm result:', choice);
+            }
+            
+            // Restore original title
+            document.title = originalTitle;
+            
+            // Process user's choice
+            if (choice === 'cancel') {
+                console.log('User canceled initialization');
+                return;
+            }
+            
+            if (choice === 'snapshot') {
+                // Save snapshot first
+                console.log('Saving snapshot before clearing');
+                const snapshotMsg = ui.showStatus('Saving snapshot before clearing...', 'info', 0);
+                
+                try {
+                    const snapshotResponse = await api.saveSnapshot();
+                    snapshotMsg.close();
+                    
+                    if (!snapshotResponse.success) {
+                        ui.showStatus('Failed to save snapshot: ' + snapshotResponse.error, 'error');
+                        return;
+                    }
+                    
+                    ui.showStatus(`Snapshot saved as: ${snapshotResponse.snapshot.name}`, 'success', 3000);
+                } catch (snapshotError) {
+                    snapshotMsg.close();
+                    ui.showStatus('Error saving snapshot: ' + snapshotError.message, 'error');
+                    return;
+                }
+            }
+            
+            // Now initialize empty KG
+            console.log('Proceeding with initialization, clearKg =', clearKg);
             const statusMessage = ui.showStatus('Initializing with empty KG...', 'info', 0);
-            const response = await api.initializeEmpty(initialAction);
+            const response = await api.initializeEmpty(initialAction, clearKg);
             statusMessage.close();
             
             if (response.success) {
@@ -137,6 +228,7 @@ class MementoApp {
                 ui.showStatus('Failed to initialize with empty KG: ' + response.error, 'error');
             }
         } catch (error) {
+            console.error('Error in _initializeEmpty:', error);
             ui.showStatus('Error initializing with empty KG: ' + error.message, 'error');
         }
     }

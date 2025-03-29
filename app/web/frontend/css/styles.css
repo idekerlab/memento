@@ -383,6 +383,54 @@ button:disabled {
     text-align: center;
 }
 
+/* Dialog Overlay */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Higher than status overlay */
+}
+
+.dialog-box {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-box p {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+    line-height: 1.5;
+}
+
+.dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.dialog-buttons button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.dialog-buttons button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
 /* Responsive Design */
 @media (max-width: 992px) {
     .main-content {

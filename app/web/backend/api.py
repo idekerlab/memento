@@ -39,6 +39,7 @@ class InitFromNDExRequest(BaseModel):
 
 class InitEmptyRequest(BaseModel):
     initial_action_desc: str
+    clear_kg: bool = True
 
 
 @app.get("/api/status")
@@ -58,10 +59,26 @@ async def initialize_from_ndex(request: InitFromNDExRequest):
         raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
     return result
 
+@app.get("/api/kg/status")
+async def check_kg_status():
+    """Check if the knowledge graph has any data."""
+    result = await memento_service.check_kg_has_data()
+    if not result.get("success", False):
+        raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+    return result
+
+@app.post("/api/kg/clear")
+async def clear_knowledge_graph():
+    """Clear all data from the knowledge graph."""
+    result = await memento_service.clear_knowledge_graph()
+    if not result.get("success", False):
+        raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+    return result
+
 @app.post("/api/init/empty")
 async def initialize_empty(request: InitEmptyRequest):
     """Initialize the system with an empty KG and initial action."""
-    result = await memento_service.initialize_empty(request.initial_action_desc)
+    result = await memento_service.initialize_empty(request.initial_action_desc, request.clear_kg)
     if not result.get("success", False):
         raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
     return result

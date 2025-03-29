@@ -111,7 +111,8 @@ class QueryManager:
                 FROM entities a
                 JOIN properties p ON a.id = p.entity_id
                 WHERE a.type = 'Action'
-                AND p.key = 'active' AND p.value = 'TRUE'
+                AND p.key = 'active' 
+                AND (p.value = 'TRUE' OR p.value = 'True' OR p.value = 'true')
             )
             SELECT 
                 a.id, 
@@ -123,6 +124,7 @@ class QueryManager:
             LEFT JOIN properties p ON a.id = p.entity_id
             LEFT JOIN relationships rd ON a.id = rd.source_id AND rd.type = 'depends_on'
         """
+        print(f"DEBUG: Querying for active actions with case-insensitive matching")
         response = await self.kg.query_database(query)
         
         actions = {}
@@ -156,6 +158,14 @@ class QueryManager:
             recent_episodes = await self._get_recent_episodes()
             active_actions = await self._get_active_actions()
             
+            # Debug output for active actions
+            print(f"DEBUG: Found {len(active_actions)} active actions for prompt")
+            for action in active_actions:
+                print(f"DEBUG: Active action in prompt - ID: {action['id']}, Name: {action['name']}")
+                if 'properties' in action:
+                    for key, value in action['properties'].items():
+                        print(f"DEBUG:   - Property '{key}': {value}")
+            
             # Get and format query validation errors if we have a current episode
             if self.current_episode_id:
                 prev_results = await self._get_recent_task_results(self.current_episode_id)
@@ -168,8 +178,24 @@ class QueryManager:
             # Add recent episodes and active actions context
             instructions += "\n\nRECENT EPISODES:\n\n"
             instructions += json.dumps(recent_episodes)
-            instructions += "\n\nACTIVE ACTIONS:\n\n"
-            instructions += json.dumps(active_actions)
+            
+            # Add a more prominent section for active actions with emphasis
+            if active_actions:
+                instructions += "\n\nACTIVE ACTIONS (IMPORTANT - THESE NEED YOUR ATTENTION):\n\n"
+                # Make active actions more prominent in the prompt
+                actionSummary = "There are " + str(len(active_actions)) + " active actions that need your attention:\n\n"
+                for action in active_actions:
+                    actionSummary += f"- Action ID {action['id']}: {action['name']}\n"
+                    if 'properties' in action and 'description' in action['properties']:
+                        actionSummary += f"  Description: {action['properties']['description']}\n"
+                    if 'properties' in action and 'state' in action['properties']:
+                        actionSummary += f"  State: {action['properties']['state']}\n"
+                
+                instructions += actionSummary + "\n"
+                # Also include the full JSON for completeness
+                instructions += json.dumps(active_actions, indent=2)
+            else:
+                instructions += "\n\nACTIVE ACTIONS: None found\n\n"
 
             return instructions
 

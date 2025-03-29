@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dialog Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            padding: 20px;
+            text-align: center;
+        }
+        .test-button {
+            background-color: #4a6fa5;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Dialog Component</h1>
+    <p>Click the button below to test the confirmation dialog</p>
+    
+    <button id="test-dialog" class="test-button">Show Test Dialog</button>
+    
+    <div id="result" style="margin-top: 20px; font-weight: bold;"></div>
+
+    <!-- Status Messages Overlay (needed for UI component) -->
+    <div id="status-overlay" class="hidden">
+        <div id="status-message" class="status-message"></div>
+    </div>
+    
+    <script src="js/ui.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the UI components
+            ui.init();
+            
+            // Setup test button
+            document.getElementById('test-dialog').addEventListener('click', async function() {
+                console.log('Testing dialog...');
+                
+                try {
+                    const result = await ui.showConfirmDialog(
+                        'This is a test dialog. The knowledge graph contains 5 entities. Are you sure you want to clear it?',
+                        [
+                            { label: 'Cancel', value: 'cancel' },
+                            { label: 'Save Snapshot & Clear', value: 'snapshot' },
+                            { label: 'Clear without Snapshot', value: 'clear', primary: true }
+                        ]
+                    );
+                    
+                    console.log('Dialog result:', result);
+                    document.getElementById('result').textContent = 'Dialog result: ' + result;
+                } catch (error) {
+                    console.error('Error testing dialog:', error);
+                    document.getElementById('result').textContent = 'Error: ' + error.message;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
