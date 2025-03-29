@@ -66,6 +66,11 @@ class MementoApp {
         document.addEventListener('save-snapshot', async () => {
             await this._saveSnapshot();
         });
+        
+        // Mode switching event
+        document.addEventListener('change-kg', async () => {
+            await this._changeKnowledgeGraph();
+        });
     }
     
     /**
@@ -359,6 +364,59 @@ class MementoApp {
             }
         } catch (error) {
             ui.showStatus('Error saving snapshot: ' + error.message, 'error');
+        }
+    }
+    
+    /**
+     * Change knowledge graph - switch from operation view to initialization view
+     */
+    async _changeKnowledgeGraph() {
+        try {
+            // Ask for confirmation before switching
+            const choice = await ui.showConfirmDialog(
+                'Would you like to change the knowledge graph? Any unsaved work in the current session may be lost.',
+                [
+                    { label: 'Cancel', value: 'cancel' },
+                    { label: 'Save Snapshot First', value: 'snapshot' },
+                    { label: 'Switch Without Saving', value: 'switch', primary: true }
+                ]
+            );
+            
+            if (choice === 'cancel') {
+                return;
+            }
+            
+            if (choice === 'snapshot') {
+                // Save snapshot first
+                const snapshotMsg = ui.showStatus('Saving snapshot before switching...', 'info', 0);
+                try {
+                    const snapshotResponse = await api.saveSnapshot();
+                    snapshotMsg.close();
+                    
+                    if (!snapshotResponse.success) {
+                        ui.showStatus('Failed to save snapshot: ' + snapshotResponse.error, 'error');
+                        return;
+                    }
+                    
+                    ui.showStatus(`Snapshot saved as: ${snapshotResponse.snapshot.name}`, 'success', 3000);
+                } catch (snapshotError) {
+                    snapshotMsg.close();
+                    ui.showStatus('Error saving snapshot: ' + snapshotError.message, 'error');
+                    return;
+                }
+            }
+            
+            // Switch to initialization view
+            ui.switchView('init');
+            
+            // Reload networks
+            await this._loadNetworks();
+            
+            // Update UI state
+            this.currentStage = 'initial';
+            
+        } catch (error) {
+            ui.showStatus('Error changing knowledge graph: ' + error.message, 'error');
         }
     }
 }

@@ -118,6 +118,7 @@ class MementoUI {
         const runPromptBtn = document.getElementById('run-prompt-btn');
         const executeTasksBtn = document.getElementById('execute-tasks-btn');
         const snapshotBtn = document.getElementById('snapshot-btn');
+        const changeKgBtn = document.getElementById('change-kg-btn');
         
         if (nextEpisodeBtn) {
             nextEpisodeBtn.addEventListener('click', () => {
@@ -140,6 +141,12 @@ class MementoUI {
         if (snapshotBtn) {
             snapshotBtn.addEventListener('click', () => {
                 document.dispatchEvent(new CustomEvent('save-snapshot'));
+            });
+        }
+        
+        if (changeKgBtn) {
+            changeKgBtn.addEventListener('click', () => {
+                document.dispatchEvent(new CustomEvent('change-kg'));
             });
         }
     }
