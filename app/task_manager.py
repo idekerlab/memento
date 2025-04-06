@@ -128,7 +128,9 @@ class TaskManager:
         task_type = task['type']
         
         if task_type == 'create_entity':
-            return await self.kg.add_entity(task['type'], name=task.get('name'), properties=task['properties'])
+            entity = await self.kg.add_entity(task['type'], name=task.get('name'), properties=task['properties'])
+            # Return only the ID instead of the full entity object
+            return entity['id']
             
         elif task_type == 'update_entity':
             return await self.kg.update_properties(
@@ -200,8 +202,8 @@ class TaskManager:
                         # Clean up the partially created action and its relationships
                         await self.kg.delete_entity(action['id'])
                         raise Exception(f"Failed to create dependency relationship: {str(e)}")
-                                            
-                return action
+                # Return only the ID instead of the full action object                                     
+                return action['id']
                 
             except Exception as e:
                 # Clean up any partial state if action was created
@@ -265,41 +267,54 @@ class TaskManager:
         return True
 
     async def _validate_query(self, query: str) -> tuple[bool, Optional[str]]:
-        """Validate a query using LLM reflection"""
+        """Validate a query using LLM reflection to check both schema compliance and read-only nature"""
         
-        # Get current schema documentation
-        schema = await self.schema_manager.get_schema_documentation()
+        # First check if the query is read-only (SELECT only)
+        query_upper = query.strip().upper()
+        
+        # Check for data modification commands
+        if any(cmd in query_upper for cmd in ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE']):
+            return False, "Query validation failed: Only READ-ONLY (SELECT) queries are allowed"
+        
+        # If the query doesn't start with SELECT, it's likely not read-only
+        if not query_upper.startswith('SELECT'):
+            return False, "Query validation failed: Queries must start with SELECT"
+        
+        # Get current database schema documentation
+        database_schema = await self.schema_manager.get_schema_documentation()
 
         response_schema = {
-                            "name": "specify_episode_tasks",
-                            "description": "Specify the reasoning and task sequence for this Episode of the Memento agent",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "valid": {
-                                        "type": "boolean",
-                                        "description": "boolean indicating if query is valid."
-                                                },
-                                    "error": {
-                                        "type": "str",
-                                        "description": "if not valid, description of the problem, otherwise null"
-                                    },
-                                    "vocabulary_issues": {
-                                        "type": "str",
-
-                                    }
-
-
-                                }
-                            }
+            "name": "validate_database_query",
+            "description": "Validate a database query against the schema",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "valid": {
+                        "type": "boolean",
+                        "description": "Boolean indicating if query is valid"
+                    },
+                    "error": {
+                        "type": "string",
+                        "description": "If not valid, description of the problem, otherwise null"
+                    },
+                    "vocabulary_issues": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of any undefined or misused terms"
+                    }
+                },
+                "required": ["valid", "error"]
+            }
         }
         
         validation_prompt = f"""
     You are a query validator for a knowledge graph database with the following schema:
-    {json.dumps(schema, indent=2)}
+    {json.dumps(database_schema, indent=2)}
 
     Please validate this SQL query:
     {query}
+
+    This query MUST be read-only (SELECT only) and comply with the database schema.
 
     Respond with ONLY a JSON object containing:
     - valid: boolean indicating if query is valid
@@ -315,12 +330,12 @@ class TaskManager:
         try:
             tools = [{
                 "type": "function",
-                "function": schema
+                "function": response_schema
             }]
 
             tool_choice = {
                 "type": "function", 
-                "function": {"name": "specify_episode_tasks"}
+                "function": {"name": "validate_database_query"}
             }
         
             response = await self.sql_validation_llm.query_and_parse_json(

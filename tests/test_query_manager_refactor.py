@@ -13,17 +13,17 @@ class TestQueryManagerRefactor(unittest.TestCase):
     def test_file_loading(self):
         """Test that the query manager can load files correctly"""
         # Check that the files exist - update paths to point to app directory
-        schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'schema.json')
+        task_schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'task_schema.json')
         primary_instructions_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app', 'primary_instructions.txt')
         
-        self.assertTrue(os.path.exists(schema_path), f"Schema file not found at {schema_path}")
+        self.assertTrue(os.path.exists(task_schema_path), f"Task schema file not found at {task_schema_path}")
         self.assertTrue(os.path.exists(primary_instructions_path), f"Primary instructions file not found at {primary_instructions_path}")
         
-        # Verify schema is valid JSON
-        with open(schema_path, 'r') as f:
-            schema = json.load(f)
-            self.assertIsInstance(schema, dict)
-            self.assertEqual(schema['name'], 'specify_episode_tasks')
+        # Verify task schema is valid JSON
+        with open(task_schema_path, 'r') as f:
+            task_schema = json.load(f)
+            self.assertIsInstance(task_schema, dict)
+            self.assertEqual(task_schema['name'], 'specify_episode_tasks')
         
         # Verify primary instructions is readable text
         with open(primary_instructions_path, 'r') as f:

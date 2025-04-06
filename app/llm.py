@@ -1,4 +1,5 @@
 import anthropic
+import google.generativeai as genai
 from app.config import load_api_key
 import json
 import re
@@ -24,15 +25,98 @@ class LLM:
         self.temperature = float(self.temperature)
         self.seed = int(self.seed)
 
-        # For now just handle Anthropic since that's what we're testing
         if self.type == 'Anthropic':
             try:
                 return self.query_anthropic(context, prompt, tools=tools, tool_choice=tool_choice)  # Don't await here
             except Exception as e:
                 raise Exception(f"Query failed: {str(e)}")
+        elif self.type == 'Google':
+            try:
+                return self.query_gemini(context, prompt, tools=tools, tool_choice=tool_choice)
+            except Exception as e:
+                raise Exception(f"Query failed: {str(e)}")
         else:
             raise ValueError(f"Unsupported llm type: {self.type}")
 
+    def query_gemini(self, context, prompt, tools=None, tool_choice=None):
+        """Synchronous wrapper around Google Gemini API call"""
+        key = load_api_key("GOOGLEAI_KEY")
+        if not key:
+            raise EnvironmentError("GOOGLEAI_KEY environment variable not set.")
+            
+        # Configure Gemini
+        genai.configure(api_key=key)
+        
+        # Initialize model
+        model = genai.GenerativeModel(self.model_name)
+        
+        try:
+            # Combine context and prompt
+            combined_text = f"{context}\n\n{prompt}"
+            
+            generation_config = {
+                "temperature": self.temperature,
+                "max_output_tokens": self.max_tokens,
+            }
+            
+            # Handle tools if they're provided
+            if tools:
+                # Convert OpenAI/Anthropic style tools to Gemini format
+                gemini_tools = self._convert_tools_to_gemini_format(tools)
+                
+                # Call Gemini with tools
+                response = model.generate_content(
+                    combined_text,
+                    generation_config=generation_config,
+                    tools=gemini_tools
+                )
+            else:
+                # Regular call without tools
+                response = model.generate_content(
+                    combined_text,
+                    generation_config=generation_config
+                )
+            
+            # Debug info
+            print(f"=== GEMINI API CALL DEBUG ===")
+            print(f"Model: {self.model_name}")
+            print(f"Max tokens: {self.max_tokens}")
+            print(f"Temperature: {self.temperature}")
+            print(f"Message content length: {len(combined_text)}")
+            print(f"================================")
+            
+            return response
+                
+        except Exception as e:
+            error_detail = str(e)
+            print(f"Gemini API call failed with error: {error_detail}")
+            raise Exception(f"Gemini API call failed: {error_detail}")
+    
+    def _convert_tools_to_gemini_format(self, tools):
+        """Convert OpenAI/Anthropic style tools to Gemini format"""
+        gemini_tools = []
+        
+        for tool in tools:
+            if isinstance(tool, dict) and "type" in tool and tool["type"] == "function":
+                if "function" in tool:
+                    function_data = tool["function"]
+                    
+                    # Create Gemini tool format
+                    gemini_tool = {
+                        "function_declarations": [{
+                            "name": function_data.get("name", ""),
+                            "description": function_data.get("description", ""),
+                            "parameters": function_data.get("parameters", {})
+                        }]
+                    }
+                    gemini_tools.append(gemini_tool)
+                else:
+                    print(f"Skipping tool due to missing 'function' field: {tool}")
+            else:
+                print(f"Skipping tool with unsupported type: {tool}")
+                
+        return gemini_tools
+    
     def query_anthropic(self, context, prompt, tools=None, tool_choice=None):
         """Synchronous wrapper around Anthropic API call"""
         key = load_api_key("ANTHROPIC_API_KEY")
@@ -149,58 +233,89 @@ class LLM:
             # Make the API call
             response = await self.query(context, prompt, tools, tool_choice)
             
-            # Check if this is a tool use response by examining response structure
+            # Check for tool use and extract text based on the LLM provider
             has_tool_use = False
+            response_text = None
             
-            # Print response structure to debug
-            if hasattr(response, 'content') and len(response.content) > 0:
-                content_type = type(response.content[0]).__name__
-                print(f"Response content[0] type: {content_type}")
-                
-                # Detect ToolUseBlock directly
-                if content_type == 'ToolUseBlock':
-                    has_tool_use = True
-                    # Extract tool name and input
-                    tool_name = response.content[0].name
-                    tool_input = response.content[0].input
-                    print(f"Received tool use response from {tool_name}")
-                    print(f"Tool input: {tool_input}")
-                    return tool_input, f"Tool response from {tool_name}"
-                
-                # Try to access tool_use attribute if available
-                elif hasattr(response.content[0], 'tool_use') and response.content[0].tool_use:
-                    tool_use = response.content[0].tool_use
-                    has_tool_use = True
-                    print(f"Received tool use response from {tool_use.name} with input: {tool_use.input}")
-                    return tool_use.input, "Tool response (no JSON parsing needed)"
-            
-            # If there's no tool use, try to extract text content
-            if not has_tool_use:
-                # For TextBlock type content
-                if hasattr(response, 'content') and hasattr(response.content[0], 'text'):
-                    response_text = response.content[0].text
-                    if not response_text:
-                        raise ValueError("No text content found in response")
-                
-                # For direct content (less likely but possible)
-                elif hasattr(response, 'text'):
-                    response_text = response.text
-                
-                # If we can't find text, dump the entire response structure for debugging
-                else:
-                    print(f"Response content type: {type(response.content[0]).__name__}")
-                    print(f"Available attributes: {dir(response.content[0])}")
-                    raise ValueError("Could not find text content in response - unsupported response format")
-                
-                # Print a preview of the response
-                print(f"Response text preview (first 200 chars): {response_text[:200]}...")
-                
-                # First attempt to parse as-is
-                try:
-                    parsed_json = json.loads(response_text)
-                    return parsed_json, None  # No repair needed
+            # Handle Anthropic responses
+            if self.type == 'Anthropic':
+                # Print response structure to debug
+                if hasattr(response, 'content') and len(response.content) > 0:
+                    content_type = type(response.content[0]).__name__
+                    print(f"Response content[0] type: {content_type}")
                     
-                except json.JSONDecodeError as e:
+                    # Detect ToolUseBlock directly
+                    if content_type == 'ToolUseBlock':
+                        has_tool_use = True
+                        # Extract tool name and input
+                        tool_name = response.content[0].name
+                        tool_input = response.content[0].input
+                        print(f"Received tool use response from {tool_name}")
+                        print(f"Tool input: {tool_input}")
+                        return tool_input, f"Tool response from {tool_name}"
+                    
+                    # Try to access tool_use attribute if available
+                    elif hasattr(response.content[0], 'tool_use') and response.content[0].tool_use:
+                        tool_use = response.content[0].tool_use
+                        has_tool_use = True
+                        print(f"Received tool use response from {tool_use.name} with input: {tool_use.input}")
+                        return tool_use.input, "Tool response (no JSON parsing needed)"
+                
+                # If there's no tool use, extract text content
+                if not has_tool_use:
+                    # For TextBlock type content
+                    if hasattr(response, 'content') and hasattr(response.content[0], 'text'):
+                        response_text = response.content[0].text
+                    # For direct content
+                    elif hasattr(response, 'text'):
+                        response_text = response.text
+            
+            # Handle Google Gemini responses
+            elif self.type == 'Google':
+                print(f"Processing Gemini response, type: {type(response).__name__}")
+                
+                # Check for function calling response
+                if hasattr(response, 'candidates') and len(response.candidates) > 0:
+                    candidate = response.candidates[0]
+                    
+                    # Check for function calls in the candidate
+                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        for part in candidate.content.parts:
+                            # Check for function call
+                            if hasattr(part, 'function_call'):
+                                has_tool_use = True
+                                tool_name = part.function_call.name
+                                tool_args = part.function_call.args
+                                print(f"Received Gemini tool use response from {tool_name}")
+                                print(f"Tool args: {tool_args}")
+                                return tool_args, f"Tool response from {tool_name}"
+                    
+                    # Extract text if no tool use found
+                    if not has_tool_use and hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text'):
+                                response_text = part.text
+                                break
+                
+                # Try direct text attribute as fallback
+                if not response_text and hasattr(response, 'text'):
+                    response_text = response.text
+            
+            # If we couldn't extract text from any known format, dump response structure for debugging
+            if not response_text:
+                print(f"Response type: {type(response).__name__}")
+                print(f"Available attributes: {dir(response)}")
+                raise ValueError("Could not find text content in response - unsupported response format")
+            
+            # Print a preview of the response
+            print(f"Response text preview (first 200 chars): {response_text[:200]}...")
+            
+            # First attempt to parse as-is
+            try:
+                parsed_json = json.loads(response_text)
+                return parsed_json, None  # No repair needed
+                
+            except json.JSONDecodeError as e:
                     print(f"JSON parse error: {str(e)} at position {e.pos}")
                     print(f"Context: '{response_text[max(0, e.pos-20):min(len(response_text), e.pos+20)]}'")
                     

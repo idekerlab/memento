@@ -332,13 +332,13 @@ class MementoService:
             except Exception as file_err:
                 print(f"DEBUG: Error loading primary instructions: {file_err}")
             
-            # Load schema
-            schema = ""
+            # Load task schema
+            task_schema = ""
             try:
-                with open("app/schema.json", "r") as f:
-                    schema = f.read()
+                with open("app/task_schema.json", "r") as f:
+                    task_schema = f.read()
             except Exception as schema_err:
-                print(f"DEBUG: Error loading schema: {schema_err}")
+                print(f"DEBUG: Error loading task schema: {schema_err}")
             
             # Get active actions
             active_actions = await self._get_active_actions()
@@ -349,7 +349,7 @@ class MementoService:
                 
             sections = {
                 "primary_instructions": primary_instructions,
-                "schema": schema,
+                "task_schema": task_schema,
                 "active_actions": active_actions,
                 "recent_episodes": recent_episodes,
                 "errors": ""
@@ -365,7 +365,7 @@ class MementoService:
             print(f"DEBUG: Error in _get_prompt_sections: {e}")
             return {
                 "primary_instructions": "",
-                "schema": "",
+                "task_schema": "",
                 "active_actions": "",
                 "recent_episodes": "",
                 "errors": str(e)

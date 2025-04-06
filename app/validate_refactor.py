@@ -2,22 +2,22 @@ import os
 import json
 
 # Check both files exist
-schema_path = os.path.join(os.path.dirname(__file__), 'schema.json')
+task_schema_path = os.path.join(os.path.dirname(__file__), 'task_schema.json')
 primary_instructions_path = os.path.join(os.path.dirname(__file__), 'primary_instructions.txt')
 
-print(f"Schema file exists: {os.path.exists(schema_path)}")
+print(f"Task schema file exists: {os.path.exists(task_schema_path)}")
 print(f"Primary instructions file exists: {os.path.exists(primary_instructions_path)}")
 
-# Validate schema is valid JSON
+# Validate task schema is valid JSON
 try:
-    with open(schema_path, 'r') as f:
-        schema = json.load(f)
-    print(f"Schema is valid JSON: True")
-    print(f"Schema name: {schema['name']}")
+    with open(task_schema_path, 'r') as f:
+        task_schema = json.load(f)
+    print(f"Task schema is valid JSON: True")
+    print(f"Task schema name: {task_schema['name']}")
 except json.JSONDecodeError as e:
-    print(f"Schema is valid JSON: False - {str(e)}")
+    print(f"Task schema is valid JSON: False - {str(e)}")
 except Exception as e:
-    print(f"Error loading schema: {str(e)}")
+    print(f"Error loading task schema: {str(e)}")
 
 # Validate primary instructions is readable text
 try:
@@ -44,7 +44,7 @@ try:
     qm = QueryManager(MockKG(), 'test_agent')
     print("Successfully created QueryManager instance")
     print(f"Primary instructions length: {len(qm.primary_instructions)}")
-    print(f"Schema loaded: {qm.episode_tool_schema['name']}")
+    print(f"Task schema loaded: {qm.episode_tool_schema['name']}")
     
 except Exception as e:
     print(f"Error creating QueryManager instance: {str(e)}")

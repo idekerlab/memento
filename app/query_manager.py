@@ -18,9 +18,9 @@ class QueryManager:
         with open(primary_instructions_path, 'r') as f:
             self.primary_instructions = f.read()
         
-        # Load the schema from file
-        schema_path = os.path.join(os.path.dirname(__file__), 'schema.json')
-        with open(schema_path, 'r') as f:
+        # Load the task schema from file
+        task_schema_path = os.path.join(os.path.dirname(__file__), 'task_schema.json')
+        with open(task_schema_path, 'r') as f:
             self.episode_tool_schema = json.load(f)
         
         self.prompt = {

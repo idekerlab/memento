@@ -101,23 +101,46 @@ You must output your response using the specify_episode_tasks tool. Your respons
   - Any uncertainties or assumptions
 
 - tasks: An array of tasks to be executed in sequence. Each task must specify:
-  - type: The type of task (currently supporting only "create_action" and "query_database")
-  - requires: Array of previous task IDs this task depends on
+  - type: The type of task (see available task types below)
+  - output_var: Variable name to store this task's result for reference by later tasks
+  - requires: Array of output_var names from previous tasks this task depends on
   - Other parameters specific to the task type
 
-For create_action tasks:
-  - name: Concise action name
-  - description: Detailed description
-  - completion_criteria: Clear criteria for completion
-  - active: "TRUE" or "FALSE"
-  - state: Must be "unsatisfied" for new actions
-  - depends_on: Array of Action IDs this depends on (optional)
+The following task types are available:
 
-For query_database tasks:
-  - sql: SELECT query (read-only)
-  - description: Purpose of the query
+1. create_action: Create a new Action entity in the knowledge graph
+   - name: Concise action name
+   - description: Detailed description
+   - completion_criteria: Clear criteria for completion
+   - active: "TRUE" or "FALSE"
+   - state: Must be "unsatisfied" for new actions
+   - depends_on_action_var_names: Array of output_var names for Actions (optional)
+   - depends_on_action_ids: Array of existing Action IDs this depends on (optional)
+
+2. create_entity: Create a new entity of any type in the knowledge graph
+   - entity_type: Type of entity to create
+   - name: Name for the entity
+   - properties: Object containing key-value properties for the entity
+
+3. update_entity: Update an existing entity's properties
+   - entity_id: ID of the entity to update
+   - properties: Object containing key-value properties to update
+
+4. add_relationship: Create a relationship between two entities
+   - source_id: ID of the source entity
+   - target_id: ID of the target entity
+   - type: Type of relationship to create
+   - properties: Object containing optional properties for the relationship (optional)
+
+5. query_database: Execute a read-only SQL query against the knowledge graph
+   - sql: SELECT query (must be read-only)
+   - description: Purpose of the query
+
+6. query_llm_using_template: Query an LLM using a template entity
+   - template_id: ID of the template entity to use
+   - arguments: Object containing arguments to substitute into the template
 
 Tasks will be executed in order. Results from each task are available to subsequent tasks
-if they specify the task ID in their "requires" array. Tasks that depend on failed tasks
+if they specify the task's output_var name in their "requires" array. Tasks that depend on failed tasks
 will be skipped.
 </output_instructions>
