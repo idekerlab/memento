@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import mesop as me
 import time
-from memento.llm import LLM
+from app.llm import LLM
 
 llm = LLM(type="Groq", model_name="llama3-70b-8192", max_tokens=300, seed=42, temperature=0.5) 
 

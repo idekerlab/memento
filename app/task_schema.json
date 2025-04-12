@@ -1,0 +1,240 @@
+{
+    "name": "specify_episode_tasks",
+    "description": "Specify the reasoning and task sequence for this Episode of the Memento agent",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "reasoning": {
+                "type": "string",
+                "description": "Step-by-step thought process using concise, causal language. Formatted in markdown. Explain task choices and dependencies."
+            },
+            "tasks": {
+                "type": "array",
+                "items": {
+                    "oneOf": [{
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "create_action"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Concise, descriptive name for the Action"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Detailed description of what this Action accomplishes"
+                            },
+                            "completion_criteria": {
+                                "type": "string",
+                                "description": "Specific, measurable criteria that indicate when this Action is complete"
+                            },
+                            "active": {
+                                "type": "string", 
+                                "enum": ["TRUE", "FALSE"],
+                                "description": "Whether this Action is actively being worked on (TRUE) or deferred (FALSE)"
+                            },
+                            "state": {
+                                "type": "string",
+                                "enum": ["unsatisfied", "in-progress", "satisfied", "abandoned"],
+                                "description": "Current state of the Action in the workflow"
+                            },
+                            "depends_on_action_var_names": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables for Actions from previous Tasks that this Action depends on"
+                            },
+                            "depends_on_action_ids": {
+                                "type": "array",
+                                "items": {"type": "integer"},
+                                "description": "IDs of Actions existing prior to this episode that this Action depends on"
+                            }                            
+                        },
+                        "required": ["type", "output_var", "requires", "name", "description", "completion_criteria", "active", "state"],
+                        "output_schema": {
+                            "type": "integer",
+                            "description": "ID of the created action entity"
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "create_entity"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
+                            },
+                            "entity_type": {
+                                "type": "string",
+                                "description": "Type of entity to create (e.g., 'Document', 'Template', etc.)"
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "Name for the entity"
+                            },
+                            "properties": {
+                                "type": "object",
+                                "description": "Key-value properties to add to the entity (must match allowed properties for the entity type)"
+                            }
+                        },
+                        "required": ["type", "output_var", "requires", "entity_type", "name"],
+                        "output_schema": {
+                            "type": "integer",
+                            "description": "ID of the created entity"
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "update_entity"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
+                            },
+                            "entity_id": {
+                                "type": "integer",
+                                "description": "ID of the entity to update"
+                            },
+                            "properties": {
+                                "type": "object",
+                                "description": "Key-value properties to update or add to the entity"
+                            }
+                        },
+                        "required": ["type", "output_var", "requires", "entity_id", "properties"],
+                        "output_schema": {
+                            "type": "object",
+                            "description": "Result of the update operation containing the updated entity information"
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "query_database"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
+                            },
+                            "sql": {
+                                "type": "string",
+                                "description": "SQL query to execute (READ-ONLY, must not modify the database)"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Purpose of this query"
+                            }
+                        },
+                        "required": ["type", "output_var", "requires", "sql", "description"],
+                        "output_schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {"type": "boolean", "description": "Whether the query executed successfully"},
+                                "results": {
+                                    "type": "array",
+                                    "items": {"type": "object"},
+                                    "description": "Array of query result records"
+                                }
+                            },
+                            "description": "Results of the database query"
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "add_relationship"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
+                            },
+                            "source_id": {
+                                "type": "integer",
+                                "description": "ID of the source entity for the relationship"
+                            },
+                            "target_id": {
+                                "type": "integer",
+                                "description": "ID of the target entity for the relationship"
+                            },
+                            "relationship_type": {
+                                "type": "string",
+                                "description": "Type of relationship to create (e.g., 'depends_on', 'task_of', etc.)"
+                            },
+                            "properties": {
+                                "type": "object",
+                                "description": "Optional properties to add to the relationship"
+                            }
+                        },
+                        "required": ["type", "output_var", "requires", "source_id", "target_id", "relationship_type"],
+                        "output_schema": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "integer", "description": "ID of created relationship"},
+                                "source_id": {"type": "integer", "description": "Source entity ID"},
+                                "target_id": {"type": "integer", "description": "Target entity ID"},
+                                "type": {"type": "string", "description": "Relationship type"}
+                            },
+                            "description": "Details of the created relationship"
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {"const": "query_llm_using_template"},
+                            "output_var": {
+                                "type": "string",
+                                "description": "Variable name to assign to this Task's output for reference by later Tasks"
+                            },
+                            "requires": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Names of output variables from previous tasks that this Task depends on"
+                            },
+                            "template_id": {
+                                "type": "integer",
+                                "description": "ID of the template entity to use for prompting"
+                            },
+                            "arguments": {
+                                "type": "object",
+                                "description": "Key-value arguments to substitute into the template"
+                            }
+                        },
+                        "required": ["type", "output_var", "requires", "template_id", "arguments"],
+                        "output_schema": {
+                            "type": "object",
+                            "properties": {
+                                "content": {"type": "string", "description": "LLM response content"}
+                            },
+                            "description": "Response from the LLM using the specified template"
+                        }
+                    }]
+                }
+            }
+        },
+        "required": ["reasoning", "tasks"]
+    }
+}

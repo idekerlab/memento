@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memento Web Interface</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Initialization View -->
+    <div id="init-view" class="view">
+        <div class="container">
+            <h1>Memento Web Interface</h1>
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button id="select-kg-tab-btn" class="tab-button active">Select Knowledge Graph</button>
+                    <button id="empty-kg-tab-btn" class="tab-button">Start with Empty KG</button>
+                </div>
+                
+                <div id="select-kg-tab" class="tab-content active">
+                    <div class="search-container">
+                        <input type="text" id="network-search" placeholder="Search networks...">
+                    </div>
+                    <div class="networks-container">
+                        <div id="networks-list" class="networks-list">
+                            <div class="loading">Loading networks from NDEx...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="empty-kg-tab" class="tab-content">
+                    <div class="form-group">
+                        <label for="initial-action">Initial Action Description:</label>
+                        <textarea id="initial-action" rows="5" placeholder="Describe the initial action/goal for the agent..."></textarea>
+                    </div>
+                    <button id="create-empty-kg-btn" class="primary-button">Initialize Empty KG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Operation View -->
+    <div id="operation-view" class="view hidden">
+        <div class="header">
+            <div class="episode-info">
+                <div id="episode-id">Episode: none</div>
+                <div id="agent-id">Agent: unknown</div>
+            </div>
+            <div class="controls">
+                <button id="change-kg-btn" class="secondary-button">Change Knowledge Graph</button>
+                <button id="snapshot-btn" class="secondary-button" disabled>Save Snapshot</button>
+            </div>
+        </div>
+        
+        <div class="workflow-controls">
+            <button id="next-episode-btn" class="workflow-button">Next Episode</button>
+            <div class="arrow">→</div>
+            <button id="run-prompt-btn" class="workflow-button" disabled>Run Prompt</button>
+            <div class="arrow">→</div>
+            <button id="execute-tasks-btn" class="workflow-button" disabled>Execute Tasks</button>
+        </div>
+        
+        <div class="main-content">
+            <div class="left-pane">
+                <h2>Prompt</h2>
+                <div class="collapsible-container">
+                    <div class="collapsible-section">
+                        <div class="collapsible-header">
+                            <h3>Primary Instructions</h3>
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="primary-instructions-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="collapsible-section">
+                        <div class="collapsible-header">
+                            <h3>Schema</h3>
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="schema-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="collapsible-section open">
+                        <div class="collapsible-header">
+                            <h3>Active Actions</h3>
+                            <span class="toggle-icon">-</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="active-actions-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="collapsible-section">
+                        <div class="collapsible-header">
+                            <h3>Recent Episodes</h3>
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="recent-episodes-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="collapsible-section">
+                        <div class="collapsible-header">
+                            <h3>Errors</h3>
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="errors-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-pane">
+                <h2>Episode Data</h2>
+                <div class="collapsible-container">
+                    <div class="collapsible-section">
+                        <div class="collapsible-header">
+                            <h3>Reasoning</h3>
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="reasoning-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="collapsible-section">
+                        <div class="collapsible-header">
+                            <h3>Tasks</h3>
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="tasks-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="collapsible-section">
+                        <div class="collapsible-header">
+                            <h3>Results</h3>
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div class="collapsible-content">
+                            <pre id="results-content" class="content-area"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Status Messages -->
+    <div id="status-overlay" class="hidden">
+        <div id="status-message" class="status-message"></div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
