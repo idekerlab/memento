@@ -1,7 +1,9 @@
 import logging
+import pytest
 from app.task_manager import TaskManager
 import json
 
+@pytest.mark.asyncio
 async def test_task_manager_basic(kg):
     """Test basic task manager functionality with a simple KG update task"""
     logging.info("Testing TaskManager basic functionality")

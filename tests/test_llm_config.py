@@ -1,5 +1,6 @@
 import logging
 import json
+import pytest
 from app.primary_llm import PrimaryLLMConfig
 
 async def verify_kg_setup(kg):
@@ -22,6 +23,7 @@ async def verify_kg_setup(kg):
     except Exception as e:
         return f"Failed to verify KG setup: {str(e)}"
 
+@pytest.mark.asyncio
 async def test_primary_llm_config(kg):
     """Test LLM configuration loading and validation"""
     logging.info("Starting primary LLM config test")

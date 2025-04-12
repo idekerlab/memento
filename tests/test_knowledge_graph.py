@@ -1,6 +1,8 @@
 import logging
+import pytest
 from app.knowledge_graph import KnowledgeGraph
 
+@pytest.mark.asyncio
 async def test_knowledge_graph_initialization(kg):
     """Test KnowledgeGraph basic operations"""
     logging.info("Testing KnowledgeGraph operations")

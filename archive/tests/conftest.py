@@ -13,8 +13,7 @@ from tests.memento_access.test_utils import TestRunManager
 
 logger = logging.getLogger(__name__)
 
-# Enable pytest-asyncio
-pytest_plugins = ["pytest_asyncio"]
+# pytest_plugins declaration moved to top-level conftest.py
 
 @pytest_asyncio.fixture
 async def components() -> AsyncGenerator[MementoComponents, None]:

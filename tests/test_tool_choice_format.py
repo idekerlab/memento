@@ -68,7 +68,7 @@ def test_tool_choice_format():
         
         # Patch anthropic.Anthropic and config.load_api_key
         with patch('anthropic.Anthropic', return_value=mock_client):
-            with patch('memento.config.load_api_key', return_value='dummy_key'):
+            with patch('app.config.load_api_key', return_value='dummy_key'):
                 try:
                     # Call query_anthropic
                     response = llm.query_anthropic(
