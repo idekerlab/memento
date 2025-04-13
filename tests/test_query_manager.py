@@ -1,4 +1,5 @@
 import logging
+import pytest
 from app.query_manager import QueryManager
 
 async def setup_test_action(kg):
@@ -52,6 +53,7 @@ async def verify_prompt_component(prompt, component_name, error_prefix=""):
         return f"{error_prefix}Empty {component_name} string in prompt"
     return None
 
+@pytest.mark.asyncio
 async def test_query_manager_minimal(kg):
     """Test basic query manager functionality with minimal action-focused prompt"""
     logging.info("Testing QueryManager minimal functionality")
@@ -84,6 +86,7 @@ async def test_query_manager_minimal(kg):
     except Exception as e:
         return f"Minimal Test Failed with exception: {str(e)}"
 
+@pytest.mark.asyncio
 async def test_query_manager_full(kg):
     """Test query manager with full context assembly"""
     logging.info("Testing QueryManager full context functionality")
@@ -120,6 +123,7 @@ async def test_query_manager_full(kg):
         return f"Full Test Failed with exception: {str(e)}"
 
 # Combined test that runs both minimal and full tests
+@pytest.mark.asyncio
 async def test_query_manager(kg):
     """Run both minimal and full context tests"""
     logging.info("Starting QueryManager test suite")

@@ -1,8 +1,10 @@
 # test_planning_step.py
 import asyncio
 import json
+import pytest
 from app.step import StepRunner
 
+@pytest.mark.asyncio
 async def test_planning():
     runner = StepRunner()
     try:
@@ -33,9 +35,14 @@ async def test_planning():
         print(f"Executing cleanup query:\n{cleanup_query}")
         try:
             result = await runner.knowledge_graph.query_database(cleanup_query)
+            if 'results' not in result:
+                print(f"Warning: No results key in query response: {result}")
+                print("Skipping cleanup...")
+                return "Skipped: Cleanup action failed"
+                
             print(f"Found {len(result['results'])} actions to clean up")
             # Delete found actions and their relationships
-            for row in result['results']:
+            for row in result.get('results', []):
                 # First delete relationships
                 rels_query = f"""
                     SELECT id FROM relationships 

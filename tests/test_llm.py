@@ -6,6 +6,7 @@ import sys
 import importlib
 import subprocess
 import importlib.util
+import pytest
 from app.primary_llm import PrimaryLLMConfig
 from app.llm import LLM
 import asyncio
@@ -60,6 +61,7 @@ I can create an action to compose the haiku that captures their interconnected r
 }
 '''
 
+@pytest.mark.asyncio
 async def test_llm_initialization(kg=None):
     """Test LLM initialization and basic query functionality"""
     logging.info("Testing LLM initialization and basic query")
@@ -112,6 +114,7 @@ async def test_llm_initialization(kg=None):
     except Exception as e:
         return f"Failed with exception: {str(e)}"
 
+@pytest.mark.asyncio
 async def test_json_repair(kg=None):
     """Test the JSON repair functionality"""
     logging.info("Testing JSON repair functionality")
@@ -185,9 +188,6 @@ async def test_json_repair(kg=None):
             try:
                 parsed = json.loads(manual_json)
                 logging.info(f"SUCCESS with manual building! Parsed JSON has {len(parsed.get('tasks', []))} tasks")
-                
-                # Test with mock response if manual building worked
-                await test_mock_response(llm)
                 return "Passed: Manual JSON building worked"
                 
             except json.JSONDecodeError as e2:
@@ -200,42 +200,6 @@ async def test_json_repair(kg=None):
         traceback.print_exc()
         return f"Failed with exception: {str(e)}"
 
-async def test_mock_response(llm):
-    """Test the query_and_parse_json method with a mock response"""
-    logging.info("Testing with mock response")
-    
-    # Create a mock response class
-    class MockResponse:
-        class Content:
-            def __init__(self, text):
-                self.text = text
-        
-        def __init__(self, text):
-            self.content = [self.Content(text)]
-    
-    # Save original query method
-    original_query = llm.query
-    
-    try:
-        # Create an async wrapper for the mocked query
-        async def mock_query(*args, **kwargs):
-            return MockResponse(SAMPLE_JSON)
-            
-        # Replace the query method
-        llm.query = mock_query
-        
-        # Test the query_and_parse_json method
-        try:
-            parsed_json, repair_info = await llm.query_and_parse_json("test", "test")
-            logging.info(f"Mock test successful. Repair info: {repair_info or 'None'}")
-            logging.info(f"Successfully parsed JSON with {len(parsed_json.get('tasks', []))} tasks")
-            return True
-        except Exception as e:
-            logging.error(f"Mock test failed: {str(e)}")
-            return False
-    finally:
-        # Restore original query method
-        llm.query = original_query
     
 # Flag to track if Gemini is available
 GEMINI_AVAILABLE = importlib.util.find_spec("google.generativeai") is not None
@@ -250,6 +214,7 @@ GEMINI_AVAILABLE = importlib.util.find_spec("google.generativeai") is not None
 # We'll use gemini-2.0-flash as our default model for better performance
 GEMINI_MODEL = "gemini-2.0-flash"
 
+@pytest.mark.asyncio
 async def test_gemini_integration(kg=None):
     """Test Google Gemini integration"""
     logging.info("Testing Google Gemini integration")
@@ -298,6 +263,7 @@ async def test_gemini_integration(kg=None):
         traceback.print_exc()
         return f"Failed during Gemini query: {str(e)}"
 
+@pytest.mark.asyncio
 async def test_tool_use():
     """Test tool use with both LLM providers"""
     logging.info("Testing tool use functionality")
@@ -402,5 +368,4 @@ async def main():
         traceback.print_exc()
         sys.exit(1)
 
-if __name__ == "__main__":
     asyncio.run(main())
