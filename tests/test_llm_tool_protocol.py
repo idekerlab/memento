@@ -109,7 +109,7 @@ async def test_json_repair():
     logger.info("Testing basic JSON repair functionality")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     try:
         # Test with good JSON
@@ -146,7 +146,7 @@ async def test_tool_protocol_parsing():
     logger.info("Testing tool protocol response parsing")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Set up mock Anthropic client
     mock_client = MagicMock()
@@ -197,7 +197,7 @@ async def test_tool_protocol_with_bad_json():
     logger.info("Testing tool protocol with bad JSON")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Create a mock response with malformed JSON
     class BadJSONMockResponse:
@@ -257,7 +257,7 @@ async def test_tool_protocol_with_complex_json():
     logger.info("Testing tool protocol with complex malformed JSON")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Create a mock response
     class ComplexJSONMockResponse:
@@ -316,7 +316,7 @@ async def test_anthropic_tool_integration():
     logger.info("Testing Anthropic tool API integration")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Create tool definition
     tools = [{

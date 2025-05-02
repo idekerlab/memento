@@ -56,7 +56,7 @@ async def test_live_basic_query():
     logger.info("Testing basic query to live Anthropic API")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Simple context and prompt
     context = "You are a helpful assistant."
@@ -109,7 +109,7 @@ async def test_live_tool_protocol():
     logger.info("Testing tool protocol with live Anthropic API")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Define tools
     tools = [{
@@ -196,7 +196,7 @@ async def test_live_query_and_parse_json():
     logger.info("Testing query_and_parse_json with live Anthropic API")
     
     # Create an LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Simple context and prompt
     context = "You are a helpful assistant."

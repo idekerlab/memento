@@ -1,12 +1,16 @@
 import anthropic
 import google.generativeai as genai
 from app.config import load_api_key
+from app.utils.logging import (
+    log_api_call, log_error, log_json_processing, 
+    log_tool_use, format_object
+)
 import json
 import re
 import unicodedata
 
 class LLM:
-    def __init__(self, type=None, model_name="claude-3-5-sonnet-20241022",
+    def __init__(self, type=None, model_name="claude-3-7-sonnet-20250219",
                  max_tokens=8096, seed=42, temperature=0.7,
                  object_id=None, created=None, name=None, description=None):
         self.type = type
@@ -50,6 +54,16 @@ class LLM:
         # Initialize model
         model = genai.GenerativeModel(self.model_name)
         
+        # Log the API call
+        params = {
+            "model": self.model_name,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "content_length": len(context) + len(prompt),
+            "has_tools": tools is not None
+        }
+        log_api_call(f"Gemini-{self.model_name}", "generate_content", params)
+        
         try:
             # Combine context and prompt
             combined_text = f"{context}\n\n{prompt}"
@@ -77,20 +91,12 @@ class LLM:
                     generation_config=generation_config
                 )
             
-            # Debug info
-            print(f"=== GEMINI API CALL DEBUG ===")
-            print(f"Model: {self.model_name}")
-            print(f"Max tokens: {self.max_tokens}")
-            print(f"Temperature: {self.temperature}")
-            print(f"Message content length: {len(combined_text)}")
-            print(f"================================")
-            
             return response
                 
         except Exception as e:
-            error_detail = str(e)
-            print(f"Gemini API call failed with error: {error_detail}")
-            raise Exception(f"Gemini API call failed: {error_detail}")
+            error_obj = log_error("APIError", "Gemini API call failed", 
+                                details={"model": self.model_name}, exc=e)
+            raise Exception(f"Gemini API call failed: {str(e)}")
     
     def _convert_tools_to_gemini_format(self, tools):
         """Convert OpenAI/Anthropic style tools to Gemini format"""
@@ -136,6 +142,7 @@ class LLM:
             }
             
             # Convert OpenAI-style tools to Anthropic format
+            tool_names = []
             if tools:
                 anthropic_tools = []
                 for tool in tools:
@@ -144,24 +151,28 @@ class LLM:
                             # Extract function data directly
                             function_data = tool["function"]
                             
+                            # Get tool name for logging
+                            tool_name = function_data.get("name", "unnamed_tool")
+                            tool_names.append(tool_name)
+                            
                             # Create Anthropic tool format - directly copying fields
                             anthropic_tool = {
-                                "name": function_data.get("name", ""),
+                                "name": tool_name,
                                 "description": function_data.get("description", ""),
                                 "input_schema": function_data.get("parameters", {})
                             }
                             anthropic_tools.append(anthropic_tool)
                         else:
-                            print(f"Skipping tool due to missing 'function' field: {tool}")
+                            log_error("ToolConversionError", "Missing 'function' field in tool", 
+                                     details={"tool": format_object(tool)})
                     else:
-                        # Skip tools that don't match expected format
-                        print(f"Skipping tool with unsupported type: {tool}")
+                        log_error("ToolConversionError", "Unsupported tool type", 
+                                 details={"tool": format_object(tool)})
                 
                 kwargs["tools"] = anthropic_tools
-                #print(f"Original tools: {tools}")
-                #print(f"Converted tools for Anthropic: {anthropic_tools}")
             
             # Format tool_choice correctly for Anthropic
+            selected_tool = None
             if tool_choice:
                 if isinstance(tool_choice, dict):
                     if "type" in tool_choice and tool_choice["type"] == "function":
@@ -169,52 +180,51 @@ class LLM:
                         if "function" in tool_choice and "name" in tool_choice["function"]:
                             # Get the tool name for Anthropic format
                             tool_name = tool_choice["function"]["name"]
+                            selected_tool = tool_name
                             
                             # Use the proper Anthropic format
                             kwargs["tool_choice"] = {"type": "tool", "name": tool_name}
-                            print(f"Original tool_choice: {tool_choice}")
-                            print(f"Converted tool_choice for Anthropic: {kwargs['tool_choice']}")
+                            log_tool_use(tool_name, "specified in tool_choice")
                         else:
                             # Use auto if we can't extract a name
                             kwargs["tool_choice"] = {"type": "auto"}
-                            print(f"Cannot extract tool name, defaulting to 'auto'")
+                            log_tool_use("auto", "defaulted to auto (no tool name)")
                     else:
                         # If it already has 'type' but not 'function', pass through
                         kwargs["tool_choice"] = tool_choice
-                        print(f"Using tool_choice as provided: {tool_choice}")
+                        if "name" in tool_choice:
+                            selected_tool = tool_choice.get("name")
+                            log_tool_use(selected_tool, "using provided tool_choice")
                 else:
                     # If not a dict, convert to auto
                     kwargs["tool_choice"] = {"type": "auto"}
-                    print(f"Non-dict tool_choice, defaulting to 'auto'")
-            elif tools and len(tools) == 1:
+                    log_tool_use("auto", "defaulted to auto (non-dict tool_choice)")
+            elif tools and len(tools) == 1 and len(anthropic_tools) == 1:
                 # If there's only one tool and no explicit choice, use it
-                if anthropic_tools and len(anthropic_tools) == 1:
-                    kwargs["tool_choice"] = {"type": "tool", "name": anthropic_tools[0]["name"]}
-                    print(f"Single tool available, setting tool_choice to: {kwargs['tool_choice']}")
+                tool_name = anthropic_tools[0]["name"]
+                kwargs["tool_choice"] = {"type": "tool", "name": tool_name}
+                selected_tool = tool_name
+                log_tool_use(tool_name, "auto-selected (single tool)")
             
-            # Debug info before API call
-            print(f"=== ANTHROPIC API CALL DEBUG ===")
-            print(f"Model: {self.model_name}")
-            print(f"Max tokens: {self.max_tokens}")
-            print(f"Temperature: {self.temperature}")
-            print(f"Message content length: {len(messages[0]['content'])}")
-            if "tools" in kwargs:
-                print(f"Tools count: {len(kwargs['tools'])}")
-                for i, tool in enumerate(kwargs['tools']):
-                    print(f"Tool {i+1} name: {tool.get('name')}")
-                    print(f"Tool {i+1} full content: {json.dumps(tool)}")
-            if "tool_choice" in kwargs:
-                print(f"Tool choice: {kwargs['tool_choice']}")
-            print(f"================================")
+            # Log the API call
+            params = {
+                "model": self.model_name,
+                "temperature": self.temperature,
+                "max_tokens": self.max_tokens,
+                "content_length": len(context) + len(prompt),
+                "tools": f"{len(tool_names)} tools: {', '.join(tool_names)}" if tool_names else "None",
+                "tool_choice": selected_tool if selected_tool else "None"
+            }
+            log_api_call(f"Claude-{self.model_name}", "create", params)
             
             # Make the API call
             response = client.messages.create(**kwargs)
             return response
                 
         except Exception as e:
-            error_detail = str(e)
-            print(f"Anthropic API call failed with error: {error_detail}")
-            raise Exception(f"Anthropic API call failed: {error_detail}")
+            error_obj = log_error("APIError", "Anthropic API call failed", 
+                                details={"model": self.model_name}, exc=e)
+            raise Exception(f"Anthropic API call failed: {str(e)}")
 
     async def query_and_parse_json(self, context, prompt, tools=None, tool_choice=None):
         """
@@ -229,6 +239,11 @@ class LLM:
             JSONDecodeError: If JSON parsing fails even after repair attempts
             Exception: For other errors during the query or parsing process
         """
+        log_json_processing("query_and_parse_json", "started", {
+            "model": f"{self.type}-{self.model_name}",
+            "has_tools": tools is not None
+        })
+        
         try:
             # Make the API call
             response = await self.query(context, prompt, tools, tool_choice)
@@ -239,10 +254,11 @@ class LLM:
             
             # Handle Anthropic responses
             if self.type == 'Anthropic':
-                # Print response structure to debug
                 if hasattr(response, 'content') and len(response.content) > 0:
                     content_type = type(response.content[0]).__name__
-                    print(f"Response content[0] type: {content_type}")
+                    log_json_processing("extract_content", "processing", {
+                        "content_type": content_type
+                    })
                     
                     # Detect ToolUseBlock directly
                     if content_type == 'ToolUseBlock':
@@ -250,15 +266,14 @@ class LLM:
                         # Extract tool name and input
                         tool_name = response.content[0].name
                         tool_input = response.content[0].input
-                        print(f"Received tool use response from {tool_name}")
-                        print(f"Tool input: {tool_input}")
+                        log_tool_use(tool_name, "received_response")
                         return tool_input, f"Tool response from {tool_name}"
                     
                     # Try to access tool_use attribute if available
                     elif hasattr(response.content[0], 'tool_use') and response.content[0].tool_use:
                         tool_use = response.content[0].tool_use
                         has_tool_use = True
-                        print(f"Received tool use response from {tool_use.name} with input: {tool_use.input}")
+                        log_tool_use(tool_use.name, "received_response")
                         return tool_use.input, "Tool response (no JSON parsing needed)"
                 
                 # If there's no tool use, extract text content
@@ -272,7 +287,9 @@ class LLM:
             
             # Handle Google Gemini responses
             elif self.type == 'Google':
-                print(f"Processing Gemini response, type: {type(response).__name__}")
+                log_json_processing("extract_content", "processing", {
+                    "response_type": type(response).__name__
+                })
                 
                 # Check for function calling response
                 if hasattr(response, 'candidates') and len(response.candidates) > 0:
@@ -286,8 +303,7 @@ class LLM:
                                 has_tool_use = True
                                 tool_name = part.function_call.name
                                 tool_args = part.function_call.args
-                                print(f"Received Gemini tool use response from {tool_name}")
-                                print(f"Tool args: {tool_args}")
+                                log_tool_use(tool_name, "received_response")
                                 return tool_args, f"Tool response from {tool_name}"
                     
                     # Extract text if no tool use found
@@ -301,64 +317,101 @@ class LLM:
                 if not response_text and hasattr(response, 'text'):
                     response_text = response.text
             
-            # If we couldn't extract text from any known format, dump response structure for debugging
+            # If we couldn't extract text from any known format, log error and raise
             if not response_text:
-                print(f"Response type: {type(response).__name__}")
-                print(f"Available attributes: {dir(response)}")
+                error_obj = log_error("ResponseError", "Could not find text content in response", 
+                                     details={"response_type": type(response).__name__,
+                                              "attributes": dir(response)})
                 raise ValueError("Could not find text content in response - unsupported response format")
             
-            # Print a preview of the response
-            print(f"Response text preview (first 200 chars): {response_text[:200]}...")
+            log_json_processing("text_extraction", "completed", {
+                "text_length": len(response_text),
+                "preview": response_text[:50] + "..." if len(response_text) > 50 else response_text
+            })
             
             # First attempt to parse as-is
             try:
                 parsed_json = json.loads(response_text)
+                log_json_processing("json_parse", "success", {
+                    "method": "direct_parse"
+                })
                 return parsed_json, None  # No repair needed
                 
             except json.JSONDecodeError as e:
-                    print(f"JSON parse error: {str(e)} at position {e.pos}")
-                    print(f"Context: '{response_text[max(0, e.pos-20):min(len(response_text), e.pos+20)]}'")
+                log_json_processing("json_parse", "failed", {
+                    "error": str(e),
+                    "position": e.pos,
+                    "context": response_text[max(0, e.pos-20):min(len(response_text), e.pos+20)]
+                })
+                
+                # Try to repair the JSON
+                repair_info = []
+                fixed_json_text = self._repair_json(response_text, repair_info)
+                
+                # Try to parse the repaired JSON
+                try:
+                    parsed_json = json.loads(fixed_json_text)
+                    log_json_processing("json_repair", "success", {
+                        "method": "standard_repair",
+                        "repair_steps": len(repair_info)
+                    })
+                    return parsed_json, "\n".join(repair_info)
+                        
+                except json.JSONDecodeError as secondary_e:
+                    log_json_processing("json_repair", "failed", {
+                        "method": "standard_repair",
+                        "error": str(secondary_e)
+                    })
                     
-                    # Try to repair the JSON
-                    repair_info = []
-                    fixed_json_text = self._repair_json(response_text, repair_info)
+                    # If we still can't parse, try direct simple replacement of triple quotes
+                    repair_info.append("Attempting simple triple quote fix...")
                     
-                    # Try to parse the repaired JSON
+                    # Replace triple quotes directly with single quotes
+                    simple_fixed = response_text.replace('"""', '"')
+                    
                     try:
-                        parsed_json = json.loads(fixed_json_text)
+                        parsed_json = json.loads(simple_fixed)
+                        repair_info.append("Simple triple quote replacement worked")
+                        log_json_processing("json_repair", "success", {
+                            "method": "triple_quote_fix"
+                        })
                         return parsed_json, "\n".join(repair_info)
+                    except json.JSONDecodeError:
+                        log_json_processing("json_repair", "failed", {
+                            "method": "triple_quote_fix",
+                            "error": str(secondary_e)
+                        })
                         
-                    except json.JSONDecodeError as secondary_e:
-                        # If we still can't parse, try direct simple replacement of triple quotes
-                        repair_info.append("Attempting simple triple quote fix...")
-                        
-                        # Replace triple quotes directly with single quotes
-                        simple_fixed = response_text.replace('"""', '"')
+                        # If still fails, try the manual approach
+                        repair_info.append("Attempting manual JSON building...")
+                        manual_json = self._build_json_manually(response_text, repair_info)
                         
                         try:
-                            parsed_json = json.loads(simple_fixed)
-                            repair_info.append("Simple triple quote replacement worked")
+                            parsed_json = json.loads(manual_json)
+                            log_json_processing("json_repair", "success", {
+                                "method": "manual_building"
+                            })
                             return parsed_json, "\n".join(repair_info)
                         except json.JSONDecodeError:
-                            # If still fails, try the manual approach
-                            repair_info.append("Attempting manual JSON building...")
-                            manual_json = self._build_json_manually(response_text, repair_info)
-                            
-                            try:
-                                parsed_json = json.loads(manual_json)
-                                return parsed_json, "\n".join(repair_info)
-                            except json.JSONDecodeError:
-                                # If all repairs fail, raise the original error with repair context
-                                error_msg = f"JSON repair failed. Original error: {str(e)}."
-                                raise json.JSONDecodeError(
-                                    error_msg, 
-                                    doc=response_text, 
-                                    pos=e.pos
-                                )
+                            # If all repairs fail, raise the original error with repair context
+                            error_msg = f"JSON repair failed. Original error: {str(e)}."
+                            log_error("JSONRepairError", "All repair methods failed", {
+                                "original_error": str(e),
+                                "repair_attempts": len(repair_info)
+                            })
+                            raise json.JSONDecodeError(
+                                error_msg, 
+                                doc=response_text, 
+                                pos=e.pos
+                            )
                 
         except Exception as e:
             if isinstance(e, json.JSONDecodeError):
+                # Already logged above
                 raise  # Re-raise JSON errors as they've already been handled
+            
+            log_error("QueryParseError", "Error querying LLM or parsing response", 
+                     exc=e)
             raise Exception(f"Error querying LLM or parsing response: {str(e)}")
 
     def _repair_json(self, text, repair_info):

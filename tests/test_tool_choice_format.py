@@ -28,7 +28,7 @@ class MockToolResponse:
 def test_tool_choice_format():
     """Test the tool_choice format conversion"""
     # Create LLM instance
-    llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
+    llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
     
     # Test tool schema
     test_schema = {

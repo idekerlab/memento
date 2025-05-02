@@ -4,6 +4,9 @@ from typing import Dict, Any
 from datetime import datetime
 from app.llm import LLM
 from app.schema_manager import SchemaManager
+from app.utils.logging import (
+    log_task, log_error, log_query, log_json_processing, log_api_call
+)
 
 
 class QueryManager:
@@ -32,7 +35,7 @@ class QueryManager:
         }
         self.llm = LLM(
             type="Anthropic",
-            model_name="claude-3-5-sonnet-20241022",  
+            model_name="claude-3-7-sonnet-20250219",  
             max_tokens=4000,
             seed=123,
             temperature=0.7
@@ -124,7 +127,10 @@ class QueryManager:
             LEFT JOIN properties p ON a.id = p.entity_id
             LEFT JOIN relationships rd ON a.id = rd.source_id AND rd.type = 'depends_on'
         """
-        print(f"DEBUG: Querying for active actions with case-insensitive matching")
+        log_query("active_actions", "executing", {
+            "query_type": "case_insensitive_active_actions"
+        })
+        
         response = await self.kg.query_database(query)
         
         actions = {}
@@ -158,13 +164,11 @@ class QueryManager:
             recent_episodes = await self._get_recent_episodes()
             active_actions = await self._get_active_actions()
             
-            # Debug output for active actions
-            print(f"DEBUG: Found {len(active_actions)} active actions for prompt")
-            for action in active_actions:
-                print(f"DEBUG: Active action in prompt - ID: {action['id']}, Name: {action['name']}")
-                if 'properties' in action:
-                    for key, value in action['properties'].items():
-                        print(f"DEBUG:   - Property '{key}': {value}")
+            # Log active actions information
+            log_task("prompt_assembly", "active_actions", "identified", {
+                "count": len(active_actions),
+                "action_ids": [action['id'] for action in active_actions]
+            })
             
             # Get and format query validation errors if we have a current episode
             if self.current_episode_id:
@@ -250,7 +254,12 @@ class QueryManager:
                 "function": {"name": "specify_episode_tasks"}
             }
 
-            print(f'querying LLM with prompt of length {len(prompt)}')
+            log_query("episode_llm", "querying", {
+                "prompt_length": len(prompt),
+                "episode_id": episode_id,
+                "model": self.llm.model_name,
+                "tools": ["specify_episode_tasks"],
+            })
 
             try:
                 # Use query_and_parse_json instead of query to handle JSON parsing issues
@@ -260,6 +269,12 @@ class QueryManager:
                     tools=tools,
                     tool_choice=tool_choice
                 )
+                
+                log_json_processing("episode_response", "parsed", {
+                    "repair_needed": repair_info is not None,
+                    "task_count": len(parsed.get("tasks", [])),
+                    "reasoning_length": len(parsed.get("reasoning", ""))
+                })
                 
                 # Store the parsed response and any repair information
                 properties_to_update = {
@@ -272,7 +287,9 @@ class QueryManager:
                 # Add repair info if any repairs were made
                 if repair_info:
                     properties_to_update["json_repair_info"] = repair_info
-                    print(f"Applied JSON repairs: {repair_info}")
+                    log_json_processing("episode_response", "repaired", {
+                        "repair_info": repair_info
+                    })
                 
                 await self.kg.update_properties(
                     entity_id=episode_id,

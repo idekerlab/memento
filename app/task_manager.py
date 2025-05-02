@@ -1,287 +1,598 @@
+"""
+TaskManager v2 - Simplified task execution with direct entity creation
+"""
+
 import json
-from typing import List, Dict, Optional
+import logging
+from typing import Dict, List, Optional, Any, Union
 from app.llm import LLM
 from app.schema_manager import SchemaManager
-import re
-
+from app.utils.logging import (
+    log_task, log_error, log_query, log_database, log_json_processing
+)
 
 class TaskManager:
+    """
+    TaskManager implementation with simplified execution model:
+    
+    - Tasks directly create entities of specified entity_type when applicable
+    - Tasks maintain their own status (not_executed, successful, unsuccessful)
+    - No complex variable resolution - dependencies are resolved by querying the KG
+    - All tasks return entity IDs directly
+    """
+    
     def __init__(self, kg):
         self.kg = kg
         self.schema_manager = SchemaManager(kg)
-        self.task_llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
-        self.sql_validation_llm = LLM(type="Anthropic", model_name="claude-3-5-sonnet-20241022")
-        self.task_outputs = {}  # Store named outputs
-
-    async def _resolve_variables(self, text: str, task_outputs: dict) -> str:
-        """Resolve ${var.field} references in text using task outputs"""
-        pattern = r'\${([^}]+)}'
+        self.task_llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
+        self.sql_validation_llm = LLM(type="Anthropic", model_name="claude-3-7-sonnet-20250219")
+        self.task_result_ids = {}  # Maps output_var names to result entity IDs
         
-        def replace(match):
-            ref = match.group(1)
-            parts = ref.split('.')
-            var = parts[0]
-            if var not in task_outputs:
-                raise ValueError(f"Referenced output variable '{var}' not found")
+    async def execute_tasks(self, episode_id: int) -> Dict[str, Any]:
+        """
+        Execute all tasks for an episode
+        
+        Args:
+            episode_id: ID of the episode entity
             
-            value = task_outputs[var]
-            for part in parts[1:]:
-                if isinstance(value, dict):
-                    if part not in value:
-                        raise ValueError(f"Field '{part}' not found in {var}")
-                    value = value[part]
-                elif isinstance(value, list):
-                    try:
-                        idx = int(part)
-                        value = value[idx]
-                    except (ValueError, IndexError):
-                        raise ValueError(f"Invalid array index '{part}' in {var}")
-                else:
-                    raise ValueError(f"Cannot access field '{part}' of {var}")
-            
-            return str(value)
-            
-        return re.sub(pattern, replace, text)
-            
-    async def execute_tasks(self, episode_id: int) -> Dict[str, str]:
+        Returns:
+            Dictionary with execution results
+        """
+        log_task("episode", str(episode_id), "started", {
+            "episode_id": episode_id
+        })
+        
         try:
             # Get tasks from episode
             query = f"SELECT value FROM properties WHERE entity_id = {episode_id} AND key = 'tasks'"
+            log_database("query", "executing", {"query": "Get tasks from episode properties"})
+            
             result = await self.kg.query_database(query)
             if not result['results']:
-                return {"status": "error", "message": "No tasks found"}
+                error_obj = log_error("TaskError", "No tasks found for episode", {
+                    "episode_id": episode_id
+                })
+                return {"status": "error", "message": "No tasks found", "error_details": error_obj}
                 
             tasks = json.loads(result['results'][0]['value'])
-            self.task_outputs = {} # clear named results from previous episode
+            log_task("episode", str(episode_id), "processing", {
+                "task_count": len(tasks)
+            })
             
+            # Reset task results for this episode
+            self.task_result_ids = {}
+            
+            task_results = []
             for i, task_spec in enumerate(tasks):
-                # Resolve any variable references in task fields
-                resolved_task = {}
-                for key, value in task_spec.items():
-                    if isinstance(value, str):
-                        resolved_task[key] = await self._resolve_variables(value, self.task_outputs)
-                    else:
-                        resolved_task[key] = value
+                task_type = task_spec.get('type', 'unknown')
+                task_output_var = task_spec.get('output_var', f'task_{i}')
                 
-                # Get the output variable name
-                task_output_var_name = task_spec.get('output_var')
+                log_task(task_type, task_output_var, "started", {
+                    "sequence": i+1,
+                    "total_tasks": len(tasks)
+                })
                 
                 # Create task entity
-                task_object = await self.kg.add_entity(
+                task_entity = await self.kg.add_entity(
                     type="Task",
-                    name=f"Task_{episode_id}_{task_output_var_name}_{task_spec['type']}",
+                    name=f"Task_{episode_id}_{task_output_var}_{task_type}",
                     properties={
                         **task_spec,
-                        "sequence_id": task_output_var_name
+                        "status": "not_executed",
+                        "sequence_id": i + 1
                     }
                 )
-                await self.kg.add_relationship(source_id=episode_id, target_id=task_object["id"], type="task_of")
+                
+                # Add relationship to episode
+                await self.kg.add_relationship(
+                    source_id=episode_id, 
+                    target_id=task_entity["id"], 
+                    type="task_of"
+                )
                 
                 # Check dependencies
-                if not await self._check_dependencies(task_spec, self.task_outputs):
-                    error_msg = "Skipping task due to failed dependencies"
-                    result_object = await self._store_error_result(task_object["id"], error_msg)
-                    self.task_outputs[task_output_var_name] = {
-                        "status": "error",
-                        "error": error_msg,
-                        "result_id": result_object["id"]
-                    }
+                if not await self._check_dependencies(task_spec):
+                    await self._update_task_status(
+                        task_entity["id"], 
+                        "unsuccessful", 
+                        "Dependency check failed"
+                    )
+                    
+                    log_task(task_type, task_output_var, "dependency_failure", {
+                        "requires": task_spec.get('requires', [])
+                    })
+                    
+                    task_results.append({
+                        "task_id": task_entity["id"],
+                        "task_type": task_type,
+                        "output_var": task_output_var,
+                        "status": "unsuccessful",
+                        "error": "Dependency check failed"
+                    })
                     continue
                 
                 try:
                     # Execute the task
-                    result = await self._execute_task(task_spec)
-                    self.task_outputs[task_output_var_name] = result
+                    log_task(task_type, task_output_var, "executing", {
+                        "task_id": task_entity["id"]
+                    })
                     
-                    # Store successful result
-                    result_object = await self.kg.add_entity(
-                        type="Result",
-                        name=f"Result_{task_object['id']}",
-                        properties={
-                            "content": json.dumps(result),
-                            "status": "success"
-                        }
-                    )
-                    await self.kg.add_relationship(source_id=task_object["id"], target_id=result_object["id"], type="result_of")
+                    # Execute task and get result entity ID if applicable
+                    result_id = await self._execute_task(task_spec, task_entity["id"], episode_id)
                     
-                    self.task_outputs[task_output_var_name] = {
-                        "status": "success",
-                        "result": result,
-                        "result_id": result_object["id"]
-                    }
+                    # If task succeeded
+                    if result_id is not None:
+                        # Store result ID for reference by later tasks
+                        self.task_result_ids[task_output_var] = result_id
+                        
+                        # Update task status
+                        await self._update_task_status(task_entity["id"], "successful")
+                        
+                        task_results.append({
+                            "task_id": task_entity["id"],
+                            "task_type": task_type,
+                            "output_var": task_output_var,
+                            "status": "successful",
+                            "result_id": result_id
+                        })
+                        
+                        log_task(task_type, task_output_var, "completed", {
+                            "task_id": task_entity["id"],
+                            "result_id": result_id
+                        })
+                    else:
+                        # Task succeeded but didn't create an entity (e.g., relationship tasks)
+                        await self._update_task_status(task_entity["id"], "successful")
+                        
+                        task_results.append({
+                            "task_id": task_entity["id"],
+                            "task_type": task_type,
+                            "output_var": task_output_var,
+                            "status": "successful"
+                        })
+                        
+                        log_task(task_type, task_output_var, "completed", {
+                            "task_id": task_entity["id"],
+                            "no_result_entity": True
+                        })
                     
                 except Exception as e:
-                    error_msg = str(e)
-                    result_object = await self._store_error_result(task_object["id"], error_msg)
-                    self.task_outputs[task_output_var_name] = {
-                        "status": "error",
-                        "error": error_msg,
-                        "result_id": result_object["id"]
-                    }
+                    error_details = log_error("TaskExecutionError", f"Task execution failed: {str(e)}", {
+                        "task_id": task_entity["id"],
+                        "task_type": task_type,
+                    }, exc=e)
+                    
+                    # Update task status with error
+                    await self._update_task_status(
+                        task_entity["id"], 
+                        "unsuccessful", 
+                        str(e)
+                    )
+                    
+                    task_results.append({
+                        "task_id": task_entity["id"],
+                        "task_type": task_type,
+                        "output_var": task_output_var,
+                        "status": "unsuccessful",
+                        "error": str(e)
+                    })
             
-            return {"status": "success", "task_results": self.task_outputs}
+            # Log completion stats
+            log_task("episode", str(episode_id), "completed", {
+                "succeeded": sum(1 for r in task_results if r["status"] == "successful"),
+                "failed": sum(1 for r in task_results if r["status"] == "unsuccessful"),
+                "total": len(task_results)
+            })
+            
+            return {
+                "status": "success", 
+                "task_results": self.task_result_ids,
+                "execution_summary": {
+                    "total_tasks": len(tasks),
+                    "completed_tasks": len(task_results),
+                    "task_details": task_results
+                }
+            }
                 
         except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-    async def _execute_task(self, task):
-        task_type = task['type']
-        
-        if task_type == 'create_entity':
-            entity = await self.kg.add_entity(task['type'], name=task.get('name'), properties=task['properties'])
-            # Return only the ID instead of the full entity object
-            return entity['id']
+            error_obj = log_error("EpisodeExecutionError", "Episode execution failed", {
+                "episode_id": episode_id
+            }, exc=e)
             
-        elif task_type == 'update_entity':
-            return await self.kg.update_properties(
-                entity_id=task['entity_id'],
-                properties=task['properties']
-            )
+            return {
+                "status": "error", 
+                "message": str(e),
+                "error_details": error_obj
+            }
+    
+    async def _update_task_status(self, task_id: int, status: str, error_message: Optional[str] = None) -> None:
+        """Update a task's status and error message if applicable"""
+        properties = {"status": status}
+        if error_message:
+            properties["error_message"] = error_message
             
-        elif task_type == 'add_relationship':
-            return await self.kg.add_relationship(
-                source_id=task['source_id'],
-                target_id=task['target_id'],
-                type=task['type'],
-                properties=task.get('properties', {})
-            )
+        await self.kg.update_properties(
+            entity_id=task_id,
+            properties=properties
+        )
+    
+    async def _check_dependencies(self, task_spec: Dict) -> bool:
+        """
+        Check if all required tasks completed successfully
         
-        elif task_type == 'query_database':
-            return await self._execute_query_task(task)
-                    
-        elif task_type == 'create_action':
-            # Extract and remove depends_on if present, since it's handled separately
-            depends_on_action_var_names = []
-            if 'depends_on_action_var_names' in task:
-                depends_on_action_var_names = task.pop('depends_on_action_var_names')
-
-            depends_on_action_ids = []
-            if 'depends_on_action_ids' in task:
-                depends_on_action_ids = task.pop('depends_on_action_ids')
-
-            try:
-                # Create the action
-                # Collect properties from task fields
-                properties = {
-                    'name': task['name'],
-                    'description': task['description'],
-                    'completion_criteria': task['completion_criteria'],
-                    'active': task['active'],
-                    'state': task['state']
-                }
-                
-                action = await self.kg.add_entity(
-                    type="Action",
-                    name=task['name'],
-                    properties=properties
-                )
-                
-                # Add dependency relationships
-                for var in depends_on_action_var_names:
-                    output = self.task_outputs[var]
-                    var_result = output["result"]
-                    try:
-                        await self.kg.add_relationship(
-                            source_id=action['id'],
-                            target_id=var_result['id'],
-                            type='depends_on'
-                        )
-                    except Exception as e:
-                        # Clean up the partially created action and its relationships
-                        await self.kg.delete_entity(action['id'])
-                        raise Exception(f"Failed to create dependency relationship: {str(e)}")
-
-                for dep_id in depends_on_action_ids:
-                    try:
-                        await self.kg.add_relationship(
-                            source_id=action['id'],
-                            target_id=dep_id,
-                            type='depends_on'
-                        )
-                    except Exception as e:
-                        # Clean up the partially created action and its relationships
-                        await self.kg.delete_entity(action['id'])
-                        raise Exception(f"Failed to create dependency relationship: {str(e)}")
-                # Return only the ID instead of the full action object                                     
-                return action['id']
-                
-            except Exception as e:
-                # Clean up any partial state if action was created
-                if 'action' in locals():
-                    await self.kg.delete_entity(action['id'])
-                raise e
-
-
-        elif task_type == 'query_llm_using_template':
-            try:
-                # Get template
-                template_result = await self.kg.get_properties(entity_id=task['template_id'])
-                if not template_result.get('properties'):
-                    raise Exception(f"Template {task['template_id']} not found")
-                
-                template_props = {p['key']: p['value'] for p in template_result['properties']}
-                template = template_props.get('template')
-                context = template_props.get('context', '')
-                
-                if not template:
-                    raise Exception(f"No template content found for {task['template_id']}")
-
-                # Resolve entity property references
-                resolved_args = {}
-                for arg_name, arg_value in task['arguments'].items():
-                    if isinstance(arg_value, dict) and 'entity_id' in arg_value:
-                        prop_result = await self.kg.get_properties(
-                            entity_id=arg_value['entity_id']
-                        )
-                        if not prop_result.get('properties'):
-                            raise Exception(f"Entity {arg_value['entity_id']} not found")
-                        
-                        props = {p['key']: p['value'] for p in prop_result['properties']}
-                        resolved_args[arg_name] = json.dumps(props)
-                        if resolved_args[arg_name] is None:
-                            raise Exception(
-                                f"Property {arg_value['property']} not found for entity {arg_value['entity_id']}"
-                            )
-                    else:
-                        resolved_args[arg_name] = arg_value
-
-                # Format template with resolved arguments
-                prompt = template.format(**resolved_args)
-                
-                # Execute LLM query
-                return await self.task_llm.query(context=context, prompt=prompt)
-                
-            except Exception as e:
-                raise Exception(f"Template LLM query failed: {str(e)}")
-                                  
-        else:
-            raise ValueError(f"Unsupported task type: {task_type}")
-        
-    async def _check_dependencies(self, task_spec: Dict, task_results: Dict) -> bool:
-        """Check if all required tasks completed successfully"""
+        Args:
+            task_spec: The task specification
+            
+        Returns:
+            True if all dependencies are satisfied, False otherwise
+        """
         for req_id in task_spec.get('requires', []):
-            if req_id not in task_results:
-                return False
-            if task_results[req_id]["status"] == "error":
+            if req_id not in self.task_result_ids:
                 return False
         return True
 
+    async def _get_dependency_entity(self, dependency_var: str) -> Optional[Dict]:
+        """
+        Get the entity created by a dependency task
+        
+        Args:
+            dependency_var: Output variable name of the dependency task
+            
+        Returns:
+            Entity data if found, None otherwise
+        """
+        if dependency_var not in self.task_result_ids:
+            return None
+            
+        entity_id = self.task_result_ids[dependency_var]
+        query = f"""
+        SELECT e.id, e.type, e.name, p.key, p.value
+        FROM entities e
+        LEFT JOIN properties p ON e.id = p.entity_id
+        WHERE e.id = {entity_id}
+        """
+        
+        result = await self.kg.query_database(query)
+        if not result['results']:
+            return None
+            
+        # Build entity from query results
+        entity = {
+            "id": result['results'][0]['id'],
+            "type": result['results'][0]['type'],
+            "name": result['results'][0]['name'],
+            "properties": {}
+        }
+        
+        # Add properties
+        for row in result['results']:
+            if row['key'] is not None:
+                entity['properties'][row['key']] = row['value']
+                
+        return entity
+            
+    async def _execute_task(self, task: Dict, task_id: int, episode_id: int) -> Optional[int]:
+        """
+        Execute a single task
+        
+        Args:
+            task: Task specification
+            task_id: ID of the task entity
+            episode_id: ID of the episode
+            
+        Returns:
+            ID of the created entity if applicable, None otherwise
+        """
+        task_type = task['type']
+        entity_type = task.get('entity_type')
+        
+        if task_type == 'create_entity':
+            # Task that explicitly creates an entity
+            entity = await self.kg.add_entity(
+                type=task.get('entity_type'),
+                name=task.get('name', f"{entity_type}_{task_id}"),
+                properties=task.get('properties', {})
+            )
+            
+            # Add relationship to task and episode
+            await self.kg.add_relationship(
+                source_id=task_id,
+                target_id=entity['id'],
+                type='created'
+            )
+            
+            await self.kg.add_relationship(
+                source_id=episode_id,
+                target_id=entity['id'],
+                type='created_in'
+            )
+            
+            return entity['id']
+            
+        elif task_type == 'update_entity':
+            # Get entity ID either directly or from dependency
+            entity_id = task.get('entity_id')
+            if not entity_id and 'entity_var' in task:
+                entity_id = self.task_result_ids.get(task['entity_var'])
+                
+            if not entity_id:
+                raise ValueError("No entity ID provided for update_entity task")
+                
+            # Update entity properties
+            result = await self.kg.update_properties(
+                entity_id=entity_id,
+                properties=task['properties']
+            )
+            
+            # No entity created, so return None
+            return None
+            
+        elif task_type == 'add_relationship':
+            # Get source and target IDs either directly or from dependencies
+            source_id = task.get('source_id')
+            if not source_id and 'source_var' in task:
+                source_id = self.task_result_ids.get(task['source_var'])
+                
+            target_id = task.get('target_id')
+            if not target_id and 'target_var' in task:
+                target_id = self.task_result_ids.get(task['target_var'])
+                
+            if not source_id or not target_id:
+                raise ValueError("Missing source or target ID for add_relationship task")
+                
+            # Add the relationship
+            await self.kg.add_relationship(
+                source_id=source_id,
+                target_id=target_id,
+                type=task['relationship_type'],
+                properties=task.get('properties', {})
+            )
+            
+            # No entity created, so return None
+            return None
+        
+        elif task_type == 'query_database':
+            # Validate and execute query
+            is_valid, error_msg = await self._validate_query(task['sql'])
+            if not is_valid:
+                raise ValueError(f"Query validation failed: {error_msg}")
+                
+            # Execute the query
+            query_result = await self.kg.query_database(task['sql'])
+            
+            # Create a result entity to store the query results
+            result_entity = await self.kg.add_entity(
+                type=entity_type or "QueryResult",
+                name=f"QueryResult_{task_id}",
+                properties={
+                    "query": task['sql'],
+                    "result": json.dumps(query_result),
+                    "description": task.get('description', '')
+                }
+            )
+            
+            # Add relationships
+            await self.kg.add_relationship(
+                source_id=task_id,
+                target_id=result_entity['id'],
+                type='created'
+            )
+            
+            await self.kg.add_relationship(
+                source_id=episode_id,
+                target_id=result_entity['id'],
+                type='created_in'
+            )
+            
+            return result_entity['id']
+                    
+        elif task_type == 'query_llm_using_template':
+            # Get template ID handling different formats
+            template_id = None
+            
+            # Ensure only one template identification method is provided
+            if 'template_id' in task and 'template_var' in task:
+                raise ValueError("Cannot specify both template_id and template_var")
+            elif 'template_id' in task:
+                raw_template_id = task['template_id']
+                # Handle integer or string representation of integer
+                if isinstance(raw_template_id, int) or (isinstance(raw_template_id, str) and raw_template_id.isdigit()):
+                    template_id = int(raw_template_id)
+                else:
+                    raise ValueError(f"template_id must be an integer, got {raw_template_id}")
+            elif 'template_var' in task:
+                var_name = task['template_var']
+                if var_name in self.task_result_ids:
+                    template_id = self.task_result_ids[var_name]
+                    log_task("template_query", str(task.get('output_var', 'unnamed')), "resolved_template_var", {
+                        "var_name": var_name,
+                        "resolved_id": template_id
+                    })
+                else:
+                    error_msg = f"Template variable '{var_name}' not found in task results"
+                    log_error("TemplateVarError", error_msg, {
+                        "available_vars": list(self.task_result_ids.keys())
+                    })
+                    raise ValueError(error_msg)
+            else:
+                raise ValueError("No template_id or template_var provided")
+                
+            if not template_id:
+                raise ValueError("No template ID provided or could not resolve template variable")
+            
+            try:
+                # Fetch template entity
+                template_entity = await self._get_entity_by_id(template_id)
+                if not template_entity:
+                    raise ValueError(f"Template {template_id} not found")
+            except Exception as e:
+                # Detailed error for template fetch failures
+                error_msg = f"Failed to get template: {str(e)}"
+                log_error("TemplateLoadError", error_msg, {
+                    "template_id": template_id,
+                    "error_details": str(e)
+                }, exc=e)
+                raise ValueError(error_msg)
+            
+            # Get template content
+            template_props = template_entity.get('properties', {})
+            template_content = None
+            
+            # Check various possible keys for template content
+            for key in ['template', 'content']:
+                if key in template_props:
+                    content = template_props[key]
+                    # Handle if content is stored as a JSON string
+                    try:
+                        # Try to parse as JSON
+                        content_obj = json.loads(content)
+                        if isinstance(content_obj, dict) and 'content' in content_obj:
+                            template_content = content_obj['content']
+                        else:
+                            template_content = content
+                    except json.JSONDecodeError:
+                        # Not JSON, use as-is
+                        template_content = content
+                    break
+            
+            if not template_content:
+                raise ValueError(f"No template content found in template {template_id}")
+                
+            # Get arguments for template formatting
+            format_args = {}
+            for arg_name, arg_spec in task.get('arguments', {}).items():
+                if isinstance(arg_spec, dict) and 'entity_var' in arg_spec:
+                    # Get entity from dependency
+                    entity_var = arg_spec['entity_var']
+                    entity_id = self.task_result_ids.get(entity_var)
+                    if not entity_id:
+                        raise ValueError(f"Referenced entity variable {entity_var} not found")
+                        
+                    # Fetch entity
+                    entity = await self._get_entity_by_id(entity_id)
+                    if not entity:
+                        raise ValueError(f"Entity {entity_id} from variable {entity_var} not found")
+                        
+                    # Use specific property or the whole entity
+                    if 'property' in arg_spec:
+                        prop_value = entity.get('properties', {}).get(arg_spec['property'])
+                        if prop_value is None:
+                            raise ValueError(f"Property {arg_spec['property']} not found in entity {entity_id}")
+                        format_args[arg_name] = prop_value
+                    else:
+                        # Use the whole entity as JSON
+                        format_args[arg_name] = json.dumps(entity)
+                else:
+                    # Direct value
+                    format_args[arg_name] = arg_spec
+            
+            # Format the template if we have arguments
+            prompt = template_content
+            if format_args:
+                try:
+                    prompt = template_content.format(**format_args)
+                except KeyError as e:
+                    raise ValueError(f"Missing template variable: {str(e)}")
+                except Exception as e:
+                    raise ValueError(f"Template formatting error: {str(e)}")
+            
+            # Context for LLM
+            context = template_props.get('context', '')
+            
+            # Execute LLM query
+            llm_response = await self.task_llm.query(context=context, prompt=prompt)
+            
+            # Create a result entity of the specified type
+            result_entity = await self.kg.add_entity(
+                type=entity_type or "LLMResponse",
+                name=f"{entity_type or 'LLMResponse'}_{task_id}",
+                properties={
+                    "text": llm_response.content[0].text if hasattr(llm_response, 'content') else str(llm_response),
+                    "template_id": template_id,
+                    "prompt": prompt
+                }
+            )
+            
+            # Add relationships
+            await self.kg.add_relationship(
+                source_id=task_id,
+                target_id=result_entity['id'],
+                type='created'
+            )
+            
+            await self.kg.add_relationship(
+                source_id=episode_id,
+                target_id=result_entity['id'],
+                type='created_in'
+            )
+            
+            # If the template had a specific output form, we could extract and structure it here
+            
+            return result_entity['id']
+        
+        else:
+            raise ValueError(f"Unsupported task type: {task_type}")
+    
+    async def _get_entity_by_id(self, entity_id: int) -> Optional[Dict]:
+        """Get an entity by ID with all its properties"""
+        query = f"""
+        SELECT e.id, e.type, e.name, p.key, p.value
+        FROM entities e
+        LEFT JOIN properties p ON e.id = p.entity_id
+        WHERE e.id = {entity_id}
+        """
+        
+        result = await self.kg.query_database(query)
+        if not result['results']:
+            return None
+            
+        # Build entity from query results
+        entity = {
+            "id": result['results'][0]['id'],
+            "type": result['results'][0]['type'],
+            "name": result['results'][0]['name'],
+            "properties": {}
+        }
+        
+        # Add properties
+        for row in result['results']:
+            if row['key'] is not None:
+                entity['properties'][row['key']] = row['value']
+                
+        return entity
+        
     async def _validate_query(self, query: str) -> tuple[bool, Optional[str]]:
         """Validate a query using LLM reflection to check both schema compliance and read-only nature"""
+        log_query("validate", "started", {
+            "query_length": len(query)
+        })
         
         # First check if the query is read-only (SELECT only)
         query_upper = query.strip().upper()
         
         # Check for data modification commands
         if any(cmd in query_upper for cmd in ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE']):
-            return False, "Query validation failed: Only READ-ONLY (SELECT) queries are allowed"
+            error_msg = "Query validation failed: Only READ-ONLY (SELECT) queries are allowed"
+            log_error("QueryValidationError", error_msg, {
+                "query": query,
+                "reason": "non_readonly_operation"
+            })
+            return False, error_msg
         
         # If the query doesn't start with SELECT, it's likely not read-only
         if not query_upper.startswith('SELECT'):
-            return False, "Query validation failed: Queries must start with SELECT"
+            error_msg = "Query validation failed: Queries must start with SELECT"
+            log_error("QueryValidationError", error_msg, {
+                "query": query,
+                "reason": "not_select_query"
+            })
+            return False, error_msg
         
         # Get current database schema documentation
         database_schema = await self.schema_manager.get_schema_documentation()
+        log_query("validate", "schema_obtained", {
+            "schema_size": len(json.dumps(database_schema))
+        })
 
         response_schema = {
             "name": "validate_database_query",
@@ -338,57 +649,32 @@ class TaskManager:
                 "function": {"name": "validate_database_query"}
             }
         
-            response = await self.sql_validation_llm.query_and_parse_json(
+            log_query("validate", "sending_to_llm", {
+                "model": self.sql_validation_llm.model_name,
+                "prompt_length": len(validation_prompt)
+            })
+            
+            # query_and_parse_json returns a tuple of (parsed_json, repair_info)
+            validation, repair_info = await self.sql_validation_llm.query_and_parse_json(
                 context="You are a SQL query validator for a knowledge graph database.",
                 prompt=validation_prompt,
                 tools=tools,
                 tool_choice=tool_choice
             )
             
-            # Parse response
-            validation = json.loads(response.content[0].text)
+            if validation["valid"]:
+                log_query("validate", "success", {
+                    "query": query[:100] + "..." if len(query) > 100 else query
+                })
+            else:
+                log_error("QueryValidationError", validation["error"], {
+                    "query": query[:100] + "..." if len(query) > 100 else query,
+                    "vocabulary_issues": validation.get("vocabulary_issues", [])
+                })
+                
             return validation["valid"], validation["error"]
             
-        except json.JSONDecodeError as e:
-            return False, f"Invalid validator response format: {str(e)}"
         except Exception as e:
-            return False, f"Validation failed: {str(e)}"
-
-    async def _execute_query_task(self, task: Dict) -> Dict:
-        """Execute a database query task with validation
-        
-        Args:
-            task: Task specification dictionary containing SQL query
-        
-        Returns:
-            Dict containing query results if successful
-        """
-        # First validate the query
-        is_valid, error_msg = await self._validate_query(task['sql'])
-        if not is_valid:
-            raise Exception(f"Query validation failed: {error_msg}")
-            
-        # Execute validated query
-        return await self.kg.query_database(task['sql'])
-      
-    async def _store_error_result(self, task_id: str, error_msg: str) -> Dict:
-        """Store an error result for a task"""
-        try:
-            result_object = await self.kg.add_entity(
-                type="Result",
-                name=f"Result_{task_id}",
-                properties={
-                    "content": error_msg,
-                    "status": "error",
-                    "error_type": "TaskExecutionError"
-                }
-            )
-            await self.kg.add_relationship(
-                source_id=task_id,
-                target_id=result_object["id"],
-                type="result_of"
-            )
-            return result_object
-        except Exception as e:
-            print(f"Error storing error result: {str(e)}")
-            raise
+            error_msg = f"Validation failed: {str(e)}"
+            log_error("QueryValidationError", error_msg, exc=e)
+            return False, error_msg

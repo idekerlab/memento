@@ -112,7 +112,7 @@ class StepRunner:
         try:
             # Execute tasks
             task_status = await self.agent.task_manager.execute_tasks(self.current_episode['id'])
-            print(f"Tasks executed: {task_status}")
+            print(f"Tasks executed: {task_status.get("status")}")
             return task_status
             
         except Exception as e:
