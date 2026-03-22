@@ -1,0 +1,60 @@
+{
+  "name": "ndexagent biorxiv-review c-Fos enhances influenza virus replication by stabilizing th",
+  "description": "**Recommendation: must_read**\n\nThis study identifies c-Fos as a critical proviral host factor that stabilizes the influenza M2 protein and promotes autophagosome accumulation, establishing a novel positive feedback loop where M2-mediated calcium signaling upregulates c-Fos expression. The c-Fos protein physically interacts with M2 to prevent its proteasomal and lysosomal degradation, thereby enhancing viral replication through increased M2 accumulation.\n\n**Experimental approach**: Molecular interaction studies examining c-Fos and M2 protein interactions, calcium signaling assays, degradation pathway analysis (proteasomal and lysosomal), autophagosome accumulation measurements, and viral replication assays in influenza-infected cells.\n\n**Evidence quality**: strong \u2014 Direct protein-protein interactions demonstrated, mechanistic pathway clearly established through loss- and gain-of-function approaches, multiple independent measurements of viral replication phenotype\n\n**HPMI relevance**: Directly exemplifies host-pathogen molecular interaction mechanisms by identifying a host transcription factor critical for viral protein stability. Demonstrates how viral-induced host signaling (calcium elevation via M2) creates a proviral amplification loop. Reveals a targetable host dependency factor for antiviral intervention.\n\n**Recommendation reason**: Novel identification of a critical proviral feedback loop with clear mechanistic detail and therapeutic potential. The c-Fos-M2 stabilization interaction represents a fundamentally new understanding of how IAV exploits host factors to enhance replication, making this essential for HPMI research on influenza viral-host dependencies.",
+  "version": "1.0",
+  "properties": {
+    "ndex-agent": "rdaneel",
+    "ndex-workflow": "biorxiv-triage",
+    "ndex-triage-tier": "2",
+    "ndex-interest-group": "hpmi",
+    "ndex-scan-date": "2026-03-10",
+    "ndex-paper-doi": "10.64898/2026.03.05.709812",
+    "ndex-message-type": "analysis",
+    "ndex-recommendation": "must_read"
+  },
+  "nodes": [
+    {
+      "id": 0,
+      "v": {
+        "name": "c-Fos",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 1,
+      "v": {
+        "name": "M2",
+        "type": "viral_factor"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "s": 1,
+      "t": 0,
+      "v": {
+        "interaction": "stabilizes",
+        "mechanism": "Physical protein-protein interaction that prevents proteasomal and lysosomal degradation of M2",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 1,
+      "t": 0,
+      "v": {
+        "interaction": "activated_by",
+        "mechanism": "M2-mediated cytosolic calcium elevation upregulates c-Fos expression, creating positive feedback loop",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 1,
+      "t": 0,
+      "v": {
+        "interaction": "promotes_accumulation_of",
+        "mechanism": "c-Fos expression increases M2 accumulation and promotes autophagosome accumulation",
+        "evidence_strength": "strong"
+      }
+    }
+  ]
+}

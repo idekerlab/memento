@@ -1,0 +1,134 @@
+# Agent Configuration: rdaneel
+
+agent:
+  name: rdaneel
+  ndex_username: rdaneel
+  ndex_profile: rdaneel  # profile name in ndex_mcp multi-profile config
+
+# Behavioral parameters
+behavior:
+  # How often to check inbox (in simulated activity loops)
+  inbox_check_interval: "session_start"
+  # Maximum networks to process per activity loop
+  batch_size: 10
+  # Whether to auto-publish extracted networks or hold in drafts
+  auto_publish: false
+  # Minimum confidence threshold for extracted claims
+  claim_confidence_threshold: 0.7
+
+# NDEx folder IDs (populated after NDEx 3 folder bootstrap)
+ndex_folders:
+  home: null
+  inbox: null
+  posts: null
+  data_resources: null
+  journal_clubs: null
+  drafts: null
+
+# Communication preferences
+communication:
+  # Message types this agent produces
+  output_types:
+    - post
+    - analysis
+    - data-resource
+    - announcement
+    - reply
+    - dm
+  # Agents whose inbox this agent has write access to
+  known_contacts:
+    - drh
+    - janetexample
+  # Interest groups this agent participates in
+  interest_groups:
+    - hpmi  # Host-Pathogen Molecular Interactions
+  # Journal clubs this agent is a member of
+  journal_club_memberships: []
+
+# Paper processing
+paper_processing:
+  # Extraction focus areas
+  focus_areas:
+    - RIG-I/TRIM25 signaling mechanisms
+    - influenza NS1 immune evasion
+    - K63-linked ubiquitination in innate immunity
+    - RIPLET/RNF135 in RIG-I activation
+    - replication-transcription balance
+    - host-pathogen protein interactions
+  # Default extraction workflow
+  default_workflow: "workflows/biorxiv_triage"
+
+# PubMed/PMC search configuration
+pubmed_search:
+  focus_queries:
+    - "RIG-I TRIM25 influenza"
+    - "DDX58 RNF135 innate immunity"
+    - "TRIM25 ubiquitination antiviral"
+    - "RIG-I signaling pathway influenza virus"
+    - "NS1 TRIM25 antagonism"
+    - "MAVS signaling influenza"
+    - "RIPLET RIG-I ubiquitin"
+  max_results_per_query: 20
+  sort_by: "relevance"
+  citation_chain_depth: 2  # how many levels of references to follow
+
+# Author tracking configuration
+author_tracking:
+  network_uuid: "rdaneel-researcher-network"
+  track_roles:
+    - first_author
+    - corresponding_author
+  track_fields:
+    - name
+    - affiliation
+    - orcid
+
+# bioRxiv triage configuration
+biorxiv_triage:
+  # Tier 1: Discovery scan
+  tier1:
+    scan_interval_days: 3
+    max_papers_per_scan: 500
+    # Keyword groups — papers matching ANY keyword from ANY group are candidates
+    keyword_groups:
+      rig_i_trim25:
+        - RIG-I
+        - DDX58
+        - TRIM25
+        - RNF135
+        - RIPLET
+        - MAVS
+        - K63-ubiquitin
+        - RIG-I-like receptor
+        - RLR signaling
+      virus:
+        - influenza
+        - IAV
+        - H1N1
+        - H3N2
+        - H5N1
+      immune_evasion:
+        - NS1
+        - viral evasion
+        - immune escape
+        - interferon antagonist
+    # Model to use for abstract scoring
+    scoring_model: "haiku"
+
+  # Tier 2: Focused read
+  tier2:
+    # Top N papers from Tier 1 to read in full
+    papers_per_scan: 5
+    # Model for review generation
+    review_model: "haiku"
+    # Minimum Tier 1 relevance score to trigger Tier 2
+    min_relevance_score: 0.6
+
+  # Tier 3: Deep analysis
+  tier3:
+    # Triggered by Tier 2 "must_read" recommendation
+    analysis_model: "opus"
+    # Search for related work on NDEx before analysis
+    search_ndex_context: true
+    # Search bioRxiv for related recent papers
+    search_biorxiv_context: true

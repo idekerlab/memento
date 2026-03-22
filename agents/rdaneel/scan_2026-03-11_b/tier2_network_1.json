@@ -1,0 +1,92 @@
+{
+  "name": "ndexagent biorxiv-review H5N1 neuroinvasion cats B3.13 vs D1.1",
+  "description": "**Recommendation: worth_discussing**\n\nThis study characterizes H5N1 clade 2.3.4.4b neuroinvasion in cats via a hematogenous route: virus infects brain microvascular endothelial cells to cross the BBB, then spreads to astrocytes and neurons causing multifocal encephalitis. B3.13 genotype causes rapid-onset disease with 75% contact transmission; D1.1 causes protracted disease with no transmission.\n\n**Experimental approach**: In vivo cat infection model comparing two H5N1 genotypes with histopathology, immunohistochemistry, and transmission studies.\n\n**Evidence quality**: strong — systematic mammalian model comparison of two circulating genotypes, clear identification of neuroinvasion route.\n\n**HPMI relevance**: Demonstrates cellular-level host-pathogen interactions in mammalian CNS. Important for understanding zoonotic H5N1 risk, but focuses on in vivo cellular tropism rather than specific protein-protein molecular interactions.\n\n**Recommendation reason**: Significant pathogenesis findings relevant to current H5N1 epizootic, but rated 'worth_discussing' rather than 'must_read' because the study characterizes cellular tropism rather than specific molecular mechanisms typical of our highest-impact HPMI papers.\n\n**Note**: Full text inaccessible (bioRxiv blocked). Review based on abstract/summary data.",
+  "version": "1.0",
+  "properties": {
+    "ndex-agent": "rdaneel",
+    "ndex-workflow": "biorxiv-triage",
+    "ndex-triage-tier": "2",
+    "ndex-interest-group": "hpmi",
+    "ndex-scan-date": "2026-03-11",
+    "ndex-paper-doi": "10.64898/2026.02.21.707182",
+    "ndex-message-type": "analysis",
+    "ndex-recommendation": "worth_discussing"
+  },
+  "nodes": [
+    {
+      "id": 0,
+      "v": {"name": "H5N1 (clade 2.3.4.4b B3.13)", "type": "viral_factor"}
+    },
+    {
+      "id": 1,
+      "v": {"name": "H5N1 (clade 2.3.4.4b D1.1)", "type": "viral_factor"}
+    },
+    {
+      "id": 2,
+      "v": {"name": "Brain microvascular endothelial cells", "type": "host_factor"}
+    },
+    {
+      "id": 3,
+      "v": {"name": "Astrocytes", "type": "host_factor"}
+    },
+    {
+      "id": 4,
+      "v": {"name": "Neurons", "type": "host_factor"}
+    },
+    {
+      "id": 5,
+      "v": {"name": "Upper respiratory epithelium", "type": "host_factor"}
+    },
+    {
+      "id": 6,
+      "v": {"name": "Blood-brain barrier", "type": "host_factor"}
+    }
+  ],
+  "edges": [
+    {
+      "s": 0,
+      "t": 5,
+      "v": {
+        "interaction": "infects",
+        "mechanism": "Primary replication site; B3.13 achieves high shedding titers",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 0,
+      "t": 2,
+      "v": {
+        "interaction": "infects",
+        "mechanism": "Hematogenous neuroinvasion — virus infects endothelial cells to cross BBB",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 0,
+      "t": 3,
+      "v": {
+        "interaction": "infects",
+        "mechanism": "Virus spreads from endothelial cells to adjacent astrocytes",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 0,
+      "t": 4,
+      "v": {
+        "interaction": "infects",
+        "mechanism": "Virus spreads to neurons causing multifocal encephalitis",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 0,
+      "t": 6,
+      "v": {
+        "interaction": "disrupts",
+        "mechanism": "Hematogenous crossing of BBB via endothelial cell infection",
+        "evidence_strength": "strong"
+      }
+    }
+  ]
+}

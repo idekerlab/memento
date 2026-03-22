@@ -1,0 +1,49 @@
+{
+  "paper_doi": "10.64898/2025.12.10.693272",
+  "paper_title": "The Incoming Influenza Genome Assembles a Host RBP Network",
+  "tier2_review": {
+    "summary": "This study uses VIR-CLASP to map the first comprehensive host-viral RNA interface during early IAV infection in human lung cells, identifying approximately 700 human RNA-binding proteins (RBPs) that are proactively recruited by the incoming negative-sense viral genome. Functional screening of top candidates reveals GMPS, TOP2A, SRRM2, and SPEN as critical proviral host factors operating at distinct stages of the viral replication cycle. The findings redefine the incoming vRNA as an active scaffold that assembles nuclear machinery required for productive replication, rather than merely a transcriptional template.",
+    "key_molecular_findings": [
+      {
+        "host_factor": "GMPS",
+        "viral_factor": "vRNA (incoming genome)",
+        "interaction_type": "recruited_by",
+        "mechanism": "GMPS is recruited to incoming vRNA and regulates production of viral complementary RNA (cRNA). Operates at early replication stages.",
+        "evidence_strength": "strong"
+      },
+      {
+        "host_factor": "TOP2A",
+        "viral_factor": "vRNA (incoming genome)",
+        "interaction_type": "recruited_by",
+        "mechanism": "TOP2A binds incoming vRNA and regulates viral mRNA synthesis. May facilitate topological changes in viral RNP complexes during transcription.",
+        "evidence_strength": "strong"
+      },
+      {
+        "host_factor": "SRRM2",
+        "viral_factor": "M segment / NS segment mRNA",
+        "interaction_type": "splices",
+        "mechanism": "SRRM2 serves as a core spliceosome component coordinating alternative splicing of viral M (segment 7) and NS (segment 8) transcripts. IAV lacks its own splicing machinery and is entirely dependent on host spliceosome.",
+        "evidence_strength": "strong"
+      },
+      {
+        "host_factor": "SPEN",
+        "viral_factor": "vRNA (incoming genome)",
+        "interaction_type": "recruited_by",
+        "mechanism": "SPEN is recruited to incoming vRNA and regulates cRNA production. Functions in concert with GMPS at replication initiation stage.",
+        "evidence_strength": "strong"
+      },
+      {
+        "host_factor": "Host RBP network (~700 proteins)",
+        "viral_factor": "IAV negative-sense genome (8 segments)",
+        "interaction_type": "assembled_on",
+        "mechanism": "The incoming vRNA acts as a scaffold that initiates assembly of nuclear machinery. The RBP interactome is enriched for RNA metabolism, gene expression regulation, and innate immunity factors.",
+        "evidence_strength": "strong"
+      }
+    ],
+    "experimental_approach": "VIR-CLASP (Viral RNA Interactome Capture by Ligation And Selection of Proximal pairs) applied to IAV-infected human lung cells at early time points. Followed by mass spectrometry identification of bound host RBPs. Functional validation of top candidates via siRNA knockdown screens measuring viral replication, mRNA, and cRNA levels.",
+    "evidence_quality": "strong — VIR-CLASP provides unbiased, transcriptome-wide identification of RNA-protein interactions. Functional validation of 4 key factors with clear phenotypic effects on distinct viral RNA species. Multiple independent experimental approaches corroborate findings.",
+    "hpmi_relevance": "Highly relevant. This is one of the most comprehensive maps of early host-virus RNA interactions for IAV. Identifies novel proviral host dependencies that could serve as therapeutic targets. Reveals that IAV's incoming genome is not passive but actively recruits host machinery, fundamentally changing our understanding of early infection dynamics.",
+    "recommendation": "must_read",
+    "recommendation_reason": "This paper provides a paradigm-shifting view of early IAV infection, mapping hundreds of host-virus RNA interactions with a powerful new technique and functionally validating 4 novel proviral factors. The breadth of the interactome (~700 RBPs) and the mechanistic insights into how IAV co-opts host splicing and replication machinery make this essential reading for the HPMI community."
+  }
+}

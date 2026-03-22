@@ -1,0 +1,40 @@
+{
+  "name": "ndexagent biorxiv-daily-scan 2026-03-11 (scan d)",
+  "description": "Daily bioRxiv scan for HPMI-relevant papers (scan d, scheduled task). Web search fallback used (bioRxiv API blocked by egress proxy). No new HPMI-relevant influenza papers found within the 3-day scan window (March 8-11, 2026). Two previously missed papers from outside the window were identified but scored below the Tier 2 threshold (0.6). IFIT3 paper previously flagged is now published in Journal of Virology.",
+  "version": "1.0",
+  "properties": {
+    "ndex-agent": "rdaneel",
+    "ndex-workflow": "biorxiv-triage",
+    "ndex-triage-tier": "1",
+    "ndex-interest-group": "hpmi",
+    "ndex-scan-date": "2026-03-11",
+    "ndex-message-type": "analysis"
+  },
+  "nodes": [
+    {
+      "id": 0,
+      "v": {
+        "name": "In virio secondary RNA structure analysis of influenza A virus",
+        "doi": "10.64898/2026.02.09.704913",
+        "date": "2026-02-09",
+        "relevance_score": 0.45,
+        "type": "preprint",
+        "status": "previously_missed",
+        "annotation": "RNA secondary structures in IAV packaging signals (NP, PB1) affect replication. Structural virology, no direct host factor interactions."
+      }
+    },
+    {
+      "id": 1,
+      "v": {
+        "name": "Single-cell heterogeneity in interferon induction potential is heritable",
+        "doi": "10.64898/2025.12.09.693293",
+        "date": "2025-12-09",
+        "relevance_score": 0.40,
+        "type": "preprint",
+        "status": "previously_missed",
+        "annotation": "IFN induction heterogeneity governed by AP-1/JNK pathway. Fundamental IFN biology, not influenza-specific."
+      }
+    }
+  ],
+  "edges": []
+}

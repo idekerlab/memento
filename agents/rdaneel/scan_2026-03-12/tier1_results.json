@@ -1,0 +1,75 @@
+{
+  "scan_date": "2026-03-12",
+  "scan_method": "web_search_fallback",
+  "scan_reason": "bioRxiv API and website blocked by egress proxy",
+  "interval_days": 3,
+  "scan_window": "2026-03-09 to 2026-03-12",
+  "total_new_papers_in_window": 0,
+  "total_new_papers_outside_window": 2,
+  "previously_processed_papers_re_encountered": "All papers from previous scans re-encountered; no new papers within 3-day window",
+  "new_papers_outside_window": [
+    {
+      "doi": "10.64898/2026.03.04.709389",
+      "title": "Pathogenesis of H5N1 Clade 2.3.4.4b in dry Jersey cows following intramammary inoculation shows within-host compartmentalization",
+      "date": "2026-03-04",
+      "category": "microbiology",
+      "relevance_score": 0.50,
+      "score_rationale": "H5N1 pathogenesis study in dry cows showing tissue compartmentalization. Adds to the dairy H5N1 cluster but focuses on cellular/pathological level changes rather than specific molecular protein-protein interactions. Keywords matched: H5N1, pathogenesis.",
+      "annotation": "H5N1 clade 2.3.4.4b causes severe disease in dry cows with within-host viral compartmentalization; tissue tropism study complements existing dairy H5N1 cluster"
+    },
+    {
+      "doi": "10.64898/2026.01.23.701420",
+      "title": "antigen-prime: Simulating coupled genetic and antigenic evolution of influenza virus",
+      "date": "2026-01-23",
+      "category": "bioinformatics",
+      "relevance_score": 0.20,
+      "score_rationale": "Computational tool for simulating antigenic evolution. Not focused on host-pathogen molecular interactions — purely bioinformatics/epidemiology tool. Low HPMI relevance.",
+      "annotation": "Computational platform for modeling influenza antigenic drift; no molecular interaction content"
+    }
+  ],
+  "version_updates_detected": [
+    {
+      "doi": "10.64898/2026.01.08.698527",
+      "title": "Haemagglutinin 162-164 deletions enhance influenza B/Victoria virus fitness and virulence in vivo",
+      "previous_score": 0.60,
+      "note": "v2 revision detected; previously scored in 2026-03-11 scan. IBV focus — not reviewed at Tier 2 in prior scan because full text was inaccessible and paper focuses on influenza B rather than A."
+    }
+  ],
+  "ndex_network_spec": {
+    "name": "ndexagent biorxiv-daily-scan 2026-03-12",
+    "description": "Daily bioRxiv scan for HPMI-relevant papers (web search fallback). Scan window March 9-12, 2026. No new papers found within window. 2 previously unprocessed papers identified outside window (scored below Tier 2 threshold). Confirms continued publication lull for influenza HPMI preprints observed since March 8.",
+    "properties": {
+      "ndex-agent": "rdaneel",
+      "ndex-workflow": "biorxiv-triage",
+      "ndex-triage-tier": "1",
+      "ndex-interest-group": "hpmi",
+      "ndex-scan-date": "2026-03-12",
+      "ndex-message-type": "analysis"
+    },
+    "nodes": [
+      {
+        "id": 0,
+        "v": {
+          "name": "H5N1 dry Jersey cows pathogenesis",
+          "doi": "10.64898/2026.03.04.709389",
+          "date": "2026-03-04",
+          "relevance_score": 0.50,
+          "type": "preprint",
+          "status": "new_outside_window"
+        }
+      },
+      {
+        "id": 1,
+        "v": {
+          "name": "antigen-prime: antigenic evolution simulator",
+          "doi": "10.64898/2026.01.23.701420",
+          "date": "2026-01-23",
+          "relevance_score": 0.20,
+          "type": "preprint",
+          "status": "new_outside_window"
+        }
+      }
+    ],
+    "edges": []
+  }
+}

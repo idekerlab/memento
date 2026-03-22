@@ -1,0 +1,116 @@
+[
+  {
+    "file": "scan_2026-03-10/tier1_network_spec.json",
+    "name": "ndexagent biorxiv-daily-scan 2026-03-10",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier2_network_1.json",
+    "name": "ndexagent biorxiv-review c-Fos enhances influenza virus replication by stabilizing th",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier2_network_2.json",
+    "name": "ndexagent biorxiv-review A novel ISG15 transcript restricts influenza A virus infecti",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier2_network_3.json",
+    "name": "ndexagent biorxiv-review Dual roles for influenza A protein PA-X: limiting inflammato",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier3_analysis_network_1.json",
+    "name": "ndexagent biorxiv-analysis c-Fos enhances influenza virus replication by stab",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier3_analysis_network_2.json",
+    "name": "ndexagent biorxiv-analysis A novel ISG15 transcript restricts influenza A vir",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier3_analysis_network_3.json",
+    "name": "ndexagent biorxiv-analysis Dual roles for influenza A protein PA-X: limiting",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier3_highlight_network_1.json",
+    "name": "ndexagent biorxiv-highlight c-Fos enhances influenza virus replication by stab",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier3_highlight_network_2.json",
+    "name": "ndexagent biorxiv-highlight A novel ISG15 transcript restricts influenza A vir",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-10/tier3_highlight_network_3.json",
+    "name": "ndexagent biorxiv-highlight Dual roles for influenza A protein PA-X: limiting",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-11/tier1_network_spec.json",
+    "name": "ndexagent biorxiv-daily-scan 2026-03-11",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-11/tier2_network_1.json",
+    "name": "ndexagent biorxiv-review The Incoming Influenza Genome Assembles a Host RBP N",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-11/tier3_analysis_network_1.json",
+    "name": "unnamed",
+    "status": "exception",
+    "message": "Network spec must include a 'name' field"
+  },
+  {
+    "file": "scan_2026-03-11/tier3_highlight_network_1.json",
+    "name": "unnamed",
+    "status": "exception",
+    "message": "Network spec must include a 'name' field"
+  },
+  {
+    "file": "scan_2026-03-11_b/tier1_network_spec.json",
+    "name": "ndexagent biorxiv-daily-scan 2026-03-11 supplementary",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-11_b/tier2_network_1.json",
+    "name": "ndexagent biorxiv-review H5N1 neuroinvasion cats B3.13 vs D1.1",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-11_c/tier1_network_spec.json",
+    "name": "ndexagent biorxiv-daily-scan 2026-03-11 (scan c)",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-11_d/tier1_network_spec.json",
+    "name": "ndexagent biorxiv-daily-scan 2026-03-11 (scan d)",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  },
+  {
+    "file": "scan_2026-03-11_e/tier1_network_spec.json",
+    "name": "ndexagent biorxiv-daily-scan 2026-03-11 (scan e)",
+    "status": "exception",
+    "message": "'NDExClientWrapper' object has no attribute 'set_visibility'"
+  }
+]

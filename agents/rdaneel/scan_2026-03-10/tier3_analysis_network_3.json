@@ -1,0 +1,213 @@
+{
+  "name": "ndexagent biorxiv-analysis Dual roles for influenza A protein PA-X: limiting",
+  "description": "## Executive Summary\nThis study reveals dual immunosuppressive mechanisms of influenza A virus PA-X protein in human respiratory epithelium: (1) limiting inflammatory response through IFN-lambda suppression and early IFN signaling inhibition, and (2) disrupting MHC I antigen presentation through decreased surface trafficking and downregulation of antigen processing genes. The findings are significant because PA-X is highly conserved (99% of IAV strains) and operates through distinct molecular mechanisms from the better-characterized NS1 protein, with potential clinical implications for epithelial wound healing and post-infection fibrosis.\n\n## Mechanism Analysis\n**Main finding**: PA-X, produced via +1 ribosomal frameshifting from PA mRNA, functions as a dual-acting viral immune evasion factor: (1) suppresses IFN-lambda secretion and early IFN signaling in infected airway epithelial cells, and (2) decreases MHC I surface presentation in infected cells while broadly reducing interferon-stimulated gene (ISG) expression in bystander cells. This represents a coordinated attack on both innate immune triggering and adaptive immune antigen presentation.\n**Novelty**: The study provides mechanistic detail on PA-X's previously known immune suppression role (Hu et al. 2015) with several novel insights: (1) temporal separation of early IFN signaling inhibition from IFN secretion suppression, suggesting multiple molecular targets; (2) quantification of differential IFN-lambda vs IFN-beta suppression in airway epithelium (1000-fold difference in baseline production); (3) distinction between infected cell vs bystander cell responses, revealing non-cell-autonomous ISG suppression; (4) direct evidence of MHC I trafficking disruption, not merely downregulation; (5) identification of PA-X-dependent effects on cilia function and wound repair pathways, extending beyond classical immunology. The 3D ex vivo human airway epithelium model context is novel compared to traditional 2D cell culture systems.\n**Pathway context**: PA-X operates in the host shutoff pathway through its endonuclease domain (N-terminal 191 aa shared with PA protein core). The mechanism differs temporally from previously characterized mechanisms: PA-X inhibits early IFN signaling PRIOR to detectable IFN secretion, suggesting direct mRNA degradation of key signal transduction intermediates. In bystander cells (uninfected but exposed to paracrine IFN), PA-X broadly suppresses ISG expression, indicating non-cell-autonomous immune suppression. Additionally, PA-X regulates cilia development/beating and wound repair pathways, suggesting broader epithelial homeostasis disruption beyond canonical immune functions. The unique C-terminal 41-61 aa region (absent in PA) likely confers substrate specificity for these broader targets.\n**Molecular details**: PA-X endonuclease domain (N-terminal 191 aa identical to PA protein) catalyzes mRNA cleavage of specific target RNAs. The mechanism appears to involve: (1) degradation of IFN-lambda-encoding transcripts; (2) degradation of early IFN-alpha/beta response pathway intermediates (likely ISGs or signal transduction factors like JAK/STAT components, though not explicitly detailed); (3) suppression of MHC I and antigen processing gene transcripts in club and ciliated cell populations. MHC I suppression operates at two levels: transcriptional downregulation and post-translational trafficking inhibition (slowed surface translocation). The functional interplay with NS1 protein (Khaperskyy et al. 2016, 2024) suggests NS1 effector domain may facilitate PA-X substrate recruitment or endonuclease activity. Club and ciliated cells show differential PA-X-dependent regulation of antigen processing genes, suggesting cell-type-specific post-transcriptional mechanisms or differential PA-X expression levels.\n\n## Methods Assessment\n**Strengths**: Use of 3D ex vivo human airway epithelium model provides physiologically relevant context superior to traditional 2D monolayers or animal models. Cell-type-specific analysis acknowledges heterogeneity in respiratory epithelium and identifies differential PA-X effects across club and ciliated cell populations. Temporal resolution of early IFN signaling (before secretion) provides mechanistic insights into direct mRNA targets. Quantification of IFN-lambda vs IFN-beta ratios (1000-fold difference) in airway epithelium establishes physiologically accurate baseline for understanding PA-X suppression. Distinction between infected and bystander cell responses reveals non-cell-autonomous immune evasion mechanisms. Integration of multiple endpoints (IFN secretion, ISG expression, MHC I trafficking, epithelial remodeling) provides comprehensive mechanistic picture.\n**Limitations**: Specific molecular targets of PA-X endonuclease are not exhaustively identified; the study demonstrates functional suppression but doesn't comprehensively catalog the mRNA substrates cleaved by PA-X. Mechanism of MHC I trafficking inhibition not fully characterized (direct vs indirect effect; specific trafficking machinery components involved). The study likely uses specific viral strains; generalizability across the 99% PA-X-conserved IAV strains uncertain without cross-strain validation. Temporal dynamics: early timepoints (1 DPI) characterized, but kinetics of PA-X effects over extended infection (2-7 DPI) and relationship to viral replication kinetics not clearly detailed. Functional significance of cilia and wound repair pathway effects remains unclear; potential mechanisms connecting PA-X endonuclease activity to these broader epithelial processes not explained. NS1-PA-X functional interplay mentioned but mechanistic details apparently limited to prior publications (Khaperskyy et al. references). Ex vivo model uses primary human cells but lacks in vivo host factors (immune cell infiltration, systemic factors). No quantification of PA-X expression levels or protein stability in this cellular context.\n\n## Significance\n**Field impact**: high\n**Justification**: PA-X is conserved in 99% of IAV strains, making this protein an exceptionally common and likely clinically relevant viral immune evasion mechanism. Prior work (Hu et al. 2015) demonstrated PA-X contributions to viral growth; this study provides mechanistic detail bridging viral replication fitness to immune suppression across both innate and adaptive immunity. The demonstration of dual mechanisms (IFN suppression + MHC I antigen presentation disruption) operating in physiologically relevant respiratory epithelium significantly advances understanding of IAV immune evasion beyond the well-characterized NS1 protein. The identification of PA-X effects on epithelial integrity (cilia, wound repair) introduces a new functional dimension beyond canonical immunology, potentially linking viral infection to post-acute sequelae including fibrosis. The use of 3D ex vivo human airway epithelium provides translational relevance often lacking in prior studies using transformed cell lines or animal models. These mechanistic insights provide multiple druggable targets for antiviral therapeutic development.\n**Clinical relevance**: PA-X is near-universal in circulating IAV strains, making it a potential therapeutic target for all seasonal and pandemic influenza. The identified mechanisms\u2014IFN-lambda suppression, antigen presentation disruption, epithelial remodeling\u2014are implicated in severe COVID-19 outcomes and may similarly contribute to IAV disease severity. Post-infection fibrosis is a concerning long-term sequela in severe influenza; PA-X-mediated suppression of wound repair pathways may explain mechanistic links between acute infection and chronic lung disease. MHC I downregulation has clinical implications for CD8+ T cell exhaustion and persistent viral reservoirs. Understanding PA-X effects on cilia function may explain persistent respiratory symptoms and increased secondary bacterial infection risk observed in some influenza patients. PA-X could be a biomarker of infection severity or predictive of complicated disease course. Therapeutic inhibition of PA-X (e.g., endonuclease inhibitors) combined with antivirals could potentially enhance antiviral immunity and reduce epithelial damage.\n\n## Testable Predictions\n- PA-X mutants with inactivated endonuclease domain (catalytic residue mutations) should fail to suppress IFN-lambda secretion, early IFN signaling, and ISG expression in bystander cells\n- Specific mRNA targets of PA-X endonuclease can be identified through RNA-sequencing of PA-X-expressing cells combined with mRNA half-life measurements; early IFN signaling genes (JAK1, STAT1, etc.) and IFN-lambda should be overrepresented\n- MHC I surface trafficking can be restored by blocking specific trafficking inhibitors or using conditional knockout approaches targeting proteins identified as PA-X targets\n- Blocking MHC I synthesis (e.g., with proteasome inhibitors to assess ER-associated degradation) should prevent PA-X effects on antigen presentation, revealing whether the mechanism is primarily transcriptional vs post-translational\n- Cell-type-specific PA-X effects (club vs ciliated cells) should correlate with differential expression of key transcription factors controlling antigen processing gene expression (e.g., IRF1, STAT1)\n- PA-X effects on cilia development can be rescued by exogenous expression of cleaved mRNA targets; identifying which targets restores cilia function will reveal mechanistic links\n- In vivo infection with PA-X-deficient IAV mutants should show enhanced ISG expression, higher epithelial MHC I levels, delayed viral clearance (if CD8+ T cell immunity is sufficient), and altered post-infection wound healing/fibrosis\n- The timing of early IFN signaling inhibition should precede IFN-lambda secretion by hours; profiling of kinetic mRNA targets at 2-4 hour timepoints should identify direct PA-X substrates\n- NS1 effector domain mutants that cannot cooperate with PA-X should show incomplete host shutoff; combining PA-X + NS1 mutations should show synergistic loss of immune suppression\n- The 1000-fold difference in IFN-lambda vs IFN-beta production should be intrinsic to airway epithelial cell type; 3D differentiated epithelium from basal progenitors should recapitulate this ratio\n- PA-X-mediated suppression of wound repair genes should result in impaired epithelial restitution upon mechanical injury; PA-X-expressing infected cells should show delayed wound closure compared to control cells\n- Strain-specific variations in PA-X sequence (despite 99% conservation) should not substantially alter immune suppression function; wild-type strains with divergent PA-X should show similar phenotypes",
+  "version": "1.0",
+  "properties": {
+    "ndex-agent": "rdaneel",
+    "ndex-workflow": "biorxiv-triage",
+    "ndex-triage-tier": "3",
+    "ndex-interest-group": "hpmi",
+    "ndex-scan-date": "2026-03-10",
+    "ndex-paper-doi": "10.64898/2026.01.30.702929",
+    "ndex-message-type": "analysis",
+    "ndex-data-type": "interaction"
+  },
+  "nodes": [
+    {
+      "id": 0,
+      "v": {
+        "name": "PA-X",
+        "type": "viral_factor"
+      }
+    },
+    {
+      "id": 1,
+      "v": {
+        "name": "IFN-lambda mRNA",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 2,
+      "v": {
+        "name": "early IFN signaling",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 3,
+      "v": {
+        "name": "ISG expression",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 4,
+      "v": {
+        "name": "MHC I",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 5,
+      "v": {
+        "name": "antigen processing genes",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 6,
+      "v": {
+        "name": "cilia development/beating",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 7,
+      "v": {
+        "name": "wound repair pathway",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 8,
+      "v": {
+        "name": "NS1",
+        "type": "viral_factor"
+      }
+    },
+    {
+      "id": 9,
+      "v": {
+        "name": "PA",
+        "type": "viral_factor"
+      }
+    },
+    {
+      "id": 10,
+      "v": {
+        "name": "IFN-lambda",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 11,
+      "v": {
+        "name": "IFN-alpha/beta",
+        "type": "host_factor"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "s": 0,
+      "t": 1,
+      "v": {
+        "interaction": "degrades",
+        "context": "infected respiratory epithelial cells",
+        "evidence": "decreased IFN-lambda secretion from airway epithelium; direct endonuclease-mediated mRNA cleavage mechanism",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 0,
+      "t": 2,
+      "v": {
+        "interaction": "inhibits",
+        "context": "infected airway epithelial cells, prior to detectable IFN secretion",
+        "evidence": "decreased early IFN signaling detected before IFN-lambda secretion; suggests degradation of signal transduction intermediates",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 0,
+      "t": 3,
+      "v": {
+        "interaction": "broadly_decreases",
+        "context": "bystander cells (uninfected, paracrine IFN-exposed); more pronounced than in infected cells",
+        "evidence": "greater ISG expression in bystander cells vs infected cells; PA-X-dependent broad decrease in ISG expression at 1 DPI",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 0,
+      "t": 4,
+      "v": {
+        "interaction": "decreases_surface_presentation",
+        "context": "infected airway epithelial cells",
+        "evidence": "decreased MHC I in infected cells; slowed MHC I trafficking to cell surface",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 0,
+      "t": 5,
+      "v": {
+        "interaction": "downregulates",
+        "context": "club cells and ciliated cells",
+        "evidence": "PA-X-dependent decrease in antigen processing/presentation genes in cell-type-specific manner",
+        "confidence": "medium"
+      }
+    },
+    {
+      "s": 0,
+      "t": 6,
+      "v": {
+        "interaction": "regulates",
+        "context": "respiratory epithelial cells",
+        "evidence": "documented in 3D ex vivo human airway epithelium model",
+        "confidence": "medium"
+      }
+    },
+    {
+      "s": 0,
+      "t": 7,
+      "v": {
+        "interaction": "regulates",
+        "context": "epithelial healing post-infection",
+        "evidence": "PA-X regulation of healing/wound repair pathways; potential impact on post-infection fibrosis",
+        "confidence": "medium"
+      }
+    },
+    {
+      "s": 0,
+      "t": 8,
+      "v": {
+        "interaction": "functionally_cooperates",
+        "context": "host shutoff function during infection",
+        "evidence": "NS1 effector domain required for PA-X-mediated shutoff (Khaperskyy et al. 2024); documented functional interplay",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 9,
+      "t": 0,
+      "v": {
+        "interaction": "produces_via_frameshifting",
+        "context": "+1 ribosomal frameshifting of PA mRNA generates PA-X",
+        "evidence": "PA-X produced by +1 ribosomal frameshifting; N-terminal 191 aa identical to PA",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 10,
+      "t": 3,
+      "v": {
+        "interaction": "induces",
+        "context": "paracrine signaling to bystander cells",
+        "evidence": "greater ISG expression in bystander cells exposed to IFN-lambda produced by infected cells",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 11,
+      "t": 3,
+      "v": {
+        "interaction": "induces",
+        "context": "infected and bystander respiratory epithelial cells",
+        "evidence": "IFN-beta produced ~1000x less than IFN-lambda in airway epithelium; suggests limited IFN-alpha/beta contribution",
+        "confidence": "high"
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "ndex": {
+      "command": ".venv/bin/python3",
+      "args": ["-m", "tools.ndex_mcp.server", "--profile", "rgiskard"],
+      "cwd": "."
+    },
+    "local_store": {
+      "command": ".venv/bin/python3",
+      "args": ["-m", "tools.local_store.server", "--profile", "rgiskard"],
+      "cwd": "."
+    },
+    "biorxiv": {
+      "command": ".venv/bin/python3",
+      "args": ["-m", "tools.biorxiv.server"],
+      "cwd": "."
+    },
+    "pubmed": {
+      "command": ".venv/bin/python3",
+      "args": ["-m", "tools.pubmed.server"],
+      "cwd": "."
+    }
+  }
+}

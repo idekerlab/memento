@@ -1,0 +1,96 @@
+{
+  "scan_date": "2026-03-10",
+  "interval_days": 3,
+  "total_scanned_approx": "~2000 (estimated via web search)",
+  "scan_method": "web_search_fallback",
+  "papers": [
+    {
+      "doi": "10.64898/2026.03.05.709812",
+      "title": "c-Fos enhances influenza virus replication by stabilizing the M2 protein and promoting autophagosome accumulation",
+      "authors": "Unknown (search result)",
+      "abstract": "IAV employs multiple strategies to hijack host cellular machinery. c-Fos identified as critical proviral host factor enhancing IAV replication through stabilizing M2 protein and promoting autophagosome accumulation. IAV infection triggers M2-mediated cytosolic calcium elevation upregulating c-Fos expression. Induced c-Fos physically interacts with M2 preventing its proteasome and lysosomal degradation. Reveals novel positive feedback loop as potential therapeutic target.",
+      "category": "microbiology",
+      "date": "2026-03-05",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.64898/2026.03.05.709812v1",
+      "relevance_score": 0.95,
+      "relevance_note": "Direct host-pathogen molecular interaction: c-Fos/M2 binding, autophagy modulation, positive feedback loop. Very high HPMI relevance with named molecular players."
+    },
+    {
+      "doi": "10.64898/2026.03.03.709347",
+      "title": "Molecular basis for protection and cross-protection by human antibodies targeting the parainfluenza virus hemagglutinin-neuraminidase protein",
+      "authors": "Unknown (search result)",
+      "abstract": "Structural and functional characterization of human antibodies targeting parainfluenza virus HN protein. Cross-protection mechanisms described.",
+      "category": "immunology",
+      "date": "2026-03-03",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.64898/2026.03.03.709347v1",
+      "relevance_score": 0.35,
+      "relevance_note": "Parainfluenza not influenza. Keyword match on hemagglutinin-neuraminidase but different virus family. Low HPMI relevance for influenza focus."
+    },
+    {
+      "doi": "10.64898/2026.01.30.702929",
+      "title": "PA-X immunomodulation in the human airway",
+      "authors": "Unknown (search result)",
+      "abstract": "Characterizes PA-X endoribonuclease impacts on host response in infected and bystander cells using 3D ex vivo airway epithelium model. PA-X decreases IFN-lambda secretion. Dual activities in evasion of innate and adaptive immune responses. May impact post-infection fibrosis.",
+      "category": "microbiology",
+      "date": "2026-01-30",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.64898/2026.01.30.702929v1",
+      "relevance_score": 0.90,
+      "relevance_note": "Viral immune evasion protein PA-X, host IFN-lambda suppression, 3D airway model. High HPMI relevance with specific molecular mechanism."
+    },
+    {
+      "doi": "10.64898/2026.01.15.699784",
+      "title": "A novel ISG15 transcript restricts influenza A virus infection",
+      "authors": "Unknown (search result)",
+      "abstract": "Novel ISG15 isoform (ncISG15) expressed following IFN stimulation encodes N-terminal truncated protein. Potently inhibits influenza A virus polymerase activity. NS1 reverses ISG15-mediated polymerase inhibition but stoichiometric differences may leave ncISG15 less susceptible. Antiviral activity largely ISGylation-independent.",
+      "category": "microbiology",
+      "date": "2026-01-15",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.64898/2026.01.15.699784v1",
+      "relevance_score": 0.92,
+      "relevance_note": "Host restriction factor ISG15 isoform vs IAV polymerase. NS1 antagonism. Novel mechanism. Very high HPMI relevance."
+    },
+    {
+      "doi": "10.64898/2026.02.18.706711",
+      "title": "Near real-time data on the human neutralizing antibody landscape to influenza virus as of early 2026 to inform vaccine-strain selection",
+      "authors": "Unknown (search result)",
+      "abstract": "High-throughput sequencing-based neutralization assays with 57 H3N2 and 34 H1N1 hemagglutinins. 27,409 titers measured. Lower titers against K subclade H3N2 and D.3.1.1 subclade H1N1.",
+      "category": "immunology",
+      "date": "2026-02-18",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.64898/2026.02.18.706711v1",
+      "relevance_score": 0.50,
+      "relevance_note": "Influenza serology/vaccine. Relevant to influenza but not molecular host-pathogen interaction mechanisms. Moderate relevance."
+    },
+    {
+      "doi": "10.64898/2026.01.16.699876",
+      "title": "Bovine-derived influenza A virus (H5N1) shows efficient replication in well-differentiated human nasal epithelial cells without requiring genetic adaptation",
+      "authors": "Unknown (search result)",
+      "abstract": "Bovine H5N1 (H5N1Tex/24) replicates as efficiently as 2009 pandemic H1N1 in human nasal epithelial cells. Cells express both avian- and human-type receptors. Replicates effectively at 33C (nasal temperature) unlike earlier avian H5N1.",
+      "category": "microbiology",
+      "date": "2026-01-16",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.64898/2026.01.16.699876v1",
+      "relevance_score": 0.75,
+      "relevance_note": "H5N1 tropism and receptor binding in human cells. Relevant to host-pathogen interface but more epidemiological than molecular mechanism."
+    },
+    {
+      "doi": "10.64898/2026.01.20.700505",
+      "title": "Antiviral compound targeting host metabolic pathway inhibits H5N1 and H3N2",
+      "authors": "Unknown (search result)",
+      "abstract": "Small molecule M4 inhibits replication of H5N1 and H3N2 influenza with IC50 0.09 and 0.12 uM. Partial inhibition of host metabolic checkpoint potentiates direct-acting antivirals.",
+      "category": "pharmacology",
+      "date": "2026-01-20",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.64898/2026.01.20.700505v1",
+      "relevance_score": 0.65,
+      "relevance_note": "Host-targeted antiviral. Relevant to host factor role in viral replication. Moderate-high HPMI relevance."
+    },
+    {
+      "doi": "10.1101/2025.01.06.631435",
+      "title": "Polymerase mutations underlie early adaptation of H5N1 influenza virus to dairy cattle and other mammals",
+      "authors": "Unknown (search result)",
+      "abstract": "Cattle B3.13 genotype H5N1 rapidly accumulated polymerase gene adaptations for better replication in bovine cells. PB2 M631L maps to polymerase-ANP32 interface, essential host factor for viral genome replication.",
+      "category": "microbiology",
+      "date": "2025-08-01",
+      "biorxiv_url": "https://www.biorxiv.org/content/10.1101/2025.01.06.631435v3",
+      "relevance_score": 0.80,
+      "relevance_note": "Polymerase-ANP32 host factor interface. Specific molecular interaction at virus-host boundary. High HPMI relevance."
+    }
+  ]
+}

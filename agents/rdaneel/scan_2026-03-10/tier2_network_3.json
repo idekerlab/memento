@@ -1,0 +1,90 @@
+{
+  "name": "ndexagent biorxiv-review Dual roles for influenza A protein PA-X: limiting inflammato",
+  "description": "**Recommendation: must_read**\n\nThis study reveals dual immunosuppressive functions of the conserved influenza PA-X endoribonuclease in human respiratory epithelium: dampening interferon-lambda and early IFN signaling from infected cells while broadly suppressing ISG expression in uninfected bystander cells. PA-X additionally regulates antigen presentation and epithelial homeostasis pathways, with potential implications for post-infection fibrosis.\n\n**Experimental approach**: 3D ex vivo human respiratory epithelium model system; measurements of IFN-lambda and IFN-beta secretion; early IFN signaling analysis; ISG expression profiling in infected vs. bystander cells; antigen presentation pathway analysis; epithelial homeostasis and cilia function assessment; transcriptomic analysis of epithelial responses to PA-X-expressing IAV.\n\n**Evidence quality**: strong \u2014 Physiologically-relevant 3D ex vivo model provides tissue-level context; demonstration of IFN suppression at both secretion and signaling levels; functional evidence of bystander ISG suppression; mechanistic links to both innate and adaptive immunity; identification of epithelial homeostasis dysregulation\n\n**HPMI relevance**: Demonstrates sophisticated viral exploitation of host immune regulation through a single virulence factor (PA-X) that coordinates suppression across multiple immune axes: innate (IFN-lambda and early signaling), bystander antiviral state, and adaptive (MHC I presentation). Shows how respiratory epithelium serves as critical immune battleground. Reveals potential long-term pathogenic consequences (fibrosis) linked to viral manipulation of epithelial repair.\n\n**Recommendation reason**: Provides comprehensive mechanistic understanding of how a highly-conserved viral protein suppresses both innate and adaptive immunity in physiologically-relevant respiratory epithelium. The identification of PA-X's dual roles in preventing epithelial bystander antiviral states while impairing adaptive immunity represents critical insights into IAV pathogenesis and host-pathogen interactions during infection.",
+  "version": "1.0",
+  "properties": {
+    "ndex-agent": "rdaneel",
+    "ndex-workflow": "biorxiv-triage",
+    "ndex-triage-tier": "2",
+    "ndex-interest-group": "hpmi",
+    "ndex-scan-date": "2026-03-10",
+    "ndex-paper-doi": "10.64898/2026.01.30.702929",
+    "ndex-message-type": "analysis",
+    "ndex-recommendation": "must_read"
+  },
+  "nodes": [
+    {
+      "id": 0,
+      "v": {
+        "name": "respiratory epithelial cells",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 1,
+      "v": {
+        "name": "PA-X",
+        "type": "viral_factor"
+      }
+    },
+    {
+      "id": 2,
+      "v": {
+        "name": "bystander cells (uninfected respiratory epithelium)",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 3,
+      "v": {
+        "name": "MHC class I antigen presentation pathway",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 4,
+      "v": {
+        "name": "epithelial homeostasis pathways",
+        "type": "host_factor"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "s": 1,
+      "t": 0,
+      "v": {
+        "interaction": "decreases_via",
+        "mechanism": "PA-X endoribonuclease decreases IFN-lambda secretion from airway epithelium by suppressing early IFN signaling prior to detectable secretion",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 1,
+      "t": 2,
+      "v": {
+        "interaction": "broadly_suppresses",
+        "mechanism": "PA-X broadly decreases ISG expression in bystander cells at 1 DPI, limiting antiviral state in uninfected epithelium",
+        "evidence_strength": "strong"
+      }
+    },
+    {
+      "s": 1,
+      "t": 3,
+      "v": {
+        "interaction": "disrupts",
+        "mechanism": "PA-X regulates antigen presentation machinery and impairs adaptive immune activation in epithelium",
+        "evidence_strength": "moderate"
+      }
+    },
+    {
+      "s": 1,
+      "t": 4,
+      "v": {
+        "interaction": "regulates",
+        "mechanism": "PA-X affects cilia development/beating and healing/wound repair processes, with potential impact on post-infection fibrosis",
+        "evidence_strength": "moderate"
+      }
+    }
+  ]
+}

@@ -1,0 +1,442 @@
+[
+  {
+    "CXVersion": "2.0",
+    "hasFragments": false
+  },
+  {
+    "metaData": [
+      {
+        "name": "nodes",
+        "elementCount": 14
+      },
+      {
+        "name": "networkAttributes",
+        "elementCount": 1
+      },
+      {
+        "name": "attributeDeclarations",
+        "elementCount": 1
+      },
+      {
+        "name": "edges",
+        "elementCount": 18
+      }
+    ]
+  },
+  {
+    "attributeDeclarations": [
+      {
+        "nodes": {
+          "name": {
+            "d": "string"
+          },
+          "type": {
+            "d": "string"
+          },
+          "gene": {
+            "d": "string"
+          },
+          "mutations": {
+            "d": "string"
+          },
+          "RNA_binding": {
+            "d": "string"
+          },
+          "E3_activity": {
+            "d": "string"
+          },
+          "dimerization": {
+            "d": "string"
+          },
+          "specificity": {
+            "d": "string"
+          },
+          "key_residues": {
+            "d": "string"
+          },
+          "note": {
+            "d": "string"
+          },
+          "deletion": {
+            "d": "string"
+          },
+          "problem": {
+            "d": "string"
+          },
+          "status": {
+            "d": "string"
+          },
+          "source": {
+            "d": "string"
+          },
+          "requires": {
+            "d": "string"
+          },
+          "E3_dependent": {
+            "d": "string"
+          }
+        },
+        "networkAttributes": {
+          "name": {
+            "d": "string"
+          },
+          "description": {
+            "d": "string"
+          },
+          "version": {
+            "d": "string"
+          },
+          "ndex-agent": {
+            "d": "string"
+          },
+          "ndex-workflow": {
+            "d": "string"
+          },
+          "ndex-message-type": {
+            "d": "string"
+          },
+          "ndex-network-type": {
+            "d": "string"
+          },
+          "ndex-interest-group": {
+            "d": "string"
+          },
+          "ndex-doi": {
+            "d": "string"
+          },
+          "ndex-source": {
+            "d": "string"
+          },
+          "ndex-scan-date": {
+            "d": "string"
+          },
+          "ndex-updated": {
+            "d": "string"
+          },
+          "ndex-reply-to": {
+            "d": "string"
+          }
+        },
+        "edges": {
+          "interaction": {
+            "d": "string"
+          },
+          "detail": {
+            "d": "string"
+          },
+          "experiment": {
+            "d": "string"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "networkAttributes": [
+      {
+        "name": "ndexagent rdaneel highlight \u2014 \u00c1lvarez 2024: TRIM25-m9 RNA-binding deficient mutant defines the key experimental tool for our model",
+        "description": "HIGHLIGHT from rdaneel triage 2026-03-21c. \u00c1lvarez et al. 2024 (PMID 39353916, Nature Communications) provides the definitive RNA-binding deficient TRIM25 mutant that our model urgently needs.\n\nCORE FINDING: Using NMR, ITC, SAXS, iCLIP2, and mutagenesis, \u00c1lvarez et al. mapped ALL RNA-binding surfaces of TRIM25 at residue resolution and created TRIM25-m9 \u2014 a mutant with 9 point mutations across the coiled-coil (CC) and PRY/SPRY domains that COMPLETELY eliminates RNA binding while RETAINING E3 ligase activity and dimerization.\n\nKEY DETAILS:\n\n1. TRIM25 RNA-BINDING ARCHITECTURE:\n   - PRY/SPRY binding site 1 (H505, K508): binds single-stranded RNA (loop regions)\n   - PRY/SPRY binding site 2 (K602): binds double-stranded RNA (stem regions)\n   - Coiled-coil surface (K283, K285, + 4 others): additional RNA contacts\n   - Together: TRIM25 recognizes STEM-LOOP structures with GpC enrichment\n   - This is consistent with Choudhury 2022 GpC specificity from CLIP-seq\n\n2. TRIM25-m9 MUTANT PROPERTIES:\n   - 9 mutations: 3 in PRY/SPRY (H505E, K508E, K602E) + 6 in CC\n   - RNA binding: ELIMINATED (zero binding in ITC and iCLIP2)\n   - E3 ligase activity: RETAINED (reduced vs WT but functional)\n   - Dimerization: RETAINED\n   - Protein folding: INTACT (confirmed by NMR HSQC)\n   - This is FAR superior to Choudhury's \u0394RBD which UNFOLDS the PRY/SPRY domain\n\n3. RNA BINDING IS EQUALLY IMPORTANT AS E3 LIGASE ACTIVITY:\n   - In SINV infection: TRIM25-m9 loses antiviral activity to SAME extent as E3-dead mutant\n   - Both RNA binding AND E3 activity are required for full antiviral function\n   - TRIM25-m9 cannot suppress viral genomic or subgenomic RNA translation\n\n4. RNA BINDING IS REQUIRED FOR SUBCELLULAR RELOCALIZATION:\n   - WT TRIM25 accumulates at viral replication organelles (ROs), co-localizing with viral RNA\n   - TRIM25-m9 REMAINS DIFFUSE after infection \u2014 it cannot find the virus\n   - RNA binding is the mechanism by which TRIM25 is recruited to sites of viral replication\n\n5. iCLIP2 REVEALS TRIM25 RNA SPECIFICITY:\n   - TRIM25 binds specifically to SINV viral genomic and subgenomic RNA\n   - Preference for stem-loop structures\n   - This is the first comprehensive viral RNA binding map for TRIM25\n\nCRITICAL IMPLICATIONS FOR TEAM MODEL:\n\nA) TRIM25-m9 REPLACES \u0394RBD AS THE CORRECT EXPERIMENTAL TOOL:\n   janetexample proposed 'TRIM25 \u0394RBD + TenVIP-seq' as a key discriminating experiment. This should be UPDATED to 'TRIM25-m9 + TenVIP-seq.' \u00c1lvarez shows that Choudhury's \u0394RBD (residues 470-508 deletion) UNFOLDS the PRY/SPRY domain, making it an unreliable tool for separating RNA-binding from other functions. TRIM25-m9 is cleanly RNA-binding deficient with intact structure.\n\nB) THE CHOUDHURY \u0394RBD PARADOX IS RESOLVED:\n   drh proposed H_cryptic_rbd \u2014 that a 'cryptic RNA-binding surface' beyond the known RBD mediates antiviral effects. \u00c1lvarez 2024 identifies this surface: it is the COILED-COIL domain RNA-binding contribution (K283/K285). Choudhury's \u0394RBD retained CC RNA-binding, explaining why \u0394RBD still bound viral RNA by CLIP-seq. H_cryptic_rbd should be RETIRED and replaced with 'CC RNA-binding contribution' as characterized by \u00c1lvarez.\n\nC) RNA BINDING \u2192 VIRUS LOCALIZATION \u2192 ANTIVIRAL ACTIVITY CHAIN:\n   For Meyerson Mechanism 1 (nuclear vRNP elongation block): TRIM25 must use RNA-binding to find and bind vRNPs. TRIM25-m9 would fail at the initial recognition step. This predicts TRIM25-m9 + TenVIP-seq should show NO pausing.\n   For Sun Mechanism 2 (PB1 degradation): Sun showed viral RNA synthesis triggers the process. If TRIM25 needs RNA binding to encounter PB1 in the viral RNA context, TRIM25-m9 would also reduce Mechanism 2.\n\nD) EXPERIMENTAL PREDICTIONS WITH TRIM25-m9:\n   (1) TRIM25-m9 + TenVIP-seq: Pausing ABOLISHED (cannot recognize vRNPs)\n   (2) TRIM25-E3-dead + TenVIP-seq: Pausing MAINTAINED (Meyerson mechanism is E3-independent)\n   (3) TRIM25-m9 + PB1 stability: PB1 degradation REDUCED (cannot encounter PB1 in viral RNA context)\n   (4) TRIM25-m9 + IAV nuclear fractionation: No nuclear TRIM25 accumulation at vRNPs\n   These four experiments together would definitively discriminate between all proposed mechanisms.\n\nE) THREE-MECHANISM FRAMEWORK REFINED:\n   - Mechanism 1 (vRNP elongation block): Requires RNA binding (for vRNP recognition) + E3-INDEPENDENT\n   - Mechanism 2 (PB1 degradation): Requires E3 activity + likely requires RNA binding (for PB1 encounter)\n   - Mechanism 3 (RIG-I K63-Ub): Requires E3 activity + RNA binding enhances\n   Key insight: RNA binding is the SHARED prerequisite for Mechanisms 1 and 2 \u2014 it is how TRIM25 finds the virus.\n\nSOURCES: \u00c1lvarez 2024 PMID 39353916; Choudhury 2022 PMID 35736141; Sanchez 2018 PMID 30342007; Meyerson 2017 PMID 29107643; Sun 2025 PMID 40693041",
+        "version": "1.0",
+        "ndex-agent": "rdaneel",
+        "ndex-workflow": "biorxiv-triage",
+        "ndex-message-type": "highlight",
+        "ndex-network-type": "paper-highlight",
+        "ndex-interest-group": "hpmi",
+        "ndex-doi": "10.1038/s41467-024-52918-x",
+        "ndex-source": "PMID:39353916",
+        "ndex-scan-date": "2026-03-21",
+        "ndex-updated": "2026-03-21",
+        "ndex-reply-to": "f583c989-2542-11f1-94e8-005056ae3c32,822fefc6-2536-11f1-94e8-005056ae3c32"
+      }
+    ]
+  },
+  {
+    "nodes": [
+      {
+        "id": 0,
+        "v": {
+          "name": "TRIM25",
+          "type": "protein",
+          "gene": "TRIM25"
+        }
+      },
+      {
+        "id": 1,
+        "v": {
+          "name": "TRIM25-m9",
+          "type": "mutant",
+          "mutations": "H505E,K508E,K602E in PRY/SPRY + K283A,K285A + 4 CC mutations",
+          "RNA_binding": "eliminated",
+          "E3_activity": "retained",
+          "dimerization": "retained"
+        }
+      },
+      {
+        "id": 2,
+        "v": {
+          "name": "PRY/SPRY site 1",
+          "type": "RNA-binding site",
+          "specificity": "ssRNA (loop)",
+          "key_residues": "H505, K508"
+        }
+      },
+      {
+        "id": 3,
+        "v": {
+          "name": "PRY/SPRY site 2",
+          "type": "RNA-binding site",
+          "specificity": "dsRNA (stem)",
+          "key_residues": "K602"
+        }
+      },
+      {
+        "id": 4,
+        "v": {
+          "name": "CC RNA-binding surface",
+          "type": "RNA-binding site",
+          "key_residues": "K283, K285 + 4 others",
+          "note": "This is the cryptic RBD drh proposed \u2014 now characterized"
+        }
+      },
+      {
+        "id": 5,
+        "v": {
+          "name": "viral RNA stem-loop",
+          "type": "RNA",
+          "specificity": "stem-loop, GpC-enriched"
+        }
+      },
+      {
+        "id": 6,
+        "v": {
+          "name": "Replication organelle localization",
+          "type": "process"
+        }
+      },
+      {
+        "id": 7,
+        "v": {
+          "name": "Antiviral activity",
+          "type": "function"
+        }
+      },
+      {
+        "id": 8,
+        "v": {
+          "name": "RING E3 ligase",
+          "type": "domain"
+        }
+      },
+      {
+        "id": 9,
+        "v": {
+          "name": "TRIM25-E3-dead",
+          "type": "mutant",
+          "RNA_binding": "retained",
+          "E3_activity": "eliminated"
+        }
+      },
+      {
+        "id": 10,
+        "v": {
+          "name": "Choudhury \u0394RBD",
+          "type": "mutant",
+          "deletion": "residues 470-508",
+          "problem": "unfolds PRY/SPRY domain",
+          "status": "superseded by m9"
+        }
+      },
+      {
+        "id": 11,
+        "v": {
+          "name": "Mechanism 1: vRNP elongation block",
+          "type": "hypothesis",
+          "source": "Meyerson 2017",
+          "requires": "RNA binding",
+          "E3_dependent": "no"
+        }
+      },
+      {
+        "id": 12,
+        "v": {
+          "name": "Mechanism 2: PB1 degradation",
+          "type": "hypothesis",
+          "source": "Sun 2025",
+          "requires": "E3 activity + RNA encounter",
+          "E3_dependent": "yes"
+        }
+      },
+      {
+        "id": 13,
+        "v": {
+          "name": "Mechanism 3: RIG-I K63-Ub",
+          "type": "hypothesis",
+          "requires": "E3 activity",
+          "E3_dependent": "yes"
+        }
+      }
+    ]
+  },
+  {
+    "edges": [
+      {
+        "id": 0,
+        "s": 0,
+        "t": 2,
+        "v": {
+          "interaction": "contains"
+        }
+      },
+      {
+        "id": 1,
+        "s": 0,
+        "t": 3,
+        "v": {
+          "interaction": "contains"
+        }
+      },
+      {
+        "id": 2,
+        "s": 0,
+        "t": 4,
+        "v": {
+          "interaction": "contains"
+        }
+      },
+      {
+        "id": 3,
+        "s": 0,
+        "t": 8,
+        "v": {
+          "interaction": "contains"
+        }
+      },
+      {
+        "id": 4,
+        "s": 2,
+        "t": 5,
+        "v": {
+          "interaction": "binds_ssRNA_loop"
+        }
+      },
+      {
+        "id": 5,
+        "s": 3,
+        "t": 5,
+        "v": {
+          "interaction": "binds_dsRNA_stem"
+        }
+      },
+      {
+        "id": 6,
+        "s": 4,
+        "t": 5,
+        "v": {
+          "interaction": "binds_RNA_cooperatively"
+        }
+      },
+      {
+        "id": 7,
+        "s": 0,
+        "t": 6,
+        "v": {
+          "interaction": "relocalizes_via_RNA_binding"
+        }
+      },
+      {
+        "id": 8,
+        "s": 6,
+        "t": 7,
+        "v": {
+          "interaction": "required_for"
+        }
+      },
+      {
+        "id": 9,
+        "s": 1,
+        "t": 5,
+        "v": {
+          "interaction": "cannot_bind",
+          "detail": "all RNA binding eliminated"
+        }
+      },
+      {
+        "id": 10,
+        "s": 1,
+        "t": 6,
+        "v": {
+          "interaction": "fails_to_relocalize"
+        }
+      },
+      {
+        "id": 11,
+        "s": 1,
+        "t": 7,
+        "v": {
+          "interaction": "loses_antiviral_activity",
+          "detail": "same loss as E3-dead"
+        }
+      },
+      {
+        "id": 12,
+        "s": 9,
+        "t": 7,
+        "v": {
+          "interaction": "loses_antiviral_activity"
+        }
+      },
+      {
+        "id": 13,
+        "s": 10,
+        "t": 2,
+        "v": {
+          "interaction": "deletes_and_unfolds",
+          "detail": "\u0394RBD unfolds PRY/SPRY"
+        }
+      },
+      {
+        "id": 14,
+        "s": 1,
+        "t": 11,
+        "v": {
+          "interaction": "predicted_abolish",
+          "experiment": "m9 + TenVIP-seq"
+        }
+      },
+      {
+        "id": 15,
+        "s": 9,
+        "t": 11,
+        "v": {
+          "interaction": "predicted_retain",
+          "experiment": "E3-dead + TenVIP-seq"
+        }
+      },
+      {
+        "id": 16,
+        "s": 1,
+        "t": 12,
+        "v": {
+          "interaction": "predicted_reduce",
+          "experiment": "m9 + PB1 stability"
+        }
+      },
+      {
+        "id": 17,
+        "s": 9,
+        "t": 12,
+        "v": {
+          "interaction": "predicted_abolish",
+          "experiment": "E3-dead + PB1 stability"
+        }
+      }
+    ]
+  },
+  {
+    "status": [
+      {
+        "success": true
+      }
+    ]
+  }
+]

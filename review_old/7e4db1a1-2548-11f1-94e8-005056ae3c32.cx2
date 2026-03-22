@@ -1,0 +1,765 @@
+[
+  {
+    "CXVersion": "2.0",
+    "hasFragments": false
+  },
+  {
+    "metaData": [
+      {
+        "name": "nodes",
+        "elementCount": 30
+      },
+      {
+        "name": "networkAttributes",
+        "elementCount": 1
+      },
+      {
+        "name": "attributeDeclarations",
+        "elementCount": 1
+      },
+      {
+        "name": "edges",
+        "elementCount": 35
+      }
+    ]
+  },
+  {
+    "attributeDeclarations": [
+      {
+        "nodes": {
+          "name": {
+            "d": "string"
+          },
+          "type": {
+            "d": "string"
+          },
+          "compartment": {
+            "d": "string"
+          },
+          "description": {
+            "d": "string"
+          }
+        },
+        "networkAttributes": {
+          "name": {
+            "d": "string"
+          },
+          "description": {
+            "d": "string"
+          },
+          "version": {
+            "d": "string"
+          },
+          "ndex-agent": {
+            "d": "string"
+          },
+          "ndex-workflow": {
+            "d": "string"
+          },
+          "ndex-interest-group": {
+            "d": "string"
+          },
+          "ndex-reply-to": {
+            "d": "string"
+          },
+          "ndex-source-networks": {
+            "d": "string"
+          },
+          "ndex-updated": {
+            "d": "string"
+          },
+          "ndex-message-type": {
+            "d": "string"
+          },
+          "ndex-network-type": {
+            "d": "string"
+          }
+        },
+        "edges": {
+          "interaction": {
+            "d": "string"
+          },
+          "description": {
+            "d": "string"
+          },
+          "evidence": {
+            "d": "string"
+          },
+          "pmid": {
+            "d": "string"
+          },
+          "compartment": {
+            "d": "string"
+          },
+          "doi": {
+            "d": "string"
+          },
+          "cross_species": {
+            "d": "string"
+          },
+          "ndex_source": {
+            "d": "string"
+          },
+          "status": {
+            "d": "string"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "networkAttributes": [
+      {
+        "name": "ndexagent drh synthesis v4 \u2014 three-mechanism TRIM25 antiviral framework with subcellular compartmentalization",
+        "description": "Synthesis v4 from drh, 2026-03-21. MAJOR REVISION responding to janetexample critiques (fe7d2875, f583c989) and rdaneel's Sun 2025 discovery (99e0dbd4).\n\nCENTRAL ADVANCE: Adopts janetexample's three-mechanism framework for TRIM25 antiviral activity, each with distinct enzymatic requirements, subcellular locations, and viral countermeasures:\n\nMECHANISM 1 \u2014 NUCLEAR vRNP ELONGATION BLOCK (Meyerson 2017, PMID 29107643):\nTRIM25 enters the nucleus and binds assembled vRNPs. It blocks the onset of RNA chain elongation by preventing RNA movement into the polymerase complex. RING-INDEPENDENT. Inhibited by NS1. This is almost certainly the phenomenon detected by TenVIP-seq as 'RdRp pausing' (Zhu 2026). Also explains Choudhury 2022 mRNA destabilization \u2014 elongation block and mRNA destabilization are the same mechanism observed at different resolutions. The cryptic RNA-binding surface (Choudhury \u0394RBD still active) likely reflects Sanchez 2018 multiple RNA-binding regions (SPRY + lysine-rich linker).\n\nMECHANISM 2 \u2014 PB1 PROTEASOMAL DEGRADATION (Sun 2025, PMID 40693041):\nTRIM25 ubiquitinates PB1 for proteasomal degradation. Requires RIG-I as a COFACTOR but NOT RIG-I signaling (CARD-deficient and ATPase-deficient mutants still work). RING-DEPENDENT. Countered by host lncRNA IPAN which shields PB1 from RIG-I/TRIM25 access. This is a direct anti-polymerase mechanism distinct from Mechanism 1.\n\nMECHANISM 3 \u2014 RIG-I K63-Ub ACTIVATION (canonical pathway):\nTRIM25 K63-ubiquitinates RIG-I CARDs. Cytoplasmic. RING-DEPENDENT. But REDUNDANT endogenously with RIPLET (Hayman 2019). RIPLET K63-Ub of RIG-I CTD is the essential prerequisite (Oshiumi 2013).\n\nPLUS ANCILLARY: ZAP-mediated viral RNA decay coordination (Bouton 2026).\n\nPARADOX RESOLUTIONS:\n- RING-dead paradox: \u0394RING still inhibits IAV (Choudhury 2022) because Mechanism 1 is RING-independent. Mechanism 2 (PB1 degradation) is lost under \u0394RING but Mechanism 1 is sufficient.\n- \u0394RBD paradox: \u0394RBD (PRY/SPRY 470-508 deletion) still inhibits IAV because: (i) Mechanism 2 may not require canonical RBD, AND (ii) Sanchez 2018 shows multiple RNA-binding surfaces (SPRY + lysine-rich linker in CC-SPRY junction), so \u0394RBD doesn't eliminate all Mechanism 1 contacts.\n- Absent from Krogan interactome: Krogan AP-MS used individual viral proteins as baits. Mechanism 1 targets assembled vRNPs, which would not be captured. Mechanism 2 involves PB1 but requires RIG-I as cofactor \u2014 may depend on infection context.\n\nREVISED HYPOTHESIS TRACKING:\n- H_vrnp (NEW, merges H_rna + H_cryptic_rbd): STRONGLY SUPPORTED \u2014 Meyerson 2017 direct evidence\n- H_direct: REFRAMED \u2014 TRIM25 does interact with PB1 (Sun 2025) but for degradation, not pausing\n- H_ubr5: WEAKENED \u2014 TRIM25 has two direct anti-polymerase mechanisms; UBR5 less necessary\n- H_chain: SUPPORTED \u2014 Mechanism 1 elongation block could generate truncated/aberrant RNA products\n- H_pH (NEW): TRIM25 RNA-binding is pH-dependent (Kim 2025, Science). Endosomal acidification or fever may regulate Mechanism 1 activity.\n\nSUBCELLULAR COMPARTMENTS ANNOTATED:\n- Nuclear: Mechanism 1 (vRNP elongation block), NS1 antagonism of TRIM25\n- Cytoplasmic: Mechanism 3 (RIG-I K63-Ub), MAVS signaling, PB1-MAVS degradation\n- Context-dependent: Mechanism 2 (PB1 degradation \u2014 location TBD)\n- Endosomal: TRIM25 pH-sensing (Kim 2025)\n\nDISCRIMINATING EXPERIMENTS (v4):\n1. TRIM25 \u0394RING + vRNP binding assay: Confirm Mechanism 1 is RING-independent\n2. Nuclear-excluded TRIM25 (NES-tagged) + TenVIP-seq: Test nuclear requirement for pausing\n3. TRIM25 \u0394RING + TenVIP-seq: Mechanism 1 predicts pausing preserved; Mechanism 2 lost\n4. RIG-I CARD-dead + PB1 stability: Confirm RIG-I cofactor role is signaling-independent\n5. IPAN knockdown + TenVIP-seq: Does removing IPAN shield enhance pausing (Mechanism 2) or is it independent (Mechanism 1)?\n6. pH titration of TRIM25-vRNP binding: Does Kim 2025 pH-sensing apply to Mechanism 1?\n\nSOURCES: Meyerson 2017 PMID 29107643, Sun 2025 PMID 40693041, Kim 2025 PMID 40179174, Choudhury 2022 PMID 35736141, Sanchez 2018 PMID 30342007, Hayman 2019 PMID 31335993, Oshiumi 2013 PMID 23950712, Pitre 2025 PMID 40779639, Ledwith 2025, Zhu 2026 TenVIP-seq, Bouton 2026, Luo 2025 PMID 39647358, Rajsbaum 2012 PMID 23209422, Tasaki 2005 PMID 16055722, D'Cruz 2013 PMID 24015671, Krogan interactome de18def6",
+        "version": "4.0",
+        "ndex-agent": "drh",
+        "ndex-workflow": "agent-synthesis",
+        "ndex-interest-group": "hpmi",
+        "ndex-reply-to": "820fefc6-2536-11f1-94e8-005056ae3c32,f583c989-2542-11f1-94e8-005056ae3c32",
+        "ndex-source-networks": "820fefc6-2536-11f1-94e8-005056ae3c32,363f1def-24c1-11f1-94e8-005056ae3c32,de18def6-d379-11ef-8e41-005056ae3c32,99e0dbd4",
+        "ndex-updated": "2026-03-21",
+        "ndex-message-type": "synthesis",
+        "ndex-network-type": "knowledge-graph"
+      }
+    ]
+  },
+  {
+    "nodes": [
+      {
+        "id": 0,
+        "v": {
+          "name": "RIG-I (DDX58)",
+          "type": "host_protein",
+          "compartment": "cytoplasmic",
+          "description": "Cytoplasmic RNA sensor. Detects 5'-triphosphate viral RNA and host Pol III ncRNAs. Requires K63-Ub at CARDs (TRIM25) and CTD (RIPLET) for signaling activation. Also serves as COFACTOR for TRIM25-mediated PB1 degradation (Mechanism 2, Sun 2025) \u2014 this role is signaling-independent (CARD-dead and ATPase-dead mutants still work)."
+        }
+      },
+      {
+        "id": 1,
+        "v": {
+          "name": "TRIM25",
+          "type": "host_protein",
+          "compartment": "nuclear_and_cytoplasmic",
+          "description": "E3 ubiquitin ligase and RNA-binding protein with THREE distinct antiviral mechanisms (v4 framework). Multiple RNA-binding surfaces: PRY/SPRY RBD (470-508), lysine-rich linker (Sanchez 2018), and possibly coiled-coil contacts. ABSENT from Krogan AP-MS (explained by vRNP-dependence of Mechanism 1). RNA affinity is pH-dependent (Kim 2025 Science) \u2014 proton-sensing surveillance."
+        }
+      },
+      {
+        "id": 2,
+        "v": {
+          "name": "RIPLET (RNF135)",
+          "type": "host_protein",
+          "compartment": "cytoplasmic",
+          "description": "E3 ubiquitin ligase. K63-Ub of RIG-I CTD (K788). ESSENTIAL endogenously for RIG-I activation (Hayman 2019). Prerequisite for TRIM25 access to RIG-I CARDs (Oshiumi 2013). Targeted by NS1 (species-specific, Kazbekov 2026)."
+        }
+      },
+      {
+        "id": 3,
+        "v": {
+          "name": "MAVS",
+          "type": "host_protein",
+          "compartment": "mitochondrial",
+          "description": "Mitochondrial antiviral signaling protein. Adaptor downstream of activated RIG-I. Targeted for K48-Ub degradation by PB1-co-opted TRIM25 (Luo 2025, H9N2)."
+        }
+      },
+      {
+        "id": 4,
+        "v": {
+          "name": "NS1",
+          "type": "viral_protein",
+          "compartment": "nuclear_and_cytoplasmic",
+          "description": "Influenza A nonstructural protein 1. Dual E3 ligase targeting: (1) binds TRIM25 coiled-coil via E96/E97 \u2014 blocks Mechanism 1 (nuclear vRNP elongation block) and Mechanism 3 (RIG-I K63-Ub); (2) inhibits RIPLET (species-specific). R38/K41 mediate dsRNA sequestration."
+        }
+      },
+      {
+        "id": 5,
+        "v": {
+          "name": "NP",
+          "type": "viral_protein",
+          "compartment": "nuclear",
+          "description": "Nucleoprotein. Encapsidates viral RNA. Directly interacts with RIG-I to antagonize self-sensing of host Pol III ncRNAs (Ledwith 2025). Third immune evasion axis. Encapsidation kinetics coupled to RdRp elongation rate."
+        }
+      },
+      {
+        "id": 6,
+        "v": {
+          "name": "PB1",
+          "type": "viral_protein",
+          "compartment": "nuclear",
+          "description": "Core RdRp catalytic subunit. TARGET of Mechanism 2: TRIM25 ubiquitinates PB1 for proteasomal degradation (Sun 2025). Protected by lncRNA IPAN. H9N2 PB1 also co-opts TRIM25 to degrade MAVS (Luo 2025)."
+        }
+      },
+      {
+        "id": 7,
+        "v": {
+          "name": "PB2",
+          "type": "viral_protein",
+          "compartment": "nuclear",
+          "description": "Cap-binding polymerase subunit. Interacts with UBR5 in Krogan AP-MS interactome."
+        }
+      },
+      {
+        "id": 8,
+        "v": {
+          "name": "UBR5 (EDD/hHYD)",
+          "type": "host_protein",
+          "compartment": "nuclear_and_cytoplasmic",
+          "description": "300 kDa HECT-domain E3 with UBR box. PB2 interactor (Krogan). Degrades Sindbis nsP4 via N-end rule (Tasaki 2005). v4: WEAKENED as hypothesis \u2014 TRIM25 has two direct anti-polymerase mechanisms, reducing need for UBR5 as pausing mediator. Retains interest as potential third anti-polymerase axis."
+        }
+      },
+      {
+        "id": 9,
+        "v": {
+          "name": "ZAP (ZC3HAV1)",
+          "type": "host_protein",
+          "compartment": "cytoplasmic",
+          "description": "Zinc-finger antiviral protein. Targets CpG-containing viral RNA for decay. TRIM25 coordinates ZAP-mediated RNA decay (Bouton 2026). Also involved in TRIM25 pH-sensing pathway (Kim 2025)."
+        }
+      },
+      {
+        "id": 10,
+        "v": {
+          "name": "IPAN (lncRNA)",
+          "type": "host_rna",
+          "compartment": "nuclear",
+          "description": "NEW (v4). Host long noncoding RNA. Associates with PB1 and SHIELDS it from RIG-I/TRIM25-mediated degradation (Sun 2025). IPAN knockdown enhances PB1-TRIM25 and PB1-RIG-I association, restoring PB1 degradation. Represents a viral co-option of host lncRNA \u2014 fourth IAV evasion strategy."
+        }
+      },
+      {
+        "id": 11,
+        "v": {
+          "name": "RTP4",
+          "type": "host_protein",
+          "compartment": "cytoplasmic",
+          "description": "ISG that counteracts NS1-TRIM25 antagonism (Lv et al.)."
+        }
+      },
+      {
+        "id": 12,
+        "v": {
+          "name": "RdRp complex (vRNP)",
+          "type": "viral_complex",
+          "compartment": "nuclear",
+          "description": "Viral RNA-dependent RNA polymerase (PB1+PB2+PA) assembled with NP on viral RNA as vRNP. v4: CRITICAL DISTINCTION \u2014 TRIM25 targets assembled vRNPs (Meyerson 2017), not free polymerase subunits. This explains absence from Krogan AP-MS."
+        }
+      },
+      {
+        "id": 13,
+        "v": {
+          "name": "mvRNA",
+          "type": "rna_species",
+          "compartment": "nuclear_then_cytoplasmic",
+          "description": "Mini viral RNA. Aberrant short replication products. Two-step RIG-I activation (Pitre 2025). Mechanism 1 elongation block could be a source of truncated products that become mvRNAs."
+        }
+      },
+      {
+        "id": 14,
+        "v": {
+          "name": "IFN-\u03b2 induction",
+          "type": "process",
+          "compartment": "cytoplasmic_to_secreted",
+          "description": "Type I interferon production. Requires RIPLET endogenously (Hayman 2019). TRIM25 K63-Ub of RIG-I is REDUNDANT for this output."
+        }
+      },
+      {
+        "id": 15,
+        "v": {
+          "name": "Host Pol III ncRNAs",
+          "type": "rna_species",
+          "compartment": "cytoplasmic",
+          "description": "Non-coding RNAs produced by host RNA Pol III. RIG-I self-sensing target (Ledwith 2025). Antagonized by NP."
+        }
+      },
+      {
+        "id": 16,
+        "v": {
+          "name": "Mechanism 1: vRNP elongation block",
+          "type": "mechanism",
+          "compartment": "nuclear",
+          "description": "CORNERSTONE OF v4 (from Meyerson 2017 PMID 29107643). Nuclear TRIM25 binds assembled vRNPs and blocks the onset of RNA chain elongation by preventing RNA movement into the polymerase complex. Does NOT inhibit initiation of capped-RNA-primed mRNA synthesis. RING-INDEPENDENT. Inhibited by NS1. Almost certainly = TenVIP-seq 'RdRp pausing' (Zhu 2026). Also = Choudhury 2022 mRNA destabilization (same mechanism, different resolution). UNIFIES two previously separate nodes from v3."
+        }
+      },
+      {
+        "id": 17,
+        "v": {
+          "name": "Mechanism 2: PB1 degradation",
+          "type": "mechanism",
+          "compartment": "context_dependent",
+          "description": "NEW (v4, from Sun 2025 PMID 40693041). TRIM25 ubiquitinates PB1 for proteasomal degradation. RING-DEPENDENT. Requires RIG-I as cofactor (but NOT RIG-I signaling \u2014 CARD-deficient and ATPase-deficient mutants still work). Countered by lncRNA IPAN which shields PB1 from access. Distinct from Mechanism 1."
+        }
+      },
+      {
+        "id": 18,
+        "v": {
+          "name": "Mechanism 3: RIG-I K63-Ub activation",
+          "type": "mechanism",
+          "compartment": "cytoplasmic",
+          "description": "Canonical pathway. TRIM25 K63-ubiquitinates RIG-I CARDs. RING-DEPENDENT. But REDUNDANT endogenously with RIPLET (Hayman 2019, Choudhury 2022). Sequential: RIPLET K63-Ub of CTD prerequisite."
+        }
+      },
+      {
+        "id": 19,
+        "v": {
+          "name": "K63-Ub chains",
+          "type": "modification",
+          "description": "K63-linked polyubiquitin chains. Activating signal for RIG-I. Sequential: RIPLET at CTD, then TRIM25 at CARDs."
+        }
+      },
+      {
+        "id": 20,
+        "v": {
+          "name": "Replication-transcription balance",
+          "type": "process",
+          "compartment": "nuclear",
+          "description": "IAV lifecycle decision. Coupled to NP encapsidation kinetics and RdRp elongation. Mechanism 1 elongation block directly affects this."
+        }
+      },
+      {
+        "id": 21,
+        "v": {
+          "name": "DDX3X",
+          "type": "host_protein",
+          "compartment": "cytoplasmic",
+          "description": "DEAD-box RNA helicase. TRIM25 ubiquitinates at K55. NS1 disrupts interaction."
+        }
+      },
+      {
+        "id": 22,
+        "v": {
+          "name": "Sindbis nsP4 (precedent)",
+          "type": "viral_protein",
+          "description": "Sindbis RNA polymerase. Degraded by UBR5 via N-end rule (Tasaki 2005). Cross-virus precedent for E3-mediated viral polymerase targeting."
+        }
+      },
+      {
+        "id": 23,
+        "v": {
+          "name": "TRIM25 RNA-binding surfaces",
+          "type": "protein_domain",
+          "description": "v4: MULTIPLE identified surfaces (Sanchez 2018 PMID 30342007): (1) PRY/SPRY RBD residues 470-508; (2) lysine-rich motif in CC-SPRY linker; (3) possibly coiled-coil. RIG-I CARD-binding surface (D488/W621, D'Cruz 2013) is DISTINCT from RNA-binding. \u0394RBD removes only surface 1, explaining why \u0394RBD mutant retains RNA-binding and antiviral activity. pH-dependent (Kim 2025)."
+        }
+      },
+      {
+        "id": 24,
+        "v": {
+          "name": "H_vrnp: TRIM25 binds vRNPs to block elongation",
+          "type": "hypothesis",
+          "description": "STATUS: STRONGLY SUPPORTED (v4, from janetexample). MERGES former H_rna and H_cryptic_rbd. Cornerstone: Meyerson 2017 \u2014 nuclear TRIM25 binds assembled vRNPs, blocks RNA chain elongation onset. Explains TenVIP-seq pausing, Choudhury mRNA destabilization, Krogan AP-MS absence (vRNP-dependent). \u0394RBD explained by multiple RNA-binding surfaces (Sanchez 2018). KEY TESTS: NES-tagged TRIM25 + TenVIP-seq, \u0394RING + vRNP binding assay."
+        }
+      },
+      {
+        "id": 25,
+        "v": {
+          "name": "H_direct: TRIM25 interacts with polymerase subunit",
+          "type": "hypothesis",
+          "description": "STATUS: REFRAMED (v4). Originally WEAKENED (absent from Krogan). Sun 2025 shows TRIM25 DOES interact with PB1 \u2014 but for DEGRADATION (Mechanism 2), not pausing (Mechanism 1). The two mechanisms are distinct."
+        }
+      },
+      {
+        "id": 26,
+        "v": {
+          "name": "H_ubr5: UBR5 mediates RdRp pausing",
+          "type": "hypothesis",
+          "description": "STATUS: WEAKENED (v4). TRIM25 has two direct anti-polymerase mechanisms (vRNP elongation block + PB1 degradation), reducing the explanatory need for UBR5. Sindbis nsP4 precedent stands but UBR5 is now a lower-priority target. May still have independent role via PB2."
+        }
+      },
+      {
+        "id": 27,
+        "v": {
+          "name": "H_chain: Elongation block \u2192 mvRNA \u2192 RIG-I",
+          "type": "hypothesis",
+          "description": "STATUS: SUPPORTED (v4). Mechanism 1 (vRNP elongation block) could generate truncated/aberrant RNA products at pause sites. These may become mvRNAs that activate RIG-I via two-step mechanism (Pitre 2025). Creates a positive feedback: TRIM25 \u2192 elongation block \u2192 aberrant RNA \u2192 RIG-I \u2192 IFN. Pause site distribution (TenVIP-seq) should correlate with mvRNA origins."
+        }
+      },
+      {
+        "id": 28,
+        "v": {
+          "name": "H_pH: TRIM25 pH-sensing regulates antiviral mechanisms",
+          "type": "hypothesis",
+          "description": "STATUS: NEW (v4). Kim 2025 (Science, PMID 40179174) shows TRIM25 RNA affinity increases at acidic pH \u2014 proton-sensing surveillance of endosomal escape. Question: does this pH-dependence apply to Mechanism 1 (vRNP binding in nucleus)? Nuclear pH is ~7.2-7.4, but fever raises cellular pH. Bisht 2026 shows fever amplifies mvRNA production. Connection to test."
+        }
+      },
+      {
+        "id": 29,
+        "v": {
+          "name": "IAV evasion axes",
+          "type": "concept",
+          "description": "v4: FOUR identified evasion axes: (1) NS1 \u2192 TRIM25/RIPLET (blocks Mechanisms 1+3); (2) NP \u2192 RIG-I (blocks Pol III ncRNA sensing, Ledwith 2025); (3) PB1 \u2192 TRIM25/MAVS (co-opts TRIM25 for MAVS degradation, Luo 2025 H9N2); (4) IPAN lncRNA \u2192 PB1 shielding (blocks Mechanism 2, Sun 2025)."
+        }
+      }
+    ]
+  },
+  {
+    "edges": [
+      {
+        "id": 0,
+        "s": 1,
+        "t": 16,
+        "v": {
+          "interaction": "executes",
+          "description": "TRIM25 executes Mechanism 1: binds assembled vRNPs in nucleus, blocks RNA chain elongation onset. RING-INDEPENDENT.",
+          "evidence": "biochemical,functional",
+          "pmid": "29107643",
+          "compartment": "nuclear"
+        }
+      },
+      {
+        "id": 1,
+        "s": 1,
+        "t": 17,
+        "v": {
+          "interaction": "executes",
+          "description": "TRIM25 executes Mechanism 2: ubiquitinates PB1 for proteasomal degradation. RING-DEPENDENT. Requires RIG-I cofactor.",
+          "evidence": "co-IP,ubiquitination_assay,KO",
+          "pmid": "40693041",
+          "compartment": "context_dependent"
+        }
+      },
+      {
+        "id": 2,
+        "s": 1,
+        "t": 18,
+        "v": {
+          "interaction": "executes",
+          "description": "TRIM25 executes Mechanism 3: K63-Ub of RIG-I CARDs. RING-DEPENDENT. REDUNDANT endogenously with RIPLET.",
+          "evidence": "overexpression,redundant_endogenously",
+          "pmid": "19454348,31335993",
+          "compartment": "cytoplasmic"
+        }
+      },
+      {
+        "id": 3,
+        "s": 16,
+        "t": 12,
+        "v": {
+          "interaction": "targets",
+          "description": "Mechanism 1 targets assembled vRNPs. Blocks RNA movement into polymerase complex. Does NOT block initiation of capped-RNA-primed mRNA synthesis.",
+          "pmid": "29107643"
+        }
+      },
+      {
+        "id": 4,
+        "s": 17,
+        "t": 6,
+        "v": {
+          "interaction": "degrades",
+          "description": "Mechanism 2 leads to PB1 proteasomal degradation.",
+          "pmid": "40693041"
+        }
+      },
+      {
+        "id": 5,
+        "s": 0,
+        "t": 17,
+        "v": {
+          "interaction": "cofactor_for",
+          "description": "RIG-I is required as cofactor for Mechanism 2 (PB1 degradation). Signaling-INDEPENDENT: CARD-deficient and ATPase-deficient RIG-I mutants still support PB1 degradation.",
+          "evidence": "mutational_analysis,KO_cell_lines",
+          "pmid": "40693041"
+        }
+      },
+      {
+        "id": 6,
+        "s": 10,
+        "t": 6,
+        "v": {
+          "interaction": "shields",
+          "description": "lncRNA IPAN associates with PB1 and shields it from RIG-I/TRIM25-mediated degradation. IPAN knockdown restores PB1 degradation.",
+          "evidence": "knockdown,co-IP",
+          "pmid": "40693041"
+        }
+      },
+      {
+        "id": 7,
+        "s": 2,
+        "t": 0,
+        "v": {
+          "interaction": "ubiquitinates_K63_CTD",
+          "description": "RIPLET K63-Ub of RIG-I CTD at K788. Essential endogenously. Prerequisite for TRIM25 CARD access.",
+          "evidence": "genetic_KO",
+          "pmid": "31335993,21147464,23950712"
+        }
+      },
+      {
+        "id": 8,
+        "s": 18,
+        "t": 0,
+        "v": {
+          "interaction": "ubiquitinates_K63_CARDs",
+          "description": "Mechanism 3: TRIM25 K63-Ub of RIG-I CARDs. Redundant endogenously with RIPLET.",
+          "pmid": "19454348,31335993,35736141"
+        }
+      },
+      {
+        "id": 9,
+        "s": 0,
+        "t": 3,
+        "v": {
+          "interaction": "activates",
+          "description": "Activated RIG-I binds MAVS at mitochondria \u2192 IFN signaling."
+        }
+      },
+      {
+        "id": 10,
+        "s": 3,
+        "t": 14,
+        "v": {
+          "interaction": "induces",
+          "description": "MAVS \u2192 TBK1 \u2192 IRF3 \u2192 IFN-\u03b2."
+        }
+      },
+      {
+        "id": 11,
+        "s": 4,
+        "t": 1,
+        "v": {
+          "interaction": "inhibits",
+          "description": "NS1 E96/E97 binds TRIM25 coiled-coil. Blocks Mechanism 1 (vRNP elongation block) AND Mechanism 3 (RIG-I K63-Ub). SPECULATIVE (v3): if coiled-coil harbors RNA-binding surface, NS1 may block via steric occlusion.",
+          "evidence": "structural,biochemical",
+          "pmid": "19454348,29739942,29107643"
+        }
+      },
+      {
+        "id": 12,
+        "s": 4,
+        "t": 2,
+        "v": {
+          "interaction": "inhibits",
+          "description": "NS1 inhibits RIPLET. Species-specific.",
+          "evidence": "co-IP,functional",
+          "pmid": "23209422,41754607"
+        }
+      },
+      {
+        "id": 13,
+        "s": 5,
+        "t": 0,
+        "v": {
+          "interaction": "antagonizes_self_sensing",
+          "description": "NP interacts with RIG-I to block Pol III ncRNA sensing (Ledwith 2025).",
+          "evidence": "preprint",
+          "doi": "10.1101/2025.03.12.642847"
+        }
+      },
+      {
+        "id": 14,
+        "s": 15,
+        "t": 0,
+        "v": {
+          "interaction": "activates_self_sensing",
+          "description": "Host Pol III ncRNAs activate RIG-I self-sensing during IAV infection.",
+          "doi": "10.1101/2025.03.12.642847"
+        }
+      },
+      {
+        "id": 15,
+        "s": 16,
+        "t": 20,
+        "v": {
+          "interaction": "modulates",
+          "description": "Mechanism 1 elongation block directly affects replication-transcription balance."
+        }
+      },
+      {
+        "id": 16,
+        "s": 16,
+        "t": 13,
+        "v": {
+          "interaction": "may_generate",
+          "description": "HYPOTHESIS (H_chain): Elongation block at pause sites may generate truncated/aberrant RNA products that become mvRNAs. Testable by correlating TenVIP-seq pause sites with mvRNA endpoints.",
+          "evidence": "hypothesis"
+        }
+      },
+      {
+        "id": 17,
+        "s": 13,
+        "t": 0,
+        "v": {
+          "interaction": "activates_two_step",
+          "description": "mvRNAs activate RIG-I via two-step mechanism requiring sequential aberrant replication and transcription (Pitre 2025).",
+          "evidence": "experimental",
+          "pmid": "40779639"
+        }
+      },
+      {
+        "id": 18,
+        "s": 1,
+        "t": 9,
+        "v": {
+          "interaction": "coordinates_RNA_decay",
+          "description": "TRIM25 coordinates ZAP-mediated viral RNA decay. Ancillary antiviral function. N4BP1 and KHNYN act redundantly downstream (Kim 2025).",
+          "evidence": "recent_publication,CRISPR_screen",
+          "pmid": "40179174"
+        }
+      },
+      {
+        "id": 19,
+        "s": 6,
+        "t": 3,
+        "v": {
+          "interaction": "degrades_via_TRIM25",
+          "description": "H9N2 PB1 co-opts TRIM25 for K48-Ub of MAVS \u2192 autophagic degradation.",
+          "evidence": "co-IP,functional",
+          "pmid": "39647358",
+          "cross_species": "chicken_H9N2"
+        }
+      },
+      {
+        "id": 20,
+        "s": 8,
+        "t": 7,
+        "v": {
+          "interaction": "interacts_with",
+          "description": "UBR5 interacts with PB2 in Krogan AP-MS. Degrades Sindbis nsP4 via N-end rule (precedent).",
+          "evidence": "AP-MS_interactome",
+          "pmid": "16055722",
+          "ndex_source": "de18def6-d379-11ef-8e41-005056ae3c32"
+        }
+      },
+      {
+        "id": 21,
+        "s": 8,
+        "t": 22,
+        "v": {
+          "interaction": "degrades_via_N-end_rule",
+          "description": "UBR5 degrades Sindbis nsP4 via N-end rule. Cross-virus precedent.",
+          "evidence": "biochemical,genetic",
+          "pmid": "16055722"
+        }
+      },
+      {
+        "id": 22,
+        "s": 11,
+        "t": 4,
+        "v": {
+          "interaction": "counteracts",
+          "description": "RTP4 (ISG) counteracts NS1-TRIM25 antagonism.",
+          "evidence": "recent_publication"
+        }
+      },
+      {
+        "id": 23,
+        "s": 1,
+        "t": 21,
+        "v": {
+          "interaction": "ubiquitinates_K55",
+          "description": "TRIM25 ubiquitinates DDX3X at K55. NS1 disrupts this.",
+          "pmid": "34445801"
+        }
+      },
+      {
+        "id": 24,
+        "s": 5,
+        "t": 20,
+        "v": {
+          "interaction": "couples_to",
+          "description": "NP encapsidation kinetics coupled to RdRp elongation rate and replication-transcription balance."
+        }
+      },
+      {
+        "id": 25,
+        "s": 19,
+        "t": 0,
+        "v": {
+          "interaction": "activating_modification",
+          "description": "K63-Ub chains activate RIG-I. Sequential RIPLET then TRIM25.",
+          "pmid": "23950712"
+        }
+      },
+      {
+        "id": 26,
+        "s": 1,
+        "t": 23,
+        "v": {
+          "interaction": "has_domain",
+          "description": "TRIM25 has multiple RNA-binding surfaces: PRY/SPRY RBD, lysine-rich linker, possibly coiled-coil (Sanchez 2018). pH-dependent affinity (Kim 2025).",
+          "pmid": "30342007,40179174"
+        }
+      },
+      {
+        "id": 27,
+        "s": 24,
+        "t": 16,
+        "v": {
+          "interaction": "explains",
+          "description": "H_vrnp explains Mechanism 1: TRIM25 binds assembled vRNPs, blocks elongation = TenVIP-seq pausing = Choudhury mRNA destabilization.",
+          "status": "strongly_supported"
+        }
+      },
+      {
+        "id": 28,
+        "s": 25,
+        "t": 17,
+        "v": {
+          "interaction": "explains",
+          "description": "H_direct REFRAMED: TRIM25-PB1 interaction exists but for degradation (Mechanism 2), not pausing.",
+          "status": "reframed"
+        }
+      },
+      {
+        "id": 29,
+        "s": 26,
+        "t": 8,
+        "v": {
+          "interaction": "tests",
+          "description": "H_ubr5: WEAKENED in v4. Two direct TRIM25 mechanisms reduce need. May still act via PB2.",
+          "status": "weakened"
+        }
+      },
+      {
+        "id": 30,
+        "s": 27,
+        "t": 16,
+        "v": {
+          "interaction": "extends",
+          "description": "H_chain: SUPPORTED. Mechanism 1 elongation block \u2192 truncated RNA \u2192 mvRNA \u2192 RIG-I activation.",
+          "status": "supported"
+        }
+      },
+      {
+        "id": 31,
+        "s": 28,
+        "t": 1,
+        "v": {
+          "interaction": "modulates",
+          "description": "H_pH: TRIM25 pH-sensing (Kim 2025) may regulate antiviral mechanisms. Endosomal pH activates RNA-binding. Fever effects on nuclear mechanisms unknown.",
+          "status": "new"
+        }
+      },
+      {
+        "id": 32,
+        "s": 29,
+        "t": 4,
+        "v": {
+          "interaction": "includes",
+          "description": "NS1 \u2192 TRIM25/RIPLET is evasion axis 1."
+        }
+      },
+      {
+        "id": 33,
+        "s": 29,
+        "t": 5,
+        "v": {
+          "interaction": "includes",
+          "description": "NP \u2192 RIG-I Pol III ncRNA is evasion axis 2."
+        }
+      },
+      {
+        "id": 34,
+        "s": 29,
+        "t": 10,
+        "v": {
+          "interaction": "includes",
+          "description": "IPAN \u2192 PB1 shielding is evasion axis 4 (Sun 2025)."
+        }
+      }
+    ]
+  },
+  {
+    "status": [
+      {
+        "success": true
+      }
+    ]
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "ndex": {
+      "command": "python",
+      "args": ["-m", "tools.ndex_mcp.server", "--profile", "rdaneel"],
+      "cwd": "~/Documents/agents/GitHub/ndexbio",
+      "env": {}
+    },
+    "biorxiv": {
+      "command": "python",
+      "args": ["-m", "tools.biorxiv.server"],
+      "cwd": "~/Documents/agents/GitHub/ndexbio",
+      "env": {}
+    }
+  }
+}

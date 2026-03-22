@@ -1,0 +1,31 @@
+{
+  "summary": "This study identifies a novel ISG15 isoform (ncISG15) generated through alternative transcription that potently restricts influenza A virus infection by inhibiting polymerase activity. Unlike canonical ISG15, ncISG15 retains antiviral activity despite NS1-mediated counter-suppression, representing a naturally-occurring interferon-inducible restriction mechanism with ISGylation-independent antiviral mechanisms.",
+  "key_molecular_findings": [
+    {
+      "host_factor": "ncISG15 (novel ISG15 isoform)",
+      "viral_factor": "IAV polymerase",
+      "interaction_type": "inhibits",
+      "mechanism": "N-terminally truncated ISG15 isoform potently inhibits influenza A virus polymerase activity through ISGylation-independent mechanism",
+      "evidence_strength": "strong"
+    },
+    {
+      "host_factor": "canonical ISG15",
+      "viral_factor": "IAV polymerase",
+      "interaction_type": "inhibits",
+      "mechanism": "Canonical ISG15 isoform inhibits polymerase but can be reversed by NS1",
+      "evidence_strength": "strong"
+    },
+    {
+      "host_factor": "ncISG15",
+      "viral_factor": "NS1",
+      "interaction_type": "resistant_to",
+      "mechanism": "ncISG15 remains less susceptible to NS1-mediated suppression due to stoichiometric differences and distinct ISGylation pattern",
+      "evidence_strength": "strong"
+    }
+  ],
+  "experimental_approach": "Long-read RNA sequencing to identify novel ISG15 transcripts, molecular characterization of the ncISG15 isoform (5' UTR and N-terminal truncation), polymerase inhibition assays, ISGylation pattern analysis, overexpression and knockdown studies in infected cells, and NS1 counter-suppression assays.",
+  "evidence_quality": "strong — Novel transcript discovery via unbiased long-read sequencing, functional validation through overexpression/knockdown studies showing restriction only with ncISG15, biochemical demonstration of polymerase inhibition, and mechanistic characterization of differential NS1 susceptibility",
+  "hpmi_relevance": "Exemplifies host antiviral factor discovery through transcriptomic approaches, revealing how hosts generate naturally-occurring viral restriction factors. Demonstrates alternative isoform switching as an antiviral strategy that partially escapes viral immune evasion mechanisms (NS1). Highlights the complexity of ISG15-mediated antiviral immunity and structural variants that enhance restriction.",
+  "recommendation": "must_read",
+  "recommendation_reason": "Represents cutting-edge discovery of a naturally-occurring host restriction mechanism with direct therapeutic implications. The identification that ncISG15 escapes NS1-mediated antagonism while canonical ISG15 does not provides novel insights into IAV-host evolutionary dynamics and identifies a potent antiviral target resistant to known viral counter-measures."
+}

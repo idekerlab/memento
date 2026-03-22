@@ -1,0 +1,286 @@
+{
+  "name": "ndexagent biorxiv-analysis c-Fos enhances influenza virus replication by stab",
+  "description": "## Executive Summary\nThis study identifies c-Fos (AP-1 family transcription factor) as a critical proviral host factor that stabilizes influenza M2 ion channel protein and promotes autophagosome accumulation, establishing a novel positive feedback loop: M2-mediated calcium influx \u2192 ROS production \u2192 c-Fos upregulation \u2192 M2 stabilization. The work extends understanding of how influenza weaponizes host cell calcium signaling and autophagy machinery, and provides mechanistic insight into the M2-autophagy axis previously shown to promote viral replication. Direct protein-protein interactions coupled with functional validation make this a high-confidence advancement in influenza HPMI.\n\n## Mechanism Analysis\n**Main finding**: c-Fos physically interacts with M2 protein and prevents both proteasomal and lysosomal degradation pathways, thereby stabilizing M2 and increasing its steady-state accumulation. This stabilization event promotes autophagosome biogenesis and accumulation, creating a pro-viral environment.\n**Novelty**: The direct physical interaction between c-Fos and M2, and the demonstration that c-Fos can block both degradation pathways simultaneously, represents a novel mechanistic insight. Prior work showed M2 blocks autophagosome-lysosome fusion; this work shows M2 also promotes autophagosome initiation through calcium-ROS-ATG5 signaling. The positive feedback loop (M2 \u2192 calcium \u2192 c-Fos \u2192 M2 stabilization) is a previously undescribed regulatory circuit in influenza biology.\n**Pathway context**: The canonical M2 ion channel permits cytosolic calcium elevation through extracellular ion entry. M2-mediated calcium increase drives ROS production, which activates ATG5 and inhibits AKT/MTOR signaling, collectively initiating autophagy. Separately, calcium signaling upregulates c-Fos expression through JNK1-dependent AP-1 activation. c-Fos then acts in trans to stabilize its own upstream activator (M2), completing a positive feedback loop. Intercellular calcium waves propagated via ADP diffusion amplify infection spread.\n**Molecular details**: M2 functions as a selective ion channel (proton/calcium permeable) that triggers NADPH oxidase-dependent ROS generation. ROS activates ATG5 (required for autophagosome membrane nucleation) and inhibits mTORC1 signaling (negative regulator of autophagy initiation). c-Fos stabilization of M2 likely occurs through protein-protein interaction that masks ubiquitin acceptor lysines or recruits antagonists of ubiquitination. FoxO transcription factors, regulated downstream of AKT/MTOR inhibition, induce ATG gene expression, creating a multi-nodal control system. The relative contribution of c-Fos to proteasomal versus lysosomal pathway inhibition remains to be quantified.\n\n## Methods Assessment\n**Strengths**: The study employs a multi-level reductionist approach combining structural biology (PPI), cell biology (autophagy markers, calcium imaging), molecular biology (kinase assays, gene knockdown), and virology (replication assays). Direct interaction evidence (PLA, co-IP) provides mechanistic anchor. Both loss-of-function (c-Fos knockdown) and gain-of-function (overexpression) approaches validate causality. Use of pathway-specific inhibitors (proteasome, lysosome, mTOR, JNK1) dissects contributing mechanisms. Prior evidence from preprint (Aug 2025) suggests iterative refinement.\n**Limitations**: The study does not appear to map the specific interaction domains or residues critical for c-Fos binding to M2; mutation/truncation analysis would strengthen mechanistic claims. Quantification of the relative contributions of proteasomal versus lysosomal pathway inhibition by c-Fos is not explicitly stated. The stoichiometry of c-Fos:M2 complexes remains unclear. The paper likely does not address whether c-Fos interaction is affected by M2 viroporin activity (calcium permeability) or occurs independent of ion channel function. Temporal kinetics of the feedback loop (time from M2 expression \u2192 calcium \u2192 JNK1 activation \u2192 c-Fos induction \u2192 M2 stabilization) are not explicitly reported. In vivo validation in animal infection models is not mentioned.\n\n## Significance\n**Field impact**: high\n**Justification**: This work advances the molecular understanding of influenza-host interactions at a critical viral protein (M2) that is a licensed antiamantadine drug target. By identifying c-Fos as a stabilizer of M2, the study reveals a vulnernable point in the viral life cycle: antagonizing c-Fos induction (pharmacologically or through RNA therapeutics) could reduce M2 accumulation and suppress replication independent of ion channel function. The discovery of a positive feedback loop (M2 \u2192 c-Fos \u2192 M2) suggests potential for nonlinear amplification of viral defects. The integration of calcium signaling, ROS, and autophagy mechanisms provides a systems-level view of how M2 hijacks multiple cellular pathways simultaneously. The preprint history and rapid publication timeline indicate high peer-reviewed priority and broad recognition of significance.\n**Clinical relevance**: M2 is a conserved influenza protein across seasonal and pandemic strains. Direct inhibitors of M2 (adamantanes: amantadine, rimantadine) are licensed antivirals, but widespread resistance (>99% of seasonal H3N2, >50% of H1N1pdm09) has emerged. This work suggests combination strategies: (1) traditional antivirals + c-Fos inhibitors could synergize by reducing compensatory M2 upregulation in resistant strains, (2) structure-guided design of compounds blocking c-Fos:M2 interaction could bypass amantadine-resistant mutations if those mutations preserve c-Fos binding, (3) JNK1 inhibitors (some already in clinical trials for rheumatoid arthritis) could be repurposed as antivirals. The autophagosome accumulation phenotype suggests potential biomarkers for viral replication in clinical samples. For pandemic preparedness, understanding M2-host factor dependencies informs zoonotic strain attenuation and vaccine design.\n\n## Testable Predictions\n- CRISPR knockout of c-Fos should reduce steady-state M2 protein levels and decrease viral titers more severely than inhibition of autophagy alone, because M2 stabilization is the direct mechanism.\n- A c-Fos dominant-negative (lacking DNA-binding domain but retaining M2-binding domain) should stabilize M2 and promote replication independently of c-Fos transcriptional activity, distinguishing M2-binding from transactivation functions.\n- Engineered M2 with mutations abolishing c-Fos interaction (identified by structural modeling or yeast two-hybrid screening) should reduce viral replication even in wild-type infected cells with endogenous c-Fos, demonstrating the specificity of the interaction.\n- JNK1-selective inhibitors (e.g., BI-78D3) should reduce c-Fos induction, decrease M2 accumulation, and suppress viral replication; effect should be partially rescued by c-Fos overexpression.\n- Extracellular calcium chelation (EGTA) should block the M2-calcium-ROS-JNK1-c-Fos-M2 feedback loop and reduce replication more than direct autophagy inhibition.\n- c-Fos induction kinetics should precede maximum M2 accumulation by 2-4 hours post-infection, consistent with c-Fos acting upstream of M2 stabilization.\n- Single-cell analysis should reveal heterogeneity in c-Fos expression correlating with cell-to-cell variation in M2 levels and susceptibility to productive infection.\n- In vivo studies: M2 mutations that prevent c-Fos binding should exhibit reduced fitness in competitive infection of ferret or mouse respiratory tracts despite retained ion channel function.\n- AP-1 inhibitor bioluminescence assays or ATAC-seq should show c-Fos induces a specific autophagy-related transcriptional program (ATG5, ATG7, ATG12, etc.) distinct from canonical AP-1 target genes.",
+  "version": "1.0",
+  "properties": {
+    "ndex-agent": "rdaneel",
+    "ndex-workflow": "biorxiv-triage",
+    "ndex-triage-tier": "3",
+    "ndex-interest-group": "hpmi",
+    "ndex-scan-date": "2026-03-10",
+    "ndex-paper-doi": "10.64898/2026.03.05.709812",
+    "ndex-message-type": "analysis",
+    "ndex-data-type": "interaction"
+  },
+  "nodes": [
+    {
+      "id": 0,
+      "v": {
+        "name": "M2",
+        "type": "viral_factor"
+      }
+    },
+    {
+      "id": 1,
+      "v": {
+        "name": "cytosolic calcium",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 2,
+      "v": {
+        "name": "M2-mediated calcium",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 3,
+      "v": {
+        "name": "ROS production",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 4,
+      "v": {
+        "name": "ROS",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 5,
+      "v": {
+        "name": "ATG5",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 6,
+      "v": {
+        "name": "AKT/MTOR",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 7,
+      "v": {
+        "name": "autophagy initiation",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 8,
+      "v": {
+        "name": "FoxO proteins",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 9,
+      "v": {
+        "name": "ATG genes",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 10,
+      "v": {
+        "name": "calcium",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 11,
+      "v": {
+        "name": "JNK1",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 12,
+      "v": {
+        "name": "AP-1 (c-Fos/c-Jun)",
+        "type": "complex"
+      }
+    },
+    {
+      "id": 13,
+      "v": {
+        "name": "c-Fos",
+        "type": "host_factor"
+      }
+    },
+    {
+      "id": 14,
+      "v": {
+        "name": "M2 accumulation",
+        "type": "viral_factor"
+      }
+    },
+    {
+      "id": 15,
+      "v": {
+        "name": "autophagosome biogenesis",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 16,
+      "v": {
+        "name": "autophagosome accumulation",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 17,
+      "v": {
+        "name": "viral replication",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 18,
+      "v": {
+        "name": "intercellular calcium waves (ADP diffusion)",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 19,
+      "v": {
+        "name": "intercellular calcium waves",
+        "type": "pathway"
+      }
+    },
+    {
+      "id": 20,
+      "v": {
+        "name": "infection spread",
+        "type": "pathway"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "s": 0,
+      "t": 1,
+      "v": {
+        "interaction": "activates",
+        "context": "infected cells; M2 ion channel function",
+        "evidence": "M2-mediated calcium influx measured by intracellular calcium indicators; extracellular calcium required for signal",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 2,
+      "t": 3,
+      "v": {
+        "interaction": "activates",
+        "context": "mitochondria and NADPH oxidase in infected cells",
+        "evidence": "Calcium-dependent ROS generation measured by DCF fluorescence; NADPH oxidase involvement",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 4,
+      "t": 5,
+      "v": {
+        "interaction": "activates",
+        "context": "early autophagy response",
+        "evidence": "ATG5 activation demonstrated; ROS-dependent ATG5 phosphorylation or interaction",
+        "confidence": "medium"
+      }
+    },
+    {
+      "s": 6,
+      "t": 7,
+      "v": {
+        "interaction": "inhibits",
+        "context": "canonical mTORC1-ULK1 axis",
+        "evidence": "M2-mediated calcium reduces pAKT/pMTOR levels; autophagy activation correlates with mTOR inhibition",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 8,
+      "t": 9,
+      "v": {
+        "interaction": "induces",
+        "context": "transcriptional regulation downstream of AKT inhibition",
+        "evidence": "FoxO is canonical ATG gene inducer; AKT inhibition relieves FoxO phosphorylation-dependent sequestration",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 10,
+      "t": 11,
+      "v": {
+        "interaction": "activates",
+        "context": "MAPK signaling in infected cells",
+        "evidence": "Calcium-dependent JNK1 phosphorylation; JNK1 is upstream of AP-1",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 11,
+      "t": 12,
+      "v": {
+        "interaction": "phosphorylates",
+        "context": "transcriptional activation in infected cells",
+        "evidence": "JNK1 directly phosphorylates c-Fos and c-Jun; established MAPK signaling",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 13,
+      "t": 0,
+      "v": {
+        "interaction": "stabilizes",
+        "context": "protein-protein interaction; prevents proteasomal and lysosomal degradation",
+        "evidence": "Direct PPI demonstrated (co-immunoprecipitation); loss-of-c-Fos increases M2 degradation; gain-of-c-Fos increases M2 accumulation",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 14,
+      "t": 15,
+      "v": {
+        "interaction": "promotes",
+        "context": "M2-mediated calcium-ROS-ATG5 axis increases phagophore nucleation",
+        "evidence": "Increased autophagosome number correlates with M2 stabilization; ATG5 activation drives phagophore initiation",
+        "confidence": "medium"
+      }
+    },
+    {
+      "s": 16,
+      "t": 17,
+      "v": {
+        "interaction": "enhances",
+        "context": "M2 blocks autophagosome-lysosome fusion (Beale 2014); accumulated autophagosomes provide lipid membrane and vesicular compartments for viral assembly",
+        "evidence": "Increased viral titers correlate with autophagosome accumulation; autophagy inhibition reduces M2-mediated replication enhancement",
+        "confidence": "high"
+      }
+    },
+    {
+      "s": 0,
+      "t": 18,
+      "v": {
+        "interaction": "triggers",
+        "context": "cell-to-cell communication in infected monolayers",
+        "evidence": "M2-mediated calcium triggers gap junction-dependent ADP release; ADP activates P2Y receptors on neighboring cells",
+        "confidence": "medium"
+      }
+    },
+    {
+      "s": 19,
+      "t": 20,
+      "v": {
+        "interaction": "enhances",
+        "context": "bystander cell priming and receptivity",
+        "evidence": "Calcium waves increase infection susceptibility in neighboring uninfected cells; correlates with faster viral dissemination",
+        "confidence": "medium"
+      }
+    }
+  ]
+}
