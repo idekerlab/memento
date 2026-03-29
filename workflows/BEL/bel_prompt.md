@@ -1,0 +1,262 @@
+# general prompt
+
+Instructions:
+You will receive a scientific text with paragraphs along with a list of annotated molecular entities detailing biological interactions between the annotated molecular entities. Extract interactions strictly based on the information given in each paragraph and its corresponding annotations. Do not reuse entities or interactions from previous examples unless they are explicitly mentioned in the current paragraph. As an expert in bioinformatics with deep knowledge of genes, proteins, the Biological Expression Language, and biological terms, identify and resolve each molecular entity to standard identifiers (e.g., HGNC gene symbols, GO terms). Record interactions between pairs of entities, skipping sentences without interactions, and represent the interactions in the BEL (Biological Expression Language) format. Don't repeat the examples that are provided, they are just giving to you as guidance. 
+
+Important Guidelines to Note:
+1. Only Extract BEL Statements: Your task is to return the correct BEL statements only when there is a REASONABLE statement to be extracted based solely on the provided paragraph that is passed to you.
+2. Process Only Valid Passages: Proceed only if there are at least two annotated entities to consider for potential interactions. Skip any sentence that does not have at least two valid annotated entities
+3. Use Provided Annotations: Extract only entities in the paragraph that are specifically listed under the annotations list. Do not extract any entity that is not listed as an annotation. Do not generate new identifiers for namespaces in the annotations. Use the exact pairings of namespaces and identifiers listed in the annotations. Do not infer interactions involving entities not present in the paragraph. Omit any interaction in which one or both of the entities is not found in the provided annotations list.
+4. Use Consistent Namespace Identifiers: When an entity is annotated with a specific identifier, always use that exact identifier in the BEL statements. Do not substitute or mix identifiers from different namespaces—even if they refer to the same entity. Use only the entity classes and namespaces provided in the markdown table below:
+
+| Entity Class                                                   | Namespace | Definition                                                                                                  |
+|---------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------|
+| Human genes/proteins                                          | HGNC      | Approved symbols/names for human genes.                                                                      |
+| Human and model organism proteins                             | UniProt   | Comprehensive resource of protein sequences and functional information for human and model organisms.        |
+| Human protein families and complexes                          | FPLX   | Ontology for grouping related proteins into families, complexes, and other higher-level categories.          |
+| Small molecules, metabolites, etc.                            | ChEBI     | Chemical Entities of Biological Interest, covering small molecules, metabolites, and related compounds.      |
+| Biological processes, molecular functions, and complexes      | GO        | Gene Ontology terms for biological processes, molecular functions, and cellular components.                  |
+| Diseases                                                      | DOID      | Disease Ontology identifiers, representing various human diseases.                                           |
+| Experimental factors, cell lines, anatomical entities, etc.   | EFO       | Experimental Factor Ontology describing cell lines, cell types, anatomical entities, and experimental terms. |
+| Human phenotypes                                              | HP        | Human Phenotype Ontology for describing phenotypic features in human disease.                                |
+                                           |
+
+4. Skip Non-Interaction Sentences: If the sentence does not describe an interaction between molecular entities, do not generate a BEL statement for that sentence.
+5. Do not duplicate any interaction that has been extracted, ensure to extract an interaction for a sentence only once.
+6. The combination of a BEL function and its arguments fully specifies a BEL Term. The BEL Term expression f(a) denotes a BEL Term defined by function f() applied to an argument a. Wherever the same function is applied to the same arguments, the resulting BEL Term references the same biological entity.
+
+Tasks:
+Step 1. Process the Sentences: For each sentence provided, extract relevant interactions and convert them into BEL format, ensuring that the extracted entities and interactions align with the sentence's content.
+Step 2. Use BEL Format: Use the BEL Biological Functions and relations provided below for extracting the BEL statements. Use only the shortforms for function names when giving the result for the BEL statement.
+
+BEL Biological Functions: 
+- abundance: Long form: abundance() Short form: a()
+abundance(ns:v) or a(ns:v) denotes the abundance of the entity designated by the value v in the namespace ns. abundance is a general abundance term that can be used for chemicals or other molecules not defined by a more specific abundance function. Gene, RNA, protein, and microRNA abundances should be represented using the appropriate specific abundance function.
+Examples: a(CHEBI:"oxygen atom"), a(CHEBI:thapsigargin)
+
+- activity: Long form: activity() Short form: act()
+activity() or act(<abundance>) is used to specify events resulting from the molecular activity of an abundance. The activity() function provides distinct terms that enable differentiation of the increase or decrease of the molecular activity of a protein from changes in the abundance of the protein. activity() can be applied to a protein, complex, or RNA abundance term, and modified with a molecularActivity argument to indicate a specific type of molecular activity.
+Example: act(p(HGNC:AKT1))
+
+- biologicalProcess: Long form: biologicalProcess() Short form: bp()
+biologicalProcess(ns:v) or bp(ns:v) denotes the process or population of events designated by the value v in the namespace ns.
+Examples: bp(GO:"cell cycle arrest"), bp(GO:angiogenesis)
+
+- cellSecretion: Long form: cellSecretion() Short form: sec()
+For the abundance term A, cellSecretion() or sec() denotes the frequency or number of events in which members of move from cells to regions outside of the cells.
+The intent of the cellSecretion() function is to provide a simple, standard means of expressing a commonly represented translocation.
+Examples: sec(p(HGNC:RETN)), tloc(p(HGNC:RETN), fromLoc(GO:intracellular), toLoc(GO:"extracellular space"))
+
+- cellSurfaceExpression: Long form: cellSurfaceExpression() Short form: surf()
+cellSurfaceExpression() or surf() denotes the frequency or abundance of events in which members of move to the surface of cells. cellSurfaceExpression() can be equivalently expressed as: tloc(, fromLoc(GO:intracellular), toLoc(GO:“cell surface”)). The intent of the cellSurfaceExpression() function is to provide a simple, standard means of expressing a commonly represented translocation.
+Example: surf(p(HGNC:GPER1))
+
+- complexAbundance: Long form: complexAbundance() Short form: complex()
+The complexAbundance() or complex() function can be used with either a namespace value or with a list of abundance terms.
+complexAbundance(ns:v) or complex(ns:v) denotes the abundance of the molecular complex designated by the value v in the namespace ns. This form is generally used to identify abundances of named complexes.
+complexAbundance() denotes the abundance of the molecular complex of members of the abundances denoted by , a list of abundance terms supplied as arguments. The list is unordered, thus different orderings of the arguments should be interpreted as the same term. Members of a molecular complex retain their individual identities. The complexAbundance() function does not specify the duration or stability of the interaction of the members of the complex.
+Example: complex(p(HGNC:FOS), p(HGNC:JUN))
+
+- compositeAbundance: Long form: compositeAbundance() Short form: composite()
+The compositeAbundance() function takes a list of abundance terms.
+The compositeAbundance() or composite() function is used to represent cases where multiple abundances synergize to produce an effect. The list is unordered, thus different orderings of the arguments should be interpreted as the same term. This function should not be used if any of the abundances alone are reported to cause the effect. compositeAbundance() terms should be used only as subjects of statements, not as objects.
+Example: composite(p(HGNC:IL6), complex(GO:"interleukin-23 complex")) increases bp(GO:"T-helper 17 cell differentiation")
+
+- degradation: Long form: degradation() Short form: deg()
+degradation() or deg() denotes the frequency or number of events in which a member of is degraded in some way such that it is no longer a member of . For example, degradation() is used to represent proteasome-mediated proteolysis. The BEL Framework automatically connects +deg()+ to such that:
+deg(<abundance>) directlyDecreases <abundance>
+
+- fragment: Long form: fragment() Short form: frag()
+The fragment() or frag() function can be used within a proteinAbundance() term to specify a protein fragment, e.g., a product of proteolytic cleavage. Protein fragment expressions take the general form: p(ns:v, frag(, )) where (required) is an amino acid range, and (optional) is any additional distinguishing information like fragment size or name.
+
+- fusion: Long form: fusion() Short form: fus()
+fusion() or fus() expressions can be used in place of a namespace value within a gene, RNA, or protein abundance function to represent a hybrid gene, or gene product formed from two previously separate genes. fusion() expressions take the general form:
+fus(ns5':v5', "range5'", ns3':v3', "range3'")
+where ns5’:v5’ is a namespace and value for the 5’ fusion partner, range5’ is the sequence coordinates of the 5’ partner, ns3’:v3’ is a namespace and value for the 3’ partner, and range3’ is the sequence coordinates for the 3’ partner. Ranges need to be in quotes.
+Example: r(fus(HGNC:TMPRSS2, "r.1_79", HGNC:ERG, "r.312_5034"))
+
+- geneAbundance: Long form: geneAbundance() Short form: g()
+geneAbundance(ns:v) or g(ns:v) denotes the abundance of the gene designated by the value v in the namespace ns. geneAbundance() terms are used to represent the DNA encoding the specified gene. geneAbundance() is considered decreased in the case of a homozygous or heterozygous gene deletion, and increased in the case of a DNA amplification mutation. Events in which a protein binds to the promoter of a gene can be represented using the geneAbundance() function.
+Example: p53 protein binds the CDKN1A gene is interpreted as complex(p(HGNC:TP53), g(HGNC:CDKN1A))
+
+- location: Long form: location() Short form: loc()
+location() or loc() can be used as an argument within any abundance function except compositeAbundance() to represent a distinct subset of the abundance at that location. Location subsets of abundances have the general form: f(ns:v, loc(ns:v))
+Examples: Endoplasmic Reticulum pool of Ca2+ is interpreted as a(CHEBI:"calcium(2+)", loc(GO:"endoplasmic reticulum"))
+
+- microRNAAbundance: Long form: microRNAAbundance() Short form: m()
+microRNAAbundance(ns:v) or m(ns:v) denotes the abundance of the processed, functional microRNA designated by the value +v+ in the namespace +ns+.
+Example: m(HGNC:MIR21)
+
+- molecularActivity: Long form: molecularActivity() Short form: ma()
+molecularActivity(ns:v) or ma(ns:v) is used to denote a specific type of activity function within an activity() term.
+Examples: act(p(HGNC:FOXO1), ma(GO:"nucleic acid binding transcription factor activity")), act(p(HGNC:AKT1), ma(kin)), act(p(HGNC:AKT1), ma(GO:"kinase activity"))
+
+- pathology: Long form: pathology() Short form: path()
+pathology(ns:v) or path(ns:v) denotes the disease or pathology process designated by the value +v+ in the namespace +ns+. The +pathology()** function is included to facilitate the distinction of pathologies from other biological processes because of their importance in many potential applications in the life sciences.
+
+- proteinAbundance: Long form: proteinAbundance() Short form: p()
+proteinAbundance(ns:v) or p(ns:v) denotes the abundance of the protein designated by the value +v+ in the namespace +ns+, where +v+ references a gene or a named protein family.
+Examples: p(HGNC:AKT1), p(SFAM:"AKT Family")
+
+- proteinModification: Long form: proteinModification() Short form: pmod()
+The proteinModification() or pmod() function can be used only as an argument within a proteinAbundance() function to indicate modification of the specified protein. Multiple modifications can be applied to the same protein abundance. Modified protein abundance term expressions have the general form:
+p(ns:protein_value, pmod(ns:type_value, <code>, <pos>)). 
+type_value (required) is a namespace value for the type of modification ,
+* (optional) is a single-letter or three-letter code for one of the twenty standard amino acids, and  (optional) is the position at which the modification occurs based on the reference sequence for the protein. If ** is omitted, then the position of the modification is unspecified. If both ** and ** are omitted, then the residue and position of the modification are unspecified. NOTE - the default BEL namespace includes commonly used protein modification types.
+
+Protein Modification Default Namespace
+| Label     | Synonym                                                                                             |
+|-----------|-----------------------------------------------------------------------------------------------------|
+| Ac        | acetylation                                                                                         |
+| ADPRib    | ADP-ribosylation, ADP-rybosylation, adenosine diphosphoribosyl                                      |
+| Farn      | farnesylation                                                                                       |
+| Gerger    | geranylgeranylation                                                                                 |
+| Glyco     | glycosylation                                                                                       |
+| Hy        | hydroxylation                                                                                       |
+| ISG       | ISGylation, ISG15-protein conjugation                                                               |
+| Me        | methylation                                                                                         |
+| Me1       | monomethylation, mono-methylation                                                                   |
+| Me2       | dimethylation, di-methylation                                                                       |
+| Me3       | trimethylation, tri-methylation                                                                     |
+| Myr       | myristoylation                                                                                      |
+| Nedd      | neddylation                                                                                         |
+| NGlyco    | N-linked glycosylation                                                                              |
+| NO        | nitrosylation                                                                                       |
+| OGlyco    | O-linked glycosylation                                                                              |
+| Palm      | palmitoylation                                                                                      |
+| Ph        | phosphorylation                                                                                     |
+| Sulf      | sulfation, sulphation, sulfur addition, sulphur addition, sulfonation, sulphonation                |
+| Sumo      | SUMOylation                                                                                         |
+| Ub        | ubiquitination, ubiquitinylation, ubiquitylation                                                    |
+| UbK48     | Lysine 48-linked polyubiquitination                                                                 |
+| UbK63     | Lysine 63-linked polyubiquitination                                                                 |
+| UbMono    | monoubiquitination                                                                                  |
+| UbPoly    | polyubiquitination                                                                                  |
+
+Examples: 
+default BEL namespace and 1-letter amino acid code
+p(HGNC:AKT1, pmod(Ph, S, 473))
+
+default BEL namespace and 3-letter amino acid code
+p(HGNC:AKT1, pmod(Ph, Ser, 473))
+
+MAPK1 phosphorylated at both Threonine 185 and Tyrosine 187
+p(HGNC:MAPK1, pmod(Ph, Thr, 185), pmod(Ph, Tyr, 187))
+
+HRAS palmitoylated at an unspecified residue using default BEL namespace
+p(HGNC:HRAS, pmod(Palm))
+
+- reaction: Long form: reaction() Short form: rxn()
+reaction(reactants(), products()) denotes the frequency or abundance of events in which members of the abundances in (the reactants) are transformed into members of the abundances in (the products).
+Example: The reaction in which superoxides are dismutated into oxygen and hydrogen peroxide can be represented as rxn(reactants(a(CHEBI:superoxide)), products(a(CHEBI:"hydrogen peroxide"), a(CHEBI:"oxygen")))
+
+- rnaAbundance: Long form: rnaAbundance() Short form: r()
+rnaAbundance(ns:v) or r(ns:v) denotes the abundance of the RNA designated by the value v in the namespace +ns+, where +v+ references a gene. This function refers to all RNA designated by +ns:v+, regardless of splicing, editing, or polyadenylation stage.
+Example: r(HGNC:AKT1)
+
+- translocation: Long form: translocation() Short form: tloc()
+For the abundance term A, translocation(, fromLocation(ns1:v1), toLocation(ns2:v2)) or tloc(, fromLoc(ns1:v1), toLoc(ns2:v2)) denotes the frequency or number of events in which members of move from the location designated by the value +v1+ in the namespace +ns1+ to the location designated by the value v2 in the namespace ns2. Translocation is applied to represent events on the cellular scale, like endocytosis and movement of transcription factors from the cytoplasm to the nucleus. Special case translocations are handled by the BEL functions: cellSecretion(), cellSurfaceExpression().
+Example: endocytosis (translocation from the cell surface to the endosome) of the epidermal growth factor receptor (EGFR) protein can be represented as tloc(p(HGNC:EGFR), fromLoc(GO:"cell surface"), toLoc(GO:endosome))
+
+- variant: Long form: variant() Short form: var()
+The variant(””) or var(””) function can be used as an argument within a geneAbundance(), rnaAbundance(), microRNAAbundance(), or proteinAbundance() to indicate a sequence variant of the specified abundance.
+
+BEL Relations:
+| Relationship              | Description                                               |
+|---------------------------|-----------------------------------------------------------|
+| association               | A is associated with B - least informative relationship    |
+| causesNoChange [cnc]      | A causes no change in B                                   |
+| decreases [-|]            | A indirectly decreases B                                  |
+| directlyDecreases [=|]    | A directly decreases B                                    |
+| directlyIncreases [=>]    | A directly increases B                                    |
+| hasActivity               | A has activity B, e.g. kinase activity                    |
+| hasComponent              | A has component B (for complexes)                         |
+| hasComponents             | A has components list(B, C, D, …)                         |
+| hasMember                 | A has a member B                                          |
+| hasMembers                | A has members list(B, C, D, …)                            |
+| increases [->]            | A indirectly increases B                                  |
+| isA                       | A is a subset of B                                        |
+| negativeCorrelation [neg] | A is negatively correlated with B                         |
+| orthologous               | A is orthologous to B                                     |
+| positiveCorrelation [pos] | A is positively correlated with B                         |
+| rateLimitingStepOf        | A is a rate limiting step of B                            |
+| regulates [reg]           | A regulates (effects) B somehow                           |
+| subProcessOf              | A is a subprocess of B                                    |
+| transcribedTo [:>]        | gene is transcribed to RNA                                |
+| translatedTo [>>]         | RNA is translated to protein                              |
+
+
+Output Format:
+For each sentence provided, extract the relevant interactions and return them directly in BEL format along with the exact sentence from which the interactions were extracted. Do not include any other metadata or explanations, only the BEL interaction statements and the sentence.
+
+Example Formats: Use these examples to understand the desired output format but do not replicate these examples unless explicitly required by the text.
+1. "text": "Arterial cells are highly susceptible to oxidative stress, which can induce both necrosis and apoptosis (programmed cell death)"
+    "Results": [
+        [   "bel_statement": "bp(GOBP:\"response to oxidative stress\") increases bp(GOBP:\"apoptotic process\")",
+            "evidence":  "Arterial cells are highly susceptible to oxidative stress, which can induce both necrosis and apoptosis (programmed cell death)"
+        ]
+        [   "bel_statement": "bp(GOBP:\"response to oxidative stress\") increases bp(GOBP:necrosis)",
+            "evidence":  "Arterial cells are highly susceptible to oxidative stress, which can induce both necrosis and apoptosis (programmed cell death)"
+        ]
+    ]
+
+2. "text": "In the third phase, gap filling, x-ray repair cross-complementing gene/protein 1 (XRCC1) appears to function as a platform for the assembly of DNA polymerase b (DPase b), DNA ligase III, and PARP. This assembly is held together, in part, via breast cancer protein 1 C-terminal module (BRCT) modules in the constituent proteins. The binding of PARP by XRCC1 may function to block the further action of PARP during this phase at a repair site. The assembly of XRCC1 with DPase b and DNA ligase III may also function in the single-nucleotide replacement pathway of base excision repair.",
+    "Results": [
+        [
+            "bel_statement": "complex(p(HGNC:XRCC1), p(HGNC:POLB), p(HGNC:LIG3), p(HGNC:PARP1))",
+            "evidence": "In the third phase, gap filling, x-ray repair cross-complementing gene/protein 1 (XRCC1) appears to function as a platform for the assembly of DNA polymerase b (DPase b), DNA ligase III, and PARP."
+        ],
+        [
+            "bel_statement": "p(HGNC:XRCC1) directlyDecreases act(p(HGNC:PARP1))",
+            "evidence": "The binding of PARP by XRCC1 may function to block the further action of PARP during this phase at a repair site."
+        ]
+    ]
+
+3. "text": "It has been observed that a high percentage of BRCA1- associated hereditary and sporadic breast cancers are triple negative and express a high proportion of basal like cytokeratins (CK5,14,17), as well as P-Cadherin and HER1/EGFR. Gene expression studies support this association among patients with BRCA1 mutations that breast tumours tend to cluster within the basal like category.",
+    "Results": [
+        [
+            "bel_statement": "g(HGNC:BRCA1) positiveCorrelation path(DOID:Triple-negative breast cancer)",
+            "evidence": "It has been observed that a high percentage of BRCA1- associated hereditary and sporadic breast cancers are triple negative."
+        ],
+        [
+            "bel_statement": "g(HGNC:BRCA1) positiveCorrelation a(HGNC:EGFR)",
+            "evidence": "It has been observed that a high percentage of BRCA1- associated hereditary and sporadic breast cancers express a high proportion of HER1/EGFR."
+        ]
+    ]
+
+4. "text": "Dysregulation of HSF1 is associated with several disease phenotypes. Elevated HSF1 activity in multiple cancer types is a frequent occurrence. Loss of HSF1 delays or prevents formation of multiple cancer types. HSF1 appears to promote cancer by regulating genes distinct from its heat stress-induced gene targets but has multiple functions to support tumour growth and progression. Conversely, loss of HSF1 is associated with neurodegenerative diseases, such as Huntington's and Alzheimer's diseases among others. HSF1 activity is impaired with ageing but is critical for neuronal protein folding, neurotransmitter release, synapse formation, energy metabolism and neuronal survival.",
+    "Results": [
+        [
+            "bel_statement": "act(p(HGNC:HSF1)) increases bp(GO:0007269)",
+            "evidence": "HSF1 activity is impaired with ageing but is critical for neuronal protein folding, neurotransmitter release, synapse formation, energy metabolism and neuronal survival."
+        ],
+        [
+            "bel_statement": "act(p(HGNC:HSF1)) increases bp(GO:0045202)",
+            "evidence": "HSF1 activity is impaired with ageing but is critical for neuronal protein folding, neurotransmitter release, synapse formation, energy metabolism and neuronal survival."
+        ]
+    ]
+
+5. "text": "There are substantial shortcomings in the drugs currently available for treatment of type 2 diabetes mellitus. The global diabetic crisis has not abated despite the introduction of new types of drugs and targets. Persistent unaddressed patient needs remain a significant factor in the quest for new leads in routine studies. Drug discovery methods in this area have followed developments in the market, contributing to a recent rise in the number of molecules. Nevertheless, troubling developments and fresh challenges are still evident. Recently, metformin, the most widely used first-line drug for diabetes, was found to contain a carcinogenic contaminant known as N-nitroso dimethylamine (NDMA). Therefore, purity and toxicity are also a big challenge for drug discovery and development. Moreover, newer drug classes against SGLT-2 illustrate both progress and difficulties. The same was true previously in the case of glucagon-like peptide-1 receptor agonists and dipeptidyl peptidase-4 inhibitors. Furthermore, researchers must study the importance of mechanistic characteristics of novel compounds, as well as exposure-related hazardous aspects of current and newly identified protein targets, in order to identify new pharmacological molecules with improved selectivity and specificity.",
+    "Results": [
+        [
+            "bel_statement": "a(CHEBI:6801) hasComponent a(CHEBI:59990)",
+            "evidence": "Recently, metformin, the most widely used first-line drug for diabetes, was found to contain a carcinogenic contaminant known as N-nitroso dimethylamine (NDMA)."
+        ],
+        [
+            "bel_statement": "a(CHEBI:23888) increases a(EFO:0004368)",
+            "evidence": "Drug discovery methods in this area have followed developments in the market, contributing to a recent rise in the number of molecules."
+        ],
+        [
+            "bel_statement": "a(CHEBI:23888) challenges a(EFO:0011061)",
+            "evidence": "Therefore, purity and toxicity are also a big challenge for drug discovery and development."
+        ],
+        [
+            "bel_statement": "p(HGNC:11037) hasActivity a(CHEBI:71196)",
+            "evidence": "Moreover, newer drug classes against SGLT-2 illustrate both progress and difficulties. The same was true previously in the case of glucagon-like peptide-1 receptor agonists and dipeptidyl peptidase-4 inhibitors."
+        ],
+        [
+            "bel_statement": "p(HGNC:11037) hasActivity a(CHEBI:68612)",
+            "evidence": "Moreover, newer drug classes against SGLT-2 illustrate both progress and difficulties. The same was true previously in the case of glucagon-like peptide-1 receptor agonists and dipeptidyl peptidase-4 inhibitors."
+        ]
+    ]
+"""
