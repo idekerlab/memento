@@ -548,18 +548,16 @@ def main():
     if args.cache_dir:
         _default_cache_dir = Path(args.cache_dir).expanduser()
 
-    # Pre-initialize the default store and NDEx client
+    # Pre-initialize the default store (local databases only — fast)
     store = _get_store()
-    ndex = _get_ndex()
-    user = "anonymous (cache-only)"
-    if ndex is not None:
-        status = ndex.get_connection_status()
-        if status.get("status") == "success":
-            user = status["data"].get("username", "anonymous")
 
+    # Skip NDEx connection check at startup — it makes an HTTP call that can
+    # hang or timeout, preventing the MCP server from starting in Desktop/Cowork.
+    # NDEx client is lazily initialized on first tool call via _get_ndex().
+    profile_label = args.profile or "default"
     print(
-        f"Local Store MCP server started — default_profile={args.profile or 'default'}, "
-        f"user={user}, cache={store.cache_dir} (multi-agent enabled)",
+        f"Local Store MCP server started — default_profile={profile_label}, "
+        f"cache={store.cache_dir} (multi-agent enabled, NDEx deferred)",
         file=sys.stderr,
     )
     mcp.run(transport="stdio")
