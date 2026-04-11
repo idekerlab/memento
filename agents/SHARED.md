@@ -28,9 +28,47 @@ cache_network(uuid, store_agent="<agent>")
 - `store_agent="<agent>"` — controls which agent's local store cache is used
 - **Never omit these on write operations.** Omitting them may write to the wrong account or cache.
 
+## Data Constraints
+
+These constraints apply to all network creation, caching, and querying. Violating them causes runtime errors.
+
+### Node and edge attributes must be flat
+
+All attribute values must be strings, numbers, or booleans. **No nested dicts or arrays.**
+
+```
+✓ Good: {"name": "TP53", "type": "protein", "status": "active", "priority": "high"}
+✗ Bad:  {"name": "TP53", "properties": {"status": "active", "priority": "high"}}
+```
+
+This applies to:
+- Node `v` in network specs passed to `create_network` / `update_network`
+- Edge `v` in network specs
+- Any CX2 network attribute
+
+If you need structured metadata, use flat keys with prefixes (e.g. `evidence_type`, `evidence_source`) rather than nesting.
+
+### Cypher queries cannot filter on MAP properties directly
+
+The local graph database (LadybugDB) stores node/edge attributes in `properties MAP(STRING, STRING)` columns. **Dot-access on MAP columns does not work** — `a.properties.status` will throw an error.
+
+Instead: filter by indexed columns (`name`, `node_type`, `network_uuid`) in Cypher, then filter by property values in your own reasoning after receiving results.
+
+```
+✓ Good: MATCH (a:BioNode {network_uuid: $uuid}) WHERE a.node_type = 'action'
+         RETURN a.name, a.properties
+         → then check properties['status'] == 'active' yourself
+
+✗ Bad:  MATCH (a:BioNode) WHERE a.properties.status = 'active' RETURN a
+```
+
+### Network-level properties use `ndex-` prefix
+
+Network properties (as opposed to node/edge attributes) use the `ndex-` prefix convention. These are stored in the catalog's `properties` JSON field, not in the graph.
+
 ## Local Store
 
-The local store is a persistent, queryable network cache. It survives across sessions. Use it to:
+The local store is a queryable network cache. It is cleared at session start and rebuilt from NDEx. Use it to:
 - Mirror other agents' networks for cross-network querying without re-downloading
 - Store your own networks locally before publishing
 - Run Cypher queries across multiple cached networks simultaneously
@@ -130,61 +168,59 @@ Store **pointers** (NDEx UUIDs) to full source networks, not duplicated content.
 
 ## Session Lifecycle
 
-### Step 0 — Mandatory Tool Connectivity Check (HARD STOP)
+### Step 0 — Session Initialization (Procedural)
 
-**You MUST verify that both NDEx and Local Store MCP tools are available before doing ANY work. If either is missing, STOP IMMEDIATELY. Do not proceed. Do not work around it.**
-
-Run these two checks at the very start of every session:
+**Call `session_init` as your very first action.** This single tool call handles all mechanical startup:
 
 ```
-# Check 1: NDEx MCP
-get_connection_status()
-
-# Check 2: Local Store MCP
-query_catalog(store_agent="<agent>")
+session_init(agent="<agent>", profile="<ndex_profile>")
 ```
 
-**If either call fails or the tool is not found:**
-1. **STOP.** Do not attempt any workaround (e.g., downloading networks manually, skipping local store operations). Workarounds will consume excessive context and produce work that cannot be properly tracked.
-2. **Report the failure clearly** in your session output:
-   - Which tool is missing: NDEx, Local Store, or both?
-   - The exact error message (if any)
-   - Whether the tool appears in your available tool list at all
-3. **Explain why this is blocking:** "The local store is required for persistent memory, cross-network queries, and context-efficient session initialization. Without it, I cannot maintain session history or operate within context limits across sessions. Proceeding without it would produce untrackable work and risk context overflow."
-4. **Suggest diagnosis steps for the operator:**
-   - "Check if a stale Python process is holding the graph.db lock: `lsof /Users/dexterpratt/.ndex/cache/graph.db`"
-   - "If a process is found, kill it and restart Cowork"
-   - "If no lock is found, check whether the local_store MCP server starts successfully: run it manually from the command line and look for import errors"
-   - "Verify the PYTHONPATH in claude_desktop_config.json points to the memento repo"
-5. **End the session.** Do not produce partial work.
+This procedurally:
+1. Verifies NDEx and Local Store connectivity (hard stop if either fails)
+2. Clears the local cache (clean slate — no stale data)
+3. Searches NDEx for your four self-knowledge networks by name
+4. Downloads and caches them into the local graph database
+5. Queries your active plans and last session
+6. Returns everything you need to begin reasoning
 
-**Why this is non-negotiable:** The local store is how you maintain persistent memory across sessions. Without it, you have no session history, no plans, no paper tracker, no cross-network queries. Every session would start from scratch, consuming full context for initialization. The system is designed so that agents can run indefinitely — this only works if the local store is available to keep context initialization at a roughly constant level.
+**If `session_init` fails**, report the error and end the session. Do not attempt workarounds — the local store is required for persistent memory and context-efficient operation.
 
-### Session Start — Do These Steps In Order
+You can also pass explicit UUIDs if you know them:
+```
+session_init(
+    agent="<agent>",
+    self_network_uuids={
+        "session_history": "<uuid>",
+        "plans": "<uuid>",
+        "collaborator_map": "<uuid>",
+        "papers_read": "<uuid>"
+    },
+    profile="<ndex_profile>"
+)
+```
+
+**What you get back:**
+- `self_knowledge`: which networks were cached (with node/edge counts)
+- `active_plans`: your active action items (ready to prioritize)
+- `last_session`: your most recent session summary (for continuity)
+- `catalog`: full list of cached networks
+- `self_network_uuids`: resolved UUIDs for reference during the session
+- `errors`: any networks that failed to load (investigate these)
+
+### Session Start — Your Reasoning Begins Here
+
+After `session_init` returns successfully, you have your state loaded. Now do the parts that require judgment:
 
 ```
-0. Tool connectivity check (see above — HARD STOP if either fails)
+1. Review the active plans and last session returned by session_init.
 
-1. Load catalog:
-   query_catalog(agent="<agent>")
-
-2. Load active plans:
-   query_graph("MATCH (a:BioNode {network_uuid: '<agent>-plans'})
-     WHERE a.properties.node_type = 'action' AND a.properties.status = 'active'
-     RETURN a.name, a.properties")
-
-3. Load last session:
-   query_graph("MATCH (s:BioNode {network_uuid: '<agent>-session-history'})
-     RETURN s.name, s.properties ORDER BY s.cx2_id DESC LIMIT 1")
-
-4. Social feed check — look for new content from teammates.
-   Compare modification times against last session timestamp.
+2. Social feed check — search NDEx for new content from other agents.
+   Compare modification times against your last session timestamp.
    Decide: respond now, add to plan, or note no action needed.
+   Cache any relevant networks: cache_network(uuid, store_agent="<agent>")
 
-5. Cache any new relevant networks from other agents:
-   cache_network(network_uuid, store_agent="<agent>")
-
-6. Pick 1-2 active actions as this session's focus.
+3. Pick 1-2 active actions as this session's focus.
    If no active actions exist, create them from the mission goals.
 ```
 

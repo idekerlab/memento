@@ -85,6 +85,12 @@ def get_network_summary(network_id: str) -> dict:
 def create_network(network_spec: str, profile: str | None = None) -> dict:
     """Create a new network on NDEx from a JSON specification.
 
+    IMPORTANT — attribute values must be flat (strings, numbers, booleans).
+    Nested dicts or lists of dicts are NOT supported by CX2 and will cause errors.
+
+    Good: {"name": "TP53", "type": "protein", "status": "active", "priority": "high"}
+    Bad:  {"name": "TP53", "properties": {"status": "active", "priority": "high"}}
+
     Args:
         network_spec: JSON string with the following structure:
             {
@@ -93,15 +99,17 @@ def create_network(network_spec: str, profile: str | None = None) -> dict:
               "version": "1.0",
               "properties": {"key": "value", ...},
               "nodes": [
-                {"id": 0, "v": {"name": "TP53", "type": "protein"}},
+                {"id": 0, "v": {"name": "TP53", "type": "protein", "status": "active"}},
                 {"id": 1, "v": {"name": "MDM2", "type": "protein"}}
               ],
               "edges": [
                 {"source": 0, "target": 1, "v": {"interaction": "inhibits"}}
               ]
             }
-            Node attributes go under "v" (or "attributes"). IDs are auto-assigned if omitted.
-            Edge source/target use "source"/"target" (or "s"/"t"). Edge attributes go under "v" (or "attributes").
+            Node attributes go under "v" (or "attributes"). All values must be flat
+            (string, number, boolean) — no nested objects or arrays.
+            IDs are auto-assigned if omitted.
+            Edge source/target use "source"/"target" (or "s"/"t").
         profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
     """
     spec = json.loads(network_spec)

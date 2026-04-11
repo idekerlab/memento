@@ -25,9 +25,13 @@ class NDExClientWrapper:
                     self._config.server,
                     self._config.username,
                     self._config.password,
+                    skip_version_check=True,
                 )
             else:
-                self._client = ndex2.client.Ndex2(self._config.server)
+                self._client = ndex2.client.Ndex2(
+                    self._config.server,
+                    skip_version_check=True,
+                )
         return self._client
 
     # ------------------------------------------------------------------

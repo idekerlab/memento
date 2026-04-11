@@ -57,8 +57,7 @@ Create `~/.ndex/config.json` with profiles for each agent:
 ```json
 {
   "profiles": {
-    "rdaneel": { "server": "https://www.ndexbio.org/v3", "username": "rdaneel", "password": "..." },
-    "drh": { "server": "https://www.ndexbio.org/v3", "username": "drh", "password": "..." }
+    "<agent_name>": { "server": "https://www.ndexbio.org/v3", "username": "<ndex_username>", "password": "..." }
   }
 }
 ```
@@ -117,3 +116,28 @@ These are **two different scheduling systems**:
 - **`local_store` hangs on startup**: If someone re-added a network call before `mcp.run()`, remove it — startup must not block on HTTP.
 - **Module not found errors**: Ensure `cwd` is set to the memento project root.
 - **Wrong agent identity**: Check the `--profile` argument matches a profile in `~/.ndex/config.json`.
+- **Local NDEx container fails with `/ndexbio-rest/v3/` errors**: The ndex2 Python library hardcodes a path override when it sees "localhost" in the URL. Use `http://127.0.0.1:8080` instead of `http://localhost:8080` in your profile's `server` field.
+
+## Data Format Constraints
+
+These constraints arise from the interaction between CX2, ndex2, and LadybugDB. They are documented here for maintainers; agents see summaries in `agents/SHARED.md` and in tool docstrings.
+
+### CX2 attribute values must be flat
+
+The `ndex2` library's `CX2Network.add_node()` calls `_get_cx2_type(value)` on every attribute value. This rejects `dict` and `list` types with `NDExError: Unsupported value type`. All node/edge attribute values in the `v` dict must be scalar: string, int, float, or boolean.
+
+**Implication for self-knowledge networks**: Agent schemas that previously used nested `"properties"` dicts (e.g., session history nodes with `"properties": {"timestamp": "...", "outcome": "..."}`) must be flattened to top-level keys in the `v` dict.
+
+### LadybugDB MAP column access
+
+LadybugDB stores node/edge properties as `MAP(STRING, STRING)`. These MAP columns:
+
+- **Cannot be accessed with dot syntax** in Cypher: `a.properties.status` throws `Binder exception: has data type MAP but (NODE,REL,STRUCT,ANY) was expected`.
+- **`MAP_EXTRACT()` has type-casting issues**: `MAP_EXTRACT(a.properties, 'status') = 'active'` can fail with `Cast failed. active is not in STRING[] range`.
+- **Empty MAPs** require a sentinel key `{"__empty__": ""}` due to LadybugDB parameterization limitations. The `graph_store.py` `_clean_map()` function strips this on retrieval.
+
+**Workaround**: Filter by indexed columns (`name`, `node_type`, `network_uuid`) in Cypher, then filter MAP properties in Python. This is what `session_init` does for active plan filtering.
+
+### ndex2 localhost override
+
+The `ndex2` library (v3.11.0) hardcodes `self.host = "http://localhost:8080/ndexbio-rest"` whenever the host URL contains "localhost" (line 56 of `ndex2/client.py`). This breaks with Docker containers that serve at root. Use `127.0.0.1` instead. The `skip_version_check=True` parameter (added to `ndex_client_wrapper.py`) prevents an unnecessary version-probe HTTP call on client init.

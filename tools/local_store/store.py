@@ -106,6 +106,23 @@ class LocalStore:
         if cx2_path.exists():
             cx2_path.unlink()
 
+    def clear_all(self) -> int:
+        """Delete all networks from both graph store and catalog.
+
+        Returns the number of networks removed.
+        """
+        entries = self.catalog.query()
+        count = 0
+        for entry in entries:
+            uuid = entry["uuid"]
+            self.graph.delete_network_data(uuid)
+            self.catalog.delete(uuid)
+            cx2_path = self.networks_dir / f"{uuid}.cx2"
+            if cx2_path.exists():
+                cx2_path.unlink()
+            count += 1
+        return count
+
     def mark_published(self, network_uuid: str, ndex_modified: str | None = None) -> None:
         """Mark a network as published (not dirty)."""
         updates = {"is_dirty": False}

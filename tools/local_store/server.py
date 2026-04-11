@@ -117,11 +117,25 @@ def get_cached_network(network_uuid: str, store_agent: str | None = None) -> dic
 def query_graph(cypher: str, store_agent: str | None = None) -> dict:
     """Execute a Cypher query against the local graph database.
 
-    The graph contains BioNode and Network node tables with Interacts
-    and InNetwork relationship tables. BioNode properties: id, cx2_id,
-    network_uuid, name, node_type, properties (MAP).
+    Schema:
+        Node tables: BioNode, Network
+        Relationship tables: Interacts (BioNode→BioNode), InNetwork (BioNode→Network)
+
+    BioNode columns: id, cx2_id, network_uuid, name, node_type, properties (MAP)
+    Interacts columns: edge_id, network_uuid, interaction, properties (MAP)
+    Network columns: uuid, name, description, properties (MAP)
+
+    IMPORTANT — properties is a MAP(STRING, STRING) column. LadybugDB does NOT
+    support dot-access on MAP columns (e.g. `a.properties.status` will fail).
+    Instead, filter by indexed columns (name, node_type, network_uuid) in Cypher,
+    then filter by properties values in your own logic after receiving results.
 
     Example queries:
+    - All actions in a plans network:
+      MATCH (a:BioNode {network_uuid: '<uuid>'}) WHERE a.node_type = 'action'
+      RETURN a.name, a.properties
+      (then filter by properties['status'] == 'active' in your code)
+
     - Neighborhood: MATCH (n:BioNode {name: 'TRIM25'})-[r:Interacts]-(m) RETURN m.name, r.interaction
     - Cross-network: MATCH (n:BioNode)-[:InNetwork]->(net1:Network {uuid: 'X'}) ...
     - Path: MATCH path = (a:BioNode {name: 'NS1'})-[:Interacts*1..3]-(b:BioNode {name: 'RIG-I'}) RETURN path
@@ -285,7 +299,11 @@ def cache_network(
 
     Downloads the CX2 data, imports it into the graph database, and
     creates a catalog entry. If the network is already cached, it is
-    re-downloaded and updated.
+    re-downloaded and replaced.
+
+    Node/edge attributes are stored in the graph as MAP(STRING, STRING).
+    All values are coerced to strings. Nested objects are not preserved —
+    use flat key-value attributes when creating networks.
 
     Args:
         network_uuid: NDEx UUID of the network to cache.
@@ -521,6 +539,169 @@ def delete_cached_network(network_uuid: str, store_agent: str | None = None) -> 
         return {"status": "error", "message": f"Network {network_uuid} not in cache"}
     store.delete_network(network_uuid)
     return {"status": "success", "message": f"Removed {network_uuid} from cache"}
+
+
+# ── Session Initialization ──────────────────────────────────────────
+
+
+@mcp.tool()
+def clear_cache(store_agent: str | None = None) -> dict:
+    """Delete all networks from the local cache.
+
+    Removes every network from both the graph database and the SQLite
+    catalog. Does not affect NDEx. Use this at session start for a
+    clean slate before re-caching self-knowledge networks.
+
+    Args:
+        store_agent: Which agent's local store to clear. Uses default if omitted.
+    """
+    store = _get_store(store_agent)
+    count = store.clear_all()
+    return {
+        "status": "success",
+        "message": f"Cleared {count} networks from cache",
+        "networks_removed": count,
+    }
+
+
+@mcp.tool()
+def session_init(
+    agent: str,
+    self_network_uuids: dict | None = None,
+    profile: str | None = None,
+) -> dict:
+    """Procedural session initialization: clear cache, fetch self-knowledge, return context.
+
+    This tool automates the mechanical parts of session startup:
+    1. Clears the local cache (clean slate)
+    2. Downloads and caches the agent's self-knowledge networks from NDEx
+    3. Queries active plans and last session from the freshly cached data
+    4. Returns everything the agent needs to begin reasoning
+
+    The agent still handles social feed checking and action selection.
+
+    Args:
+        agent: Agent name (e.g. "rdaneel"). Used as both store_agent and
+               to construct self-knowledge network names if UUIDs not provided.
+        self_network_uuids: Optional dict mapping self-knowledge types to NDEx
+            UUIDs. Keys: "session_history", "plans", "collaborator_map", "papers_read".
+            If omitted, searches NDEx for networks named "<agent>-session-history", etc.
+        profile: NDEx profile for downloading. Defaults to agent name if omitted.
+    """
+    effective_profile = profile or agent
+    ndex = _get_ndex(effective_profile)
+    if ndex is None:
+        return {"status": "error", "message": f"NDEx client not configured for profile '{effective_profile}'"}
+
+    store = _get_store(agent)
+
+    # Step 1: Clear cache
+    cleared = store.clear_all()
+
+    # Step 2: Resolve self-knowledge network UUIDs
+    sk_types = ["session-history", "plans", "collaborator-map", "papers-read"]
+    uuids = {}
+
+    if self_network_uuids:
+        # Use provided UUIDs (normalize key format)
+        key_map = {
+            "session_history": "session-history",
+            "plans": "plans",
+            "collaborator_map": "collaborator-map",
+            "papers_read": "papers-read",
+        }
+        for param_key, sk_key in key_map.items():
+            if param_key in self_network_uuids:
+                uuids[sk_key] = self_network_uuids[param_key]
+    else:
+        # Search NDEx for each self-knowledge network by name
+        for sk_type in sk_types:
+            name = f"{agent}-{sk_type}"
+            search_result = ndex.search_networks(
+                query=name, account_name=agent, start=0, size=1
+            )
+            if (search_result["status"] == "success"
+                    and search_result["data"].get("numFound", 0) > 0):
+                nets = search_result["data"]["networks"]
+                if nets:
+                    uuids[sk_type] = nets[0]["externalId"]
+
+    # Step 3: Cache each self-knowledge network
+    cached = {}
+    errors = {}
+    for sk_type, uuid in uuids.items():
+        try:
+            dl_result = ndex.download_network(uuid)
+            if dl_result["status"] != "success":
+                errors[sk_type] = dl_result.get("message", "download failed")
+                continue
+
+            cx2 = CX2Network()
+            cx2.create_from_raw_cx2(dl_result["data"])
+            stats = store.import_network(cx2, uuid, agent=agent, category=sk_type)
+
+            summary = ndex.get_network_summary(uuid)
+            if summary["status"] == "success":
+                ndex_modified = str(summary["data"].get("modificationTime", ""))
+                store.mark_published(uuid, ndex_modified=ndex_modified)
+
+            cached[sk_type] = {
+                "uuid": uuid,
+                "node_count": stats["node_count"],
+                "edge_count": stats["edge_count"],
+                "name": (cx2.get_network_attributes() or {}).get("name", ""),
+            }
+        except Exception as e:
+            errors[sk_type] = str(e)
+
+    # Step 4: Query plans and last session from freshly cached data
+    # Note: LadybugDB MAP columns don't support dot-access filtering in Cypher,
+    # so we filter by node_type in Cypher and by properties in Python.
+    active_plans = []
+    all_plans = []
+    last_session = None
+
+    if "plans" in uuids:
+        try:
+            rows = store.query_graph(
+                "MATCH (a:BioNode {network_uuid: $uuid}) "
+                "WHERE a.node_type = 'action' "
+                "RETURN a.name, a.properties",
+                {"uuid": uuids["plans"]},
+            )
+            all_plans = [{"name": r[0], "properties": r[1]} for r in rows]
+            active_plans = [p for p in all_plans if p["properties"].get("status") == "active"]
+        except Exception:
+            pass
+
+    if "session-history" in uuids:
+        try:
+            rows = store.query_graph(
+                "MATCH (s:BioNode {network_uuid: $uuid}) "
+                "RETURN s.name, s.properties "
+                "ORDER BY s.cx2_id DESC LIMIT 1",
+                {"uuid": uuids["session-history"]},
+            )
+            if rows:
+                last_session = {"name": rows[0][0], "properties": rows[0][1]}
+        except Exception:
+            pass
+
+    # Step 5: Get full catalog for reference
+    catalog = store.query_catalog()
+
+    return {
+        "status": "success",
+        "data": {
+            "cache_cleared": cleared,
+            "self_knowledge": cached,
+            "errors": errors,
+            "active_plans": active_plans,
+            "last_session": last_session,
+            "catalog": catalog,
+            "self_network_uuids": uuids,
+        },
+    }
 
 
 # ── Entry point ──────────────────────────────────────────────────────
