@@ -22,9 +22,15 @@ CREATE TABLE IF NOT EXISTS networks (
     local_modified TEXT,
     local_path TEXT,
     is_dirty BOOLEAN DEFAULT 0,
-    properties TEXT DEFAULT '{}'
+    properties TEXT DEFAULT '{}',
+    source_profile TEXT
 )
 """
+
+# Migration: add source_profile column to existing databases.
+_MIGRATIONS = [
+    "ALTER TABLE networks ADD COLUMN source_profile TEXT",
+]
 
 
 class Catalog:
@@ -39,6 +45,17 @@ class Catalog:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute(SCHEMA_SQL)
         self.conn.commit()
+        self._run_migrations()
+
+    def _run_migrations(self):
+        """Apply schema migrations, skipping any that have already been applied."""
+        for sql in _MIGRATIONS:
+            try:
+                self.conn.execute(sql)
+                self.conn.commit()
+            except sqlite3.OperationalError:
+                # Column/table already exists — skip
+                pass
 
     def close(self):
         self.conn.close()

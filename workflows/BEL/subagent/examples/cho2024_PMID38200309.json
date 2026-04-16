@@ -1,0 +1,218 @@
+{
+  "paper_id": "PMID:38200309",
+  "extracted_by": "paper-processor-subagent",
+  "extracted_on": "2026-04-14",
+  "resolution": {
+    "title_verified": "MRE11 liberates cGAS from nucleosome sequestration during tumorigenesis",
+    "journal": "Nature",
+    "year": "2024",
+    "pmid": "38200309",
+    "doi": "10.1038/s41586-023-06889-6",
+    "pmcid": "PMC10794148",
+    "fulltext_status": "fulltext",
+    "fulltext_source": "europe_pmc_PMC10794148",
+    "verification_warnings": [
+      "get_pubmed_abstract returned DOI 10.1093/nar/gkaa544 and PMCID PMC7515726, which map to Skrajna et al. 2020 NAR (Comprehensive nucleosome interactome screen...), not Cho 2024 Nature. Confirmed the known PMID to PMC mapping defect. Recovered correct record via search_pmc_fulltext on the Cho title: DOI 10.1038/s41586-023-06889-6, PMCID PMC10794148. Full text verified by title match."
+    ]
+  },
+  "paper_summary": {
+    "main_claims": [
+      "The MRE11-RAD50-NBN (MRN) complex binds nucleosome fragments and displaces cGAS from high-affinity H2A-H2B acidic-patch (AP) sequestration, enabling cGAS mobilization and activation by dsDNA.",
+      "MRE11 is required for cGAS activation in response to oncogenic replication stress, transfected cytosolic dsDNA/NCPs, and ionizing radiation; independent of MRE11 nuclease activity and ATM signaling, but requires MRE11 DNA-binding domains.",
+      "MRE11-dependent cGAS-STING activation promotes ZBP1-RIPK3-MLKL necroptosis, which drives post-mitotic arrest and suppresses MYC-driven p53-deficient mammary tumorigenesis.",
+      "In vivo CRISPR screening in Rosa26-LSL-Myc/LSL-Cas9;Trp53fl/fl mouse mammary model identified Mre11 as a top tumor suppressor; Mre11-hypomorph tumors show faster growth, higher mitotic index, and reduced cGAS activation.",
+      "In human TNBC (TCGA/SCAN-B/METABRIC), low ZBP1 expression is associated with increased genomic instability, reduced T-cell and inflammation signatures, and worse overall survival."
+    ],
+    "methods": "In vivo DDR-CRISPR sgRNA library screen in a Rosa26-LSL-Myc/LSL-Cas9;Trp53fl/fl mouse mammary intraductal model; primary mammary epithelial cell time-lapse microscopy and EdU pulse-chase; CRISPR knockout in MEFs, MDA-MB-231, BJ-5ta; cGAS foci IF, qPCR for ISGs, cGAMP ELISA; reconstituted in vitro biochemistry including EMSA, TR-FRET for cGAS-NCP and nucleosome stacking, cGAS cGAMP synthase assays; FRAP of GFP-cGAS; scRNA-seq of pMMECs; orthotopic transplantation into NOD/RAG1 mice; TCGA/SCAN-B/METABRIC TNBC cohort analyses.",
+    "scope": "Mouse mammary tumor genetics (MYC-OE; Trp53-/-), mouse and human cell lines (pMMECs, MEFs, MDA-MB-231, BJ-5ta), reconstituted biochemistry with purified human MRN and NCPs, plus correlative human TNBC expression/survival analysis.",
+    "limitations": [
+      "Human TNBC ZBP1-association analysis is correlative, not causal.",
+      "MRN displaces only ~50% of cGAS from 2:1 cGAS:NCP complexes; stimulatory effect on cGAS activity not observed at 1:1 stoichiometry, constraining the quantitative model.",
+      "Extrapolation from the MYC/p53-driven mouse mammary tumor model to human tumor behavior is inferred.",
+      "Several functional claims depend on hypomorphic Mre11 alleles rather than complete MRE11 loss (MRE11 is essential)."
+    ]
+  },
+  "bel_statements": [
+    {
+      "bel": "complex(p(HGNC:MRE11), p(HGNC:RAD50), p(HGNC:NBN)) directlyDecreases complex(p(HGNC:CGAS), complex(GO:\"nucleosome\"))",
+      "evidence": {
+        "evidence_quote": "binding of the MRE11-RAD50-NBN complex to nucleosome fragments is necessary to displace cGAS from acidic-patch-mediated sequestration, which enables its mobilization and activation by dsDNA",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "reconstituted biochemistry with purified human MRN and nucleosomal core particles; TR-FRET competition and EMSA",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "high",
+      "notes": "BEL does not cleanly express 'cGAS bound to nucleosome acidic patch' as a distinct sequestered state. Modeled the sequestered pool as a complex(cGAS, nucleosome); a later curator may prefer a freeform 'sequestered cGAS' node."
+    },
+    {
+      "bel": "complex(p(HGNC:MRE11), p(HGNC:RAD50), p(HGNC:NBN)) directlyIncreases act(p(HGNC:CGAS), ma(GO:\"cyclic-GMP-AMP synthase activity\"))",
+      "evidence": {
+        "evidence_quote": "At a 2:1 molar ratio of cGAS and NCPs, the addition of MRN resulted in a concentration-dependent restoration of 2'3'-cGAMP synthesis, with stimulatory effects observed at MRN concentrations as low as 15 nM",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "in vitro cGAMP synthase assay with purified cGAS, NCPs and MRN at 2:1 cGAS:NCP stoichiometry; effect absent at 1:1 stoichiometry",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "high",
+      "notes": "Activation in the reconstituted system; mediated by displacement from the nucleosome acidic patch rather than direct allosteric contact with the cGAS catalytic site."
+    },
+    {
+      "bel": "p(HGNC:MRE11) increases act(p(HGNC:CGAS))",
+      "evidence": {
+        "evidence_quote": "MRE11 was required for cGAS foci formation, 2'3'-cGAMP production, STING pathway activation and ISG expression after transfection with either interferon stimulating dsDNA 90 bp (ISD90) or nucleosomal core particles (NCPs)",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "MEFs, MDA-MB-231, BJ-5ta cells; cytosolic ISD90/NCP transfection and ionizing radiation; sgRNA knockout / hypomorph",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "high",
+      "notes": "Cell-level (indirect) effect; `increases` rather than `directlyIncreases` because the direct mechanism is captured by the preceding two statements."
+    },
+    {
+      "bel": "act(p(HGNC:CGAS)) increases act(p(HGNC:STING1))",
+      "evidence": {
+        "evidence_quote": "CRISPR targeting of cGas and Sting increased the proliferation of Myc OE Trp53-/- pMMECs to a comparable level as Mre11 mutation... MRE11 and cGAS function upstream of 2'3'-cGAMP-dependent STING activation",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "MycOE;Trp53-/- pMMECs; STING activation inferred from downstream ISG induction and C-176/cGAMP pharmacology",
+        "evidence_tier": "established",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "high",
+      "notes": "Well-established cGAS->STING axis; the paper reconfirms it in this system. The 2'3'-cGAMP intermediate could be inserted as a(ChEBI:\"cyclic GMP-AMP\") if a curator wants the small-molecule node."
+    },
+    {
+      "bel": "act(p(HGNC:STING1)) increases r(HGNC:ZBP1)",
+      "evidence": {
+        "evidence_quote": "Treatment with 2'3'-cGAMP restored ZBP1 and pMLKL levels in sgMre11 and sgcGas MycOE Trp53-/- pMMECs, a result consistent with necroptosis activation as a downstream effector of MRE11-cGAS-STING activation",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "MycOE;Trp53-/- pMMECs; cGAMP rescue in sgMre11 and sgcGas genotypes",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "medium",
+      "notes": "ZBP1 is an ISG; induction is transcriptional and indirect (STING -> IRF3/TBK1 -> ISG), so the relation is `increases` on an r() rather than `directlyIncreases`."
+    },
+    {
+      "bel": "p(HGNC:ZBP1) increases act(p(HGNC:RIPK3))",
+      "evidence": {
+        "evidence_quote": "Zbp1 is an ISG that binds viral and cellular Z-RNA or Z-DNA, which triggers RIPK3-dependent and MLKL-dependent necroptosis",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "MycOE;Trp53-/- pMMECs; genetic epistasis (sgZbp1, sgRipk3) and pMLKL immunocytochemistry",
+        "evidence_tier": "established",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "high",
+      "notes": "Canonical ZBP1 -> RIPK3 axis; tested here by CRISPR KO of Zbp1 and Ripk3."
+    },
+    {
+      "bel": "act(p(HGNC:RIPK3)) directlyIncreases p(HGNC:MLKL, pmod(Ph, Ser, 345))",
+      "evidence": {
+        "evidence_quote": "evidence of necroptosis activation through induction of ZBP1 and phosphorylated MLKL (pMLKL, S345)... Disruption of cGAS, ZBP1 and RIPK3 also decreased levels of the necroptosis marker pMLKL",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "MycOE;Trp53-/- pMMECs; Western blot and immunocytochemistry for pMLKL S345",
+        "evidence_tier": "established",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "high",
+      "notes": "Canonical RIPK3 -> MLKL phosphorylation; demonstrated genetically in this system."
+    },
+    {
+      "bel": "p(HGNC:MRE11) decreases path(DOID:\"breast cancer\")",
+      "evidence": {
+        "evidence_quote": "Targeting Mre11 significantly shortened tumour latency compared with the control sgRNA... Mre11 mutant tumours exhibited rapid growth... [and] an increased frequency of mitotic aberrations",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "Rosa26-LSL-Myc/LSL-Cas9;Trp53fl/fl mouse mammary intraductal model; hypomorphic C-terminal Mre11 sgRNA",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "medium",
+      "notes": "Tumor suppression observed in a specific MYC-driven, p53-deficient mouse model; the paper does not claim generality to all breast cancers. Used DOID label form (not numeric ID) to avoid ID hallucination."
+    },
+    {
+      "bel": "r(HGNC:ZBP1) negativeCorrelation path(DOID:\"triple-receptor-negative breast cancer\")",
+      "evidence": {
+        "evidence_quote": "downregulation of ZBP1 in human triple-negative breast cancer is associated with increased genome instability, immune suppression and poor patient prognosis",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "TCGA, SCAN-B and METABRIC human TNBC cohorts; median-thresholded ZBP1 expression vs overall survival and genomic instability signatures",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "confidence": "medium",
+      "notes": "Association, not causation; encoded with `negativeCorrelation`. DOID label form used."
+    }
+  ],
+  "freeform_claims": [
+    {
+      "text": "MRN displacement of cGAS from the nucleosome acidic patch is quantitatively partial (~50%, consistent with one of two cGAS molecules being ejected from 2:1 cGAS:NCP complexes), and that partial liberation is sufficient to restore cGAS catalytic activity on free dsDNA.",
+      "evidence": {
+        "evidence_quote": "MRN titration also reduced the TR-FRET signal, but unlike WT NCPs, plateaued at approximately 50% reduction, which indicated the displacement of one out of two bound cGAS molecules per nucleosome",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "in vitro TR-FRET and cGAMP synthase assays with purified human MRN, cGAS and recombinant NCPs",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "reason_not_bel": "Stoichiometric, quantitative displacement claim; does not map cleanly onto a single BEL directlyDecreases edge."
+    },
+    {
+      "text": "MRE11 nuclease activity is dispensable for cGAS liberation/activation; MRE11 DNA-binding domains are required.",
+      "evidence": {
+        "evidence_quote": "the impaired recruitment of cGAS to cytosolic DNA observed in MRE11 mutant MDA-MB-231 cells could be rescued through the stable expression of full-length MRE11 or a nuclease-deficient MRE11 variant, but not by a MRE11 mutant lacking DNA-binding domains",
+        "pmid": "38200309",
+        "doi": "10.1038/s41586-023-06889-6",
+        "supporting_analysis_uuid": null,
+        "scope": "MDA-MB-231 reconstitution with MRE11 H129N (nuclease-dead) and DB1/DB2Δ (DNA-binding-deficient) variants; mirin/PFM01/PFM039 inhibitors",
+        "evidence_tier": "supported",
+        "last_validated": "2026-04-14"
+      },
+      "reason_not_bel": "Structure-function separation claim about two MRE11 domains; hard to express as a single BEL edge without losing domain-level specificity."
+    }
+  ],
+  "unresolved_entities": [
+    {
+      "label": "nucleosome / nucleosomal core particle",
+      "suggested_namespace": "GO",
+      "pending_lookup": true
+    },
+    {
+      "label": "2',3'-cyclic GMP-AMP (2'3'-cGAMP)",
+      "suggested_namespace": "ChEBI",
+      "pending_lookup": true
+    },
+    {
+      "label": "histone H2A-H2B acidic patch surface",
+      "suggested_namespace": "PR",
+      "pending_lookup": true
+    },
+    {
+      "label": "triple-receptor-negative breast cancer",
+      "suggested_namespace": "DOID",
+      "pending_lookup": true
+    },
+    {
+      "label": "breast cancer",
+      "suggested_namespace": "DOID",
+      "pending_lookup": true
+    }
+  ]
+}

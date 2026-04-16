@@ -4,6 +4,8 @@ Handles initialization from NDExConfig and provides
 uniform error-handling for all MCP tool calls.
 """
 
+import time
+
 import ndex2.client
 
 from .config import NDExConfig, has_credentials
@@ -32,6 +34,11 @@ class NDExClientWrapper:
                     self._config.server,
                     skip_version_check=True,
                 )
+            # skip_version_check leaves version at '1.3', which causes
+            # make_network_public/private to use the wrong API path.
+            # Force v2 so visibility and system property calls work correctly.
+            self._client.version = '2.0'
+            self._client.version_endpoint = '/v2'
         return self._client
 
     # ------------------------------------------------------------------
@@ -129,20 +136,22 @@ class NDExClientWrapper:
     def set_network_visibility(
         self, network_id: str, visibility: str
     ) -> dict:
+        """Set network visibility to PUBLIC or PRIVATE.
+
+        Uses set_network_system_properties (which waits for the network
+        to be valid) rather than ndex2's make_network_public/private
+        (which can hit version-detection issues).
+        """
         self._require_auth()
-
-        def _set_visibility():
-            if visibility == "PUBLIC":
-                return self.client.make_network_public(network_id)
-            elif visibility == "PRIVATE":
-                return self.client.make_network_private(network_id)
-            else:
-                raise ValueError(
-                    f"Invalid visibility '{visibility}'. "
-                    "Must be 'PUBLIC' or 'PRIVATE'."
-                )
-
-        return self._wrap_call(_set_visibility)
+        if visibility not in ("PUBLIC", "PRIVATE"):
+            return {
+                "status": "error",
+                "message": f"Invalid visibility '{visibility}'. Must be 'PUBLIC' or 'PRIVATE'.",
+                "error_type": "ValueError",
+            }
+        return self.set_network_system_properties(
+            network_id, {"visibility": visibility}
+        )
 
     def set_read_only(self, network_id: str, value: bool) -> dict:
         self._require_auth()
@@ -183,10 +192,31 @@ class NDExClientWrapper:
             }
         )
 
+    def _wait_for_valid(self, network_id: str, max_wait: int = 30) -> bool:
+        """Poll until the network is valid (CX2 processing complete).
+
+        NDEx processes uploaded CX2 asynchronously. System property
+        changes (visibility, index_level) fail with 500 on networks
+        that haven't finished processing yet. This polls the summary
+        until ``completed`` is True and ``isValid`` is True.
+        """
+        for _ in range(max_wait // 2):
+            try:
+                summary = self.client.get_network_summary(network_id=network_id)
+                if summary.get("completed") and summary.get("isValid"):
+                    return True
+            except Exception:
+                pass
+            time.sleep(2)
+        return False
+
     def set_network_system_properties(
         self, network_id: str, properties: dict
     ) -> dict:
         self._require_auth()
+        # Wait for the network to finish async CX2 processing,
+        # otherwise the server rejects system property changes.
+        self._wait_for_valid(network_id)
         return self._wrap_call(
             lambda: self.client.set_network_system_properties(
                 network_id, properties

@@ -2,12 +2,12 @@
   "mcpServers": {
     "ndex": {
       "command": ".venv/bin/python3",
-      "args": ["-m", "tools.ndex_mcp.server", "--profile", "rdaneel"],
+      "args": ["-m", "tools.ndex_mcp.server", "--profile", "local-rgiskard"],
       "cwd": "."
     },
     "local_store": {
       "command": ".venv/bin/python3",
-      "args": ["-m", "tools.local_store.server", "--profile", "rdaneel"],
+      "args": ["-m", "tools.local_store.server", "--profile", "local-rgiskard"],
       "cwd": "."
     },
     "biorxiv": {
@@ -18,6 +18,11 @@
     "pubmed": {
       "command": ".venv/bin/python3",
       "args": ["-m", "tools.pubmed.server"],
+      "cwd": "."
+    },
+    "sl_tools": {
+      "command": ".venv/bin/python3",
+      "args": ["-m", "tools.sl_tools.mcp_server", "--depmap-version", "26Q1"],
       "cwd": "."
     }
   }

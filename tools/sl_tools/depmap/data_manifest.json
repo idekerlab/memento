@@ -1,0 +1,79 @@
+{
+  "tool": "depmap",
+  "description": "DepMap CRISPR Dependency Data manifest for version tracking and reproducibility",
+  "versions": {
+    "25Q3": {
+      "released": "2025-07-15",
+      "status": "current",
+      "download_instructions": "Download manually from https://depmap.org/portal/download/ - select 'DepMap Public 25Q3' release",
+      "files": {
+        "CRISPRGeneEffect.csv": {
+          "sha256": "fa44b6a7cefe8748aaa2bef21bd49aa105f7ebfe819510da3022266d88f24d51",
+          "size_mb": 412,
+          "description": "CRISPR gene effect scores (Chronos algorithm). Rows are cell lines (ModelID), columns are genes. More negative = more essential.",
+          "upstream_url": "https://depmap.org/portal/download/api/download?file_name=CRISPRGeneEffect.csv&release=DepMap+Public+25Q3",
+          "zenodo_doi": null,
+          "required": true
+        },
+        "OmicsSomaticMutations.csv": {
+          "sha256": null,
+          "size_mb": null,
+          "description": "Full somatic mutations file with per-variant annotations (VariantInfo, HugoSymbol, isDeleterious, isCOSMIChotspot). Used to build sq_mutations binary matrix (filtering SILENT variants).",
+          "upstream_url": "https://depmap.org/portal/download/api/download?file_name=OmicsSomaticMutations.csv&release=DepMap+Public+25Q3",
+          "zenodo_doi": null,
+          "required": true,
+          "notes": "Replaces OmicsSomaticMutationsMatrixDamaging.csv. Larger file but supports deleterious_only and hotspot_only filtering."
+        },
+        "Model.csv": {
+          "sha256": "9dbb9de8805696c1345816ab07edd23fb4fd95e117739f3c5c3b1cf062c1233b",
+          "size_mb": 0.7,
+          "description": "Cell line metadata: StrippedCellLineName, SangerModelID, OncotreeLineage, SampleCollectionSite, etc.",
+          "upstream_url": "https://depmap.org/portal/download/api/download?file_name=Model.csv&release=DepMap+Public+25Q3",
+          "zenodo_doi": null,
+          "required": true
+        },
+        "OmicsCNGene.csv": {
+          "sha256": null,
+          "size_mb": null,
+          "description": "Gene-level copy number data. Values represent log2(relative copy number). CN < 1 (log2 < 0) indicates copy number loss.",
+          "upstream_url": "https://depmap.org/portal/download/api/download?file_name=OmicsCNGene.csv&release=DepMap+Public+25Q3",
+          "zenodo_doi": null,
+          "required": false,
+          "notes": "Required for CNV-based stratification and robust_copy_number."
+        },
+        "OmicsExpressionTPMLogp1HumanProteinCodingGenes.csv": {
+          "sha256": null,
+          "size_mb": null,
+          "description": "Gene expression data as log2(TPM+1). Rows are cell lines, columns are genes. Used for expression-based stratification and robust copy number.",
+          "upstream_url": "https://depmap.org/portal/download/api/download?file_name=OmicsExpressionTPMLogp1HumanProteinCodingGenes.csv&release=DepMap+Public+25Q3",
+          "zenodo_doi": null,
+          "required": false,
+          "notes": "Required for expression stratification and robust_copy_number (combined with OmicsCNGene.csv)."
+        },
+        "AvanaLogfoldChange.csv": {
+          "sha256": null,
+          "size_mb": null,
+          "description": "sgRNA-level log-fold change data from Avana CRISPR library.",
+          "upstream_url": "https://depmap.org/portal/download/api/download?file_name=AvanaLogfoldChange.csv&release=DepMap+Public+25Q3",
+          "zenodo_doi": null,
+          "required": false,
+          "notes": "For sgRNA-level analysis. Use with AvanaGuideMap.csv for gene mapping."
+        },
+        "AvanaGuideMap.csv": {
+          "sha256": null,
+          "size_mb": null,
+          "description": "Mapping of sgRNA sequences to target genes for Avana library.",
+          "upstream_url": "https://depmap.org/portal/download/api/download?file_name=AvanaGuideMap.csv&release=DepMap+Public+25Q3",
+          "zenodo_doi": null,
+          "required": false,
+          "notes": "Companion to AvanaLogfoldChange.csv."
+        }
+      }
+    }
+  },
+  "supported_versions": ["25Q3", "24Q4", "24Q2", "23Q4", "23Q2"],
+  "notes": {
+    "auto_download": false,
+    "reason": "DepMap portal requires browser-based download; API URLs may require authentication"
+  }
+}

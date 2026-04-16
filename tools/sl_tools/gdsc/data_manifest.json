@@ -1,0 +1,37 @@
+{
+  "tool": "gdsc",
+  "description": "GDSC Drug Sensitivity Data manifest for version tracking and reproducibility",
+  "versions": {
+    "8.5": {
+      "dataset": "GDSC1",
+      "released": "2022-07-24",
+      "status": "current",
+      "files": {
+        "GDSC1_fitted_dose_response.csv": {
+          "sha256": "7101736651d0f0e3073e55f073f0eb970480706444c96635b7404cb993ee4987",
+          "size_mb": 52,
+          "description": "Fitted dose-response curves with IC50/AUC values",
+          "upstream_url": "ftp://ftp.sanger.ac.uk/pub/project/cancerrxgene/releases/current_release/GDSC1_fitted_dose_response_24Jul22.csv",
+          "zenodo_doi": null
+        },
+        "screened_compounds.csv": {
+          "sha256": "d3cbb8b595980b36bf92d54af1da1dd995d2e2ce624c7cc70aacf2a754dce782",
+          "size_mb": 0.05,
+          "description": "Drug metadata including targets and pathways",
+          "upstream_url": "https://cog.sanger.ac.uk/cancerrxgene/GDSC_release8.5/screened_compounds_rel_8.5.csv",
+          "zenodo_doi": null
+        }
+      }
+    }
+  },
+  "optional_files": {
+    "GDSC2_fitted_dose_response.csv": {
+      "description": "GDSC2 dataset (alternative drug screening)",
+      "upstream_url": "ftp://ftp.sanger.ac.uk/pub/project/cancerrxgene/releases/current_release/GDSC2_fitted_dose_response_24Jul22.csv"
+    }
+  },
+  "notes": {
+    "auto_download": true,
+    "data_source": "https://www.cancerrxgene.org/"
+  }
+}

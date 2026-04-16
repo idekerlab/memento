@@ -40,8 +40,18 @@ class LocalStore:
         category: str | None = None,
         data_type: str = "graph",
         save_cx2: bool = True,
+        source_profile: str | None = None,
     ) -> dict:
         """Import a CX2 network into both catalog and graph store.
+
+        Args:
+            cx2: Parsed CX2Network object.
+            network_uuid: NDEx UUID.
+            agent: Owning agent name for catalog metadata.
+            category: Network category.
+            data_type: Data type (default "graph").
+            save_cx2: Whether to save the CX2 JSON to disk.
+            source_profile: NDEx profile the network was downloaded from.
 
         Returns summary dict with node_count, edge_count.
         """
@@ -77,6 +87,7 @@ class LocalStore:
             local_path=local_path,
             is_dirty=True,
             properties=properties,
+            source_profile=source_profile,
         )
 
         return stats

@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Paper-Processor Subagent Output",
+  "description": "Strict schema for the JSON returned by the paper-processor subagent. See SUBAGENT.md for full contract and semantics.",
+  "type": "object",
+  "required": ["paper_id", "extracted_by", "extracted_on", "resolution", "paper_summary", "bel_statements", "freeform_claims", "unresolved_entities"],
+  "additionalProperties": false,
+  "properties": {
+    "paper_id": { "type": "string", "pattern": "^(PMID|DOI|PMC):.+" },
+    "extracted_by": { "type": "string" },
+    "extracted_on": { "type": "string", "format": "date" },
+    "subagent_version": { "type": "string" },
+    "resolution": {
+      "type": "object",
+      "required": ["fulltext_status", "verification_warnings"],
+      "additionalProperties": false,
+      "properties": {
+        "title_verified": { "type": ["string", "null"] },
+        "journal": { "type": ["string", "null"] },
+        "year": { "type": ["string", "null"] },
+        "pmid": { "type": ["string", "null"] },
+        "doi": { "type": ["string", "null"] },
+        "pmcid": { "type": ["string", "null"] },
+        "fulltext_status": { "type": "string", "enum": ["fulltext", "abstract_only", "metadata_only"] },
+        "fulltext_source": { "type": ["string", "null"] },
+        "verification_warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "paper_summary": {
+      "type": "object",
+      "required": ["main_claims", "methods", "scope", "limitations"],
+      "additionalProperties": false,
+      "properties": {
+        "main_claims": { "type": "array", "items": { "type": "string" }, "maxItems": 5 },
+        "methods": { "type": "string" },
+        "scope": { "type": "string" },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "bel_statements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["bel", "evidence", "confidence"],
+        "additionalProperties": false,
+        "properties": {
+          "bel": { "type": "string" },
+          "evidence": {
+            "type": "object",
+            "required": ["evidence_quote", "scope", "evidence_tier", "last_validated"],
+            "additionalProperties": false,
+            "properties": {
+              "evidence_quote": { "type": "string", "maxLength": 400 },
+              "pmid": { "type": ["string", "null"] },
+              "doi": { "type": ["string", "null"] },
+              "supporting_analysis_uuid": { "type": ["string", "null"] },
+              "scope": { "type": "string" },
+              "evidence_tier": { "type": "string", "enum": ["established", "supported", "inferred", "tentative", "contested"] },
+              "last_validated": { "type": "string", "format": "date" }
+            }
+          },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "freeform_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "evidence", "reason_not_bel"],
+        "additionalProperties": false,
+        "properties": {
+          "text": { "type": "string" },
+          "evidence": {
+            "type": "object",
+            "required": ["evidence_quote", "scope", "evidence_tier", "last_validated"],
+            "properties": {
+              "evidence_quote": { "type": "string", "maxLength": 400 },
+              "pmid": { "type": ["string", "null"] },
+              "doi": { "type": ["string", "null"] },
+              "supporting_analysis_uuid": { "type": ["string", "null"] },
+              "scope": { "type": "string" },
+              "evidence_tier": { "type": "string", "enum": ["established", "supported", "inferred", "tentative", "contested"] },
+              "last_validated": { "type": "string", "format": "date" }
+            }
+          },
+          "reason_not_bel": { "type": "string" }
+        }
+      }
+    },
+    "unresolved_entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "suggested_namespace"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "suggested_namespace": { "type": "string" },
+          "pending_lookup": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

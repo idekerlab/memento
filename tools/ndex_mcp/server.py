@@ -1,9 +1,12 @@
 """NDEx MCP Server — exposes NDEx operations as MCP tools.
 
-Run with:  python -m tools.ndex_mcp.server [--profile NAME]
+Every tool requires an explicit `profile` parameter that identifies
+which NDEx server and credentials to use.  Profiles are defined in
+``~/.ndex/config.json`` under the ``"profiles"`` key.
+
+Run with:  python -m tools.ndex_mcp.server
 """
 
-import argparse
 import json
 import sys
 import tempfile
@@ -17,27 +20,38 @@ from .network_builder import spec_to_cx2, cx2_to_summary, cx2_to_spec
 
 mcp = FastMCP("ndex", log_level="INFO")
 
-# Multi-profile support: default wrapper set at startup, per-profile cache for overrides.
-_default_profile: str | None = None
-_wrappers: dict[str | None, NDExClientWrapper] = {}
+# Profile-keyed wrapper cache (lazily populated).
+_wrappers: dict[str, NDExClientWrapper] = {}
+
+_PROFILE_REQUIRED_MSG = (
+    "profile is required — specify which NDEx server/identity to use "
+    "(e.g. profile='local-rgiskard' or profile='rdaneel'). "
+    "Profiles are defined in ~/.ndex/config.json."
+)
 
 
-def _init_wrapper(profile: str | None = None) -> NDExClientWrapper:
-    """Create the NDExClientWrapper for the given profile."""
-    config = load_ndex_config(profile=profile)
-    return NDExClientWrapper(config)
-
-
-def _get_wrapper(profile: str | None = None) -> NDExClientWrapper:
+def _get_wrapper(profile: str | None) -> NDExClientWrapper | None:
     """Return a wrapper for the given profile, using cache.
 
-    If profile is None, uses the default profile set at startup.
-    Wrappers are lazily created and cached by profile name.
+    Returns None if profile is not provided.
     """
-    key = profile if profile is not None else _default_profile
-    if key not in _wrappers:
-        _wrappers[key] = _init_wrapper(key)
-    return _wrappers[key]
+    if profile is None:
+        return None
+    if profile not in _wrappers:
+        config = load_ndex_config(profile=profile)
+        _wrappers[profile] = NDExClientWrapper(config)
+    return _wrappers[profile]
+
+
+def _require_wrapper(profile: str | None) -> tuple[NDExClientWrapper | None, dict | None]:
+    """Return (wrapper, None) or (None, error_dict) if profile is missing."""
+    if profile is None:
+        return None, {"status": "error", "message": _PROFILE_REQUIRED_MSG}
+    try:
+        return _get_wrapper(profile), None
+    except (ValueError, FileNotFoundError) as e:
+        return None, {"status": "error", "message": str(e)}
+
 
 # ── Search & Discovery ────────────────────────────────────────────────
 
@@ -45,6 +59,7 @@ def _get_wrapper(profile: str | None = None) -> NDExClientWrapper:
 @mcp.tool()
 def search_networks(
     query: str,
+    profile: str,
     account_name: str | None = None,
     start: int = 0,
     size: int = 25,
@@ -53,36 +68,36 @@ def search_networks(
 
     Args:
         query: Search terms (e.g. gene names, pathway names).
+        profile: NDEx profile (required). Identifies server and credentials.
         account_name: Restrict search to a specific account.
         start: Pagination offset.
         size: Number of results to return.
     """
-    return _get_wrapper().search_networks(query, account_name=account_name, start=start, size=size)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.search_networks(query, account_name=account_name, start=start, size=size)
 
 
 @mcp.tool()
-def get_network_summary(network_id: str) -> dict:
+def get_network_summary(network_id: str, profile: str) -> dict:
     """Get metadata for a single NDEx network.
 
     Args:
         network_id: UUID of the network.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper().get_network_summary(network_id)
-
-
-# NOTE ON MULTI-PROFILE SUPPORT:
-# Write operations accept an optional `profile` parameter to authenticate
-# as a specific agent (e.g., profile="drh"). The profile must exist in
-# ~/.ndex/config.json under "profiles". If omitted, uses the default
-# profile set at server startup (--profile flag).
-# Read operations use the default profile (identity doesn't matter for reads).
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.get_network_summary(network_id)
 
 
 # ── Network CRUD ──────────────────────────────────────────────────────
 
 
 @mcp.tool()
-def create_network(network_spec: str, profile: str | None = None) -> dict:
+def create_network(network_spec: str, profile: str) -> dict:
     """Create a new network on NDEx from a JSON specification.
 
     IMPORTANT — attribute values must be flat (strings, numbers, booleans).
@@ -110,19 +125,18 @@ def create_network(network_spec: str, profile: str | None = None) -> dict:
             (string, number, boolean) — no nested objects or arrays.
             IDs are auto-assigned if omitted.
             Edge source/target use "source"/"target" (or "s"/"t").
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
     spec = json.loads(network_spec)
     cx2 = spec_to_cx2(spec)
-    wrapper = _get_wrapper(profile)
     result = wrapper.create_network(cx2)
     if result["status"] == "success":
         network_url = result["data"]
-        # Extract UUID from URL if it's a URL string
         uuid = network_url.split("/")[-1] if isinstance(network_url, str) and "/" in network_url else network_url
         result["data"] = {"network_id": uuid, "url": network_url}
-        # NDEx defaults to index_level=NONE, making networks unsearchable.
-        # Set to ALL so both public and private networks are discoverable.
         wrapper.set_network_system_properties(
             uuid, {"index_level": "ALL"}
         )
@@ -130,48 +144,57 @@ def create_network(network_spec: str, profile: str | None = None) -> dict:
 
 
 @mcp.tool()
-def update_network(network_id: str, network_spec: str, profile: str | None = None) -> dict:
+def update_network(network_id: str, network_spec: str, profile: str) -> dict:
     """Replace an existing NDEx network with a new specification.
 
     Args:
         network_id: UUID of the network to update.
         network_spec: JSON string with the same format as create_network:
             nodes use "source"/"target" (or "s"/"t"), attributes under "v" (or "attributes").
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
     spec = json.loads(network_spec)
     cx2 = spec_to_cx2(spec)
-    return _get_wrapper(profile).update_network(network_id, cx2)
+    return wrapper.update_network(network_id, cx2)
 
 
 @mcp.tool()
-def delete_network(network_id: str, profile: str | None = None) -> dict:
+def delete_network(network_id: str, profile: str) -> dict:
     """Delete a network from NDEx. Requires authentication.
 
     Args:
         network_id: UUID of the network to delete.
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper(profile).delete_network(network_id)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.delete_network(network_id)
 
 
 @mcp.tool()
 def update_network_profile(
     network_id: str,
+    profile: str,
     name: str | None = None,
     description: str | None = None,
     version: str | None = None,
-    profile: str | None = None,
 ) -> dict:
     """Update a network's profile (name, description, version).
 
     Args:
         network_id: UUID of the network.
+        profile: NDEx profile (required). Identifies server and credentials.
         name: New network name.
         description: New description.
         version: New version string.
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
     """
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
     prof = {}
     if name is not None:
         prof["name"] = name
@@ -181,35 +204,42 @@ def update_network_profile(
         prof["version"] = version
     if not prof:
         return {"status": "error", "message": "No profile fields provided", "error_type": "ValueError"}
-    return _get_wrapper(profile).update_network_profile(network_id, prof)
+    return wrapper.update_network_profile(network_id, prof)
 
 
 @mcp.tool()
-def set_network_properties(network_id: str, properties: str, profile: str | None = None) -> dict:
+def set_network_properties(network_id: str, properties: str, profile: str) -> dict:
     """Set custom properties on a network.
 
     Args:
         network_id: UUID of the network.
         properties: JSON string — list of property dicts, each with keys:
             subNetworkId, predicateString, dataType, value.
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
     props = json.loads(properties)
-    return _get_wrapper(profile).set_network_properties(network_id, props)
+    return wrapper.set_network_properties(network_id, props)
 
 
 # ── Download ──────────────────────────────────────────────────────────
 
 
 @mcp.tool()
-def download_network(network_id: str, output_dir: str | None = None) -> dict:
+def download_network(network_id: str, profile: str, output_dir: str | None = None) -> dict:
     """Download a network as CX2 JSON and return file path + summary stats.
 
     Args:
         network_id: UUID of the network to download.
+        profile: NDEx profile (required). Identifies server and credentials.
         output_dir: Directory to save the file. Defaults to a temp directory.
     """
-    result = _get_wrapper().download_network(network_id)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    result = wrapper.download_network(network_id)
     if result["status"] != "success":
         return result
 
@@ -238,74 +268,91 @@ def download_network(network_id: str, output_dir: str | None = None) -> dict:
 
 
 @mcp.tool()
-def set_network_visibility(network_id: str, visibility: str, profile: str | None = None) -> dict:
+def set_network_visibility(network_id: str, visibility: str, profile: str) -> dict:
     """Set a network's visibility to PUBLIC or PRIVATE.
 
     Args:
         network_id: UUID of the network.
         visibility: Either "PUBLIC" or "PRIVATE".
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper(profile).set_network_visibility(network_id, visibility)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.set_network_visibility(network_id, visibility)
 
 
 @mcp.tool()
-def set_network_read_only(network_id: str, value: bool, profile: str | None = None) -> dict:
+def set_network_read_only(network_id: str, value: bool, profile: str) -> dict:
     """Set or clear the read-only flag on a network.
 
     Args:
         network_id: UUID of the network.
         value: True to make read-only, False to make writable.
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper(profile).set_read_only(network_id, value)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.set_read_only(network_id, value)
 
 
 @mcp.tool()
-def share_network(network_id: str, username: str, permission: str, profile: str | None = None) -> dict:
+def share_network(network_id: str, username: str, permission: str, profile: str) -> dict:
     """Grant a user permission on a network.
 
     Args:
         network_id: UUID of the network.
         username: NDEx username to share with.
         permission: One of "READ", "WRITE", or "ADMIN".
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper(profile).share_network(network_id, username, permission)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.share_network(network_id, username, permission)
 
 
 # ── User Operations ───────────────────────────────────────────────────
 
 
 @mcp.tool()
-def get_user_info(username: str) -> dict:
+def get_user_info(username: str, profile: str) -> dict:
     """Get profile information for an NDEx user.
 
     Args:
         username: NDEx username.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper().get_user_info(username)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.get_user_info(username)
 
 
 @mcp.tool()
 def get_user_networks(
-    username: str, offset: int = 0, limit: int = 25
+    username: str, profile: str, offset: int = 0, limit: int = 25,
 ) -> dict:
     """List networks owned by a user.
 
     Args:
         username: NDEx username.
+        profile: NDEx profile (required). Identifies server and credentials.
         offset: Pagination offset.
         limit: Number of results to return.
     """
-    return _get_wrapper().get_user_networks(username, offset=offset, limit=limit)
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.get_user_networks(username, offset=offset, limit=limit)
 
 
 # ── Connection Management ─────────────────────────────────────────────
 
 
 @mcp.tool()
-def set_network_system_properties(network_id: str, properties: str, profile: str | None = None) -> dict:
+def set_network_system_properties(network_id: str, properties: str, profile: str) -> dict:
     """Set system properties on a network (visibility, index_level, showcase, readOnly).
 
     Args:
@@ -315,53 +362,48 @@ def set_network_system_properties(network_id: str, properties: str, profile: str
             index_level ("NONE", "META", or "ALL"),
             showcase (true/false),
             readOnly (true/false).
-        profile: NDEx profile to authenticate as (e.g. "drh"). Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
     props = json.loads(properties)
-    return _get_wrapper(profile).set_network_system_properties(network_id, props)
+    return wrapper.set_network_system_properties(network_id, props)
 
 
 @mcp.tool()
-def get_connection_status(profile: str | None = None) -> dict:
+def get_connection_status(profile: str) -> dict:
     """Check current NDEx connection: server URL, username, auth status.
 
     Args:
-        profile: NDEx profile to check. Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper(profile).get_connection_status()
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.get_connection_status()
 
 
 @mcp.tool()
-def get_my_account_info(profile: str | None = None) -> dict:
+def get_my_account_info(profile: str) -> dict:
     """Get the authenticated user's profile and network count.
 
     Args:
-        profile: NDEx profile to check. Uses default if omitted.
+        profile: NDEx profile (required). Identifies server and credentials.
     """
-    return _get_wrapper(profile).get_my_account_info()
+    wrapper, err = _require_wrapper(profile)
+    if err:
+        return err
+    return wrapper.get_my_account_info()
 
 
 # ── Entry point ───────────────────────────────────────────────────────
 
 
 def main():
-    global _default_profile
-    parser = argparse.ArgumentParser(description="NDEx MCP Server")
-    parser.add_argument(
-        "--profile",
-        default=None,
-        help="Default NDEx profile from ~/.ndex/config.json. "
-        "Individual tool calls can override with their own profile parameter.",
-    )
-    args = parser.parse_args()
-    _default_profile = args.profile
-    # Pre-initialize the default wrapper to validate credentials at startup
-    wrapper = _get_wrapper()
-    user = wrapper._config.username or "anonymous"
-    server = wrapper._config.server
     print(
-        f"NDEx MCP server started — default_profile={args.profile or 'default'}, "
-        f"user={user}, server={server} (multi-profile enabled)",
+        "NDEx MCP server started — no default profile, "
+        "all tools require explicit profile parameter",
         file=sys.stderr,
     )
     mcp.run(transport="stdio")

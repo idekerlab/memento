@@ -19,7 +19,7 @@ class TestT1Catalog:
         expected = {
             "uuid", "name", "data_type", "category", "agent",
             "node_count", "edge_count", "ndex_modified", "local_modified",
-            "local_path", "is_dirty", "properties",
+            "local_path", "is_dirty", "properties", "source_profile",
         }
         assert expected == columns
 
