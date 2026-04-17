@@ -98,7 +98,22 @@ Create `~/.ndex/config.json` with a profile per agent identity. For each agent, 
 }
 ```
 
-Fully quit and relaunch the desktop app. All five servers should appear as "LOCAL DEV" under Customize → Connectors → Desktop.
+Fully quit and relaunch the desktop app. In your next session, verify via the `/mcp` slash command — it lists the servers currently loaded with their connect/fail status.
+
+**The Customize → Connectors → Desktop panel is NOT the right UI for this check.** That panel reflects `claude_desktop_config.json` (chat mode), which is a *separate registry* from project `.mcp.json`. A Code-mode MCP server will not appear there even when it is loaded and working. See the "Two Config Files" section below.
+
+## Two Config Files = Two Desktop Modes
+
+Claude Desktop has two modes, each with its own MCP registry:
+
+| Mode | Config file | How to verify | Used by |
+|---|---|---|---|
+| **Code** (project-aware) | `~/Documents/agents/.mcp.json` | `/mcp` inside a session | Memento agent sessions, Claude Code Routines |
+| **Chat** (general assistant) | `~/Library/Application Support/Claude/claude_desktop_config.json` | Customize → Connectors → Desktop (shows "LOCAL DEV" badge) | Cowork Scheduled Tasks, free-form chat queries |
+
+For this project, Code mode is the only mode that matters for agent work. The Chat config is incidental. Do not assume the Connectors UI tells you anything about Code-mode MCP availability — those are separate systems.
+
+If you find the two files disagreeing (e.g., `sl_tools` in Code config but not Chat config), that's a consistency question — not a bug. Either mirror them or delete the Chat entries and accept that chat mode has no local MCP tools. Project decision: we will not keep them in sync (Routines is the only scheduling path; chat mode is not load-bearing for agent work).
 
 ## Adding a New Agent
 
@@ -124,6 +139,7 @@ Existing Routines can be viewed in the desktop app's sidebar under "Routines". A
 ## Troubleshooting
 
 - **A server is missing from the session**: Run `/mcp` in the session — it shows all configured servers with their connect/fail status. If a server is present but failed, check its stderr for the launch error.
+- **Server loaded in Code mode but missing from Customize → Connectors → Desktop**: Expected. That panel reflects `claude_desktop_config.json` (Chat mode), not project `.mcp.json`. They are separate registries. See "Two Config Files" above.
 - **All servers missing / "No MCP servers configured"**: The desktop app probably spawned the session before `~/Documents/agents/.mcp.json` existed (or was edited). Fully quit and relaunch — `/mcp reconnect` does not pick up new entries.
 - **Server fails handshake silently (loads in `/mcp` as "failed"** or doesn't appear at all): check that the server isn't printing to stdout anywhere during startup — see "Startup Behavior" above.
 - **`local_store` hangs on startup**: If someone re-added a network call before `mcp.run()`, remove it.
