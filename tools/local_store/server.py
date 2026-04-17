@@ -9,8 +9,10 @@ Tools that interact with NDEx also require an explicit ``profile``
 parameter identifying the NDEx server and credentials.
 
 Run with:  python -m tools.local_store.server
+Optional:  python -m tools.local_store.server --agent-scope <agent_name>
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -21,6 +23,44 @@ from ndex2.cx2 import CX2Network
 from tools.ndex_mcp.config import load_ndex_config, has_credentials
 from tools.ndex_mcp.ndex_client_wrapper import NDExClientWrapper
 from tools.local_store.store import LocalStore
+
+# ── Agent scope (set from --agent-scope CLI flag) ────────────────────
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Local Store MCP server")
+    parser.add_argument("--profile", default=None,
+        help="Default NDEx profile (unused by server; kept for config compat).")
+    parser.add_argument("--agent-scope", default=None,
+        help="Restrict this server to one agent's cache. "
+             "Tool calls with a different store_agent are rejected immediately "
+             "before any database is opened. Use the local_store_<agent> MCP "
+             "entry for each agent's scheduled tasks.")
+    return parser.parse_args()
+
+
+_args = _parse_args()
+_AGENT_SCOPE: str | None = _args.agent_scope
+
+_SCOPE_VIOLATION_TMPL = (
+    "This local_store server is scoped to agent '{scope}'. "
+    "Received store_agent='{got}'. "
+    "Use the local_store_{got} MCP server entry for that agent."
+)
+
+
+def _check_scope(store_agent: str) -> dict | None:
+    """Return error dict if store_agent violates the server's scope, else None.
+
+    If no scope was set (unscoped server for interactive multi-agent queries),
+    this always returns None and any store_agent is accepted.
+    """
+    if _AGENT_SCOPE and store_agent != _AGENT_SCOPE:
+        return {
+            "status": "error",
+            "message": _SCOPE_VIOLATION_TMPL.format(scope=_AGENT_SCOPE, got=store_agent),
+        }
+    return None
+
 
 mcp = FastMCP("local_store", log_level="INFO")
 
@@ -102,6 +142,9 @@ def query_catalog(
         agent: Filter by owning agent in catalog metadata (rdaneel, drh, etc.).
         data_type: Filter by data type (graph, tabular, agent-state).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -128,6 +171,9 @@ def get_cached_network(network_uuid: str, store_agent: str) -> dict:
         network_uuid: UUID of the network.
         store_agent: Which agent's local cache to query (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -171,6 +217,9 @@ def query_graph(cypher: str, store_agent: str) -> dict:
         cypher: Cypher query string.
         store_agent: Which agent's local cache to query (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -193,6 +242,9 @@ def get_network_nodes(network_uuid: str, store_agent: str) -> dict:
         network_uuid: UUID of the network.
         store_agent: Which agent's local cache to query (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -212,6 +264,9 @@ def get_network_edges(network_uuid: str, store_agent: str) -> dict:
         network_uuid: UUID of the network.
         store_agent: Which agent's local cache to query (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -232,6 +287,9 @@ def find_neighbors(node_name: str, store_agent: str, network_uuid: str | None = 
         store_agent: Which agent's local cache to query (required).
         network_uuid: Optional — restrict to a specific network.
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -270,6 +328,9 @@ def find_path(
         store_agent: Which agent's local cache to query (required).
         max_hops: Maximum path length (default 4).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -300,6 +361,9 @@ def find_contradictions(network_uuid_1: str, network_uuid_2: str, store_agent: s
         network_uuid_2: UUID of the second network.
         store_agent: Which agent's local cache to query (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -354,6 +418,9 @@ def cache_network(
         agent: Owning agent name in catalog metadata (rdaneel, drh, etc.).
         category: Network category override.
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -424,6 +491,9 @@ def publish_network(
         store_agent: Which agent's local cache to publish from (required).
         profile: NDEx profile for publishing (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -481,6 +551,9 @@ def save_new_network(
         profile: NDEx profile for publishing (required).
         name: Optional new name for the network. If omitted, keeps the cached name.
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -535,6 +608,9 @@ def check_staleness(
         store_agent: Which agent's local cache to check (required).
         profile: NDEx profile for checking (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -574,6 +650,9 @@ def delete_cached_network(network_uuid: str, store_agent: str) -> dict:
         network_uuid: UUID of the network to remove.
         store_agent: Which agent's local cache to delete from (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -598,6 +677,9 @@ def clear_cache(store_agent: str) -> dict:
     Args:
         store_agent: Which agent's local cache to clear (required).
     """
+    err = _check_scope(store_agent)
+    if err:
+        return err
     store, err = _require_store(store_agent)
     if err:
         return err
@@ -633,6 +715,9 @@ def session_init(
             UUIDs. Keys: "session_history", "plans", "collaborator_map", "papers_read".
             If omitted, searches NDEx for networks named "<agent>-session-history", etc.
     """
+    err = _check_scope(agent)
+    if err:
+        return err
     ndex, err = _require_ndex(profile)
     if err:
         return err
@@ -750,11 +835,19 @@ def session_init(
 
 
 def main():
-    print(
-        "Local Store MCP server started — no defaults, "
-        "all tools require explicit store_agent and profile parameters",
-        file=sys.stderr,
-    )
+    if _AGENT_SCOPE:
+        print(
+            f"Local Store MCP server started — scoped to agent '{_AGENT_SCOPE}'. "
+            f"Tool calls for other agents will be rejected before opening any database.",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "Local Store MCP server started (unscoped) — accepts any store_agent. "
+            "NOTE: this server will open and hold locks on every agent's cache it receives. "
+            "For scheduled tasks, use local_store_<agent> scoped entries instead.",
+            file=sys.stderr,
+        )
     mcp.run(transport="stdio")
 
 

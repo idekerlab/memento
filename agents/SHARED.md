@@ -28,6 +28,8 @@ cache_network(uuid, store_agent="<agent>")
 - `store_agent="<agent>"` — controls which agent's local store cache is used
 - **Never omit these on write operations.** Omitting them may write to the wrong account or cache.
 
+**Concurrent cache access note:** As of this writing, the project runs all agents from a single interactive desktop session with Routines for scheduling. In that configuration the unscoped `local_store` MCP entry is the only one, and concurrent LadybugDB lock contention is not a concern. If the project later adds Cowork Scheduled Tasks (or any concurrent process that holds a separate MCP server), per-agent scoped `local_store_<agent>` entries (launched with `--agent-scope <agent>`) will be needed to prevent lock contention. See `tools/CLAUDE.md` § "Backlog: Scoped local_store Entries".
+
 ## Data Constraints
 
 These constraints apply to all network creation, caching, and querying. Violating them causes runtime errors.

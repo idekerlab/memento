@@ -50,10 +50,12 @@ To see what agents currently exist: `ls agents/*/CLAUDE.md`
 
 ### Adding a New Agent
 
-1. **Create an NDEx account** for the agent (manual step at ndexbio.org)
-2. **Add a profile** to `~/.ndex/config.json` on each machine that will run the agent
-3. **Create `agents/<name>/CLAUDE.md`** with role-specific instructions (it should reference SHARED.md)
-4. **No MCP server changes needed** — existing servers support any agent via the `--profile` parameter
+1. **Create an NDEx account** for the agent (manual step at ndexbio.org, or POST to `/v2/user` on a local test server)
+2. **Add a profile** to `~/.ndex/config.json` on each machine that will run the agent (typically both a public `<name>` and local `local-<name>` variant)
+3. **Create the agent workspace directory**: `mkdir -p ~/.ndex/cache/<name>/` (and optionally `scratch/` under it). This is where `session_init` puts the local_store graph.db AND where any transient file operations (e.g., `download_network` output_dir) should target. Scheduled-task sandboxes may block writes to system temp paths, so always point file-producing tools at this workspace rather than relying on `tempfile` defaults.
+4. **Create `agents/<name>/CLAUDE.md`** with role-specific instructions (it should reference SHARED.md)
+
+**No MCP config changes needed.** All five servers are shared across agents; identity is chosen per-call via `profile=` / `store_agent=` arguments. Future work: if we introduce scheduled tasks that run concurrently, a per-agent scoped `local_store_<name>` entry may be added to prevent LadybugDB lock contention — see backlog note in `tools/CLAUDE.md`.
 
 ## Core Conventions for using NDExBio platform
 
@@ -68,16 +70,23 @@ These conventions are defined by the NDExBio platform (source of truth: `../ndex
 
 ## MCP Servers
 
-Configured in `.mcp.json` (see `tools/CLAUDE.md` for full configuration guide). All servers share a single instance; identity is controlled per-call via `--profile`:
+**Authoritative config lives at `~/Documents/agents/.mcp.json`**, not in this repo. The desktop Claude app reads it when the "agents" project is opened. This repo provides the Python implementations of the servers; the config that wires them up lives one directory above `GitHub/memento/`. See `tools/CLAUDE.md` for details.
 
-| Server | Module | Profile needed | Purpose |
-|---|---|---|---|
-| `ndex` | `tools.ndex_mcp.server` | Yes | Network CRUD, search, sharing on NDEx |
-| `local_store` | `tools.local_store.server` | Yes | SQLite catalog + LadybugDB graph for persistent memory |
-| `biorxiv` | `tools.biorxiv.server` | No | Paper discovery from bioRxiv |
-| `pubmed` | `tools.pubmed.server` | No | PubMed search + Europe PMC full-text |
+Five MCP servers are loaded in every agent session:
 
-NDEx credentials live in `~/.ndex/config.json` with per-agent profiles.
+| Server | Module | Purpose |
+|---|---|---|
+| `ndex` | `tools.ndex_mcp.server` | Network CRUD, search, sharing on NDEx |
+| `local_store` | `tools.local_store.server` | SQLite catalog + LadybugDB graph DB |
+| `biorxiv` | `tools.biorxiv.server` | Paper discovery from bioRxiv |
+| `pubmed` | `tools.pubmed.server` | PubMed search + Europe PMC full-text |
+| `sl_tools` | `tools.sl_tools.mcp_server` | DepMap + GDSC analysis (40 tools) |
+
+All servers are **identity-less at launch** — they take no `--profile` CLI flag. The caller chooses identity per call:
+- NDEx writes: `profile="<agent>"` as a tool argument (e.g. `profile="local-rcorona"`)
+- Local store writes: `store_agent="<agent>"` as a tool argument
+
+Valid profile names are defined in `~/.ndex/config.json`. The profile name determines the NDEx server URL and credentials used.
 
 ## Agent State — All Persisted in NDEx
 

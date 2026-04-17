@@ -6,6 +6,7 @@ cross-database tools (coverage check, ensure data).
 """
 
 import importlib
+import sys
 import traceback
 
 PLUGIN_MODULES = [
@@ -36,10 +37,11 @@ def discover_and_register(mcp_app):
         try:
             mod = importlib.import_module(module_path)
             mod.register(mcp_app)
-            print(f"  Registered plugin: {module_path}")
+            # stderr: this is an MCP stdio server, stdout is reserved for JSON-RPC.
+            print(f"  Registered plugin: {module_path}", file=sys.stderr)
         except Exception as e:
-            print(f"  WARNING: Failed to register {module_path}: {e}")
-            traceback.print_exc()
+            print(f"  WARNING: Failed to register {module_path}: {e}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
 
     # Register unified cross-database tools
     @mcp_app.tool()

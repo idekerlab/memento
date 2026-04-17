@@ -1,121 +1,134 @@
 # MCP Server Configuration Guide
 
+## Authoritative Config Location
+
+**One file wires up MCPs for every Memento agent:**
+
+```
+~/Documents/agents/.mcp.json
+```
+
+The desktop Claude app reads this when the "agents" project is opened. Memento is a sibling directory under `agents/GitHub/memento/`; this repo provides the Python implementations of the servers, but the config lives one level up.
+
+**Do not create a `.mcp.json` inside `memento/` itself.** Prior versions of this repo had one, and it caused extended confusion — agents (human and AI) assumed that file was active when in fact the desktop app never reads it. If you need a CLI-from-memento config, generate one at session time; do not commit it.
+
+**When you edit `~/Documents/agents/.mcp.json`, you must fully quit and relaunch the desktop app.** There is no hot-reload — the app reads the config at startup and caches the result. `/mcp reconnect` does not pick up new server entries added after the session was spawned.
+
 ## MCP Servers in This Repo
 
-Four MCP servers live in `tools/`:
+Five MCP servers live in `tools/`:
 
-| Server | Module | Profile needed | Purpose |
-|---|---|---|---|
-| `ndex` | `tools.ndex_mcp.server` | Yes | Network CRUD, search, sharing on NDEx |
-| `local_store` | `tools.local_store.server` | Yes | SQLite catalog + LadybugDB graph for persistent memory |
-| `biorxiv` | `tools.biorxiv.server` | No | Paper discovery from bioRxiv |
-| `pubmed` | `tools.pubmed.server` | No | PubMed search + Europe PMC full-text |
+| Server | Module | Purpose |
+|---|---|---|
+| `ndex` | `tools.ndex_mcp.server` | Network CRUD, search, sharing on NDEx |
+| `local_store` | `tools.local_store.server` | SQLite catalog + LadybugDB graph DB |
+| `biorxiv` | `tools.biorxiv.server` | Paper discovery from bioRxiv |
+| `pubmed` | `tools.pubmed.server` | PubMed search + Europe PMC full-text |
+| `sl_tools` | `tools.sl_tools.mcp_server` | DepMap + GDSC analysis (40 tools) |
 
-The `--profile <agent>` flag controls which NDEx agent identity is used. New agents need a corresponding profile in `~/.ndex/config.json` and an NDEx account.
+**All servers are identity-less at launch.** None of them take a `--profile` CLI flag. The caller chooses identity per call via tool arguments:
+
+- `ndex` tools: `profile="<name>"` — looks up `<name>` in `~/.ndex/config.json`
+- `local_store` tools: `store_agent="<name>"` — selects the agent's cache dir under `~/.ndex/cache/<name>/`
+
+The profile name determines which NDEx server (public, dev, local-127.0.0.1, etc.) is contacted and which credentials are used. There is no server-side enforcement that ties a given MCP entry to one identity — agents must pass the right profile name per call. See `agents/SHARED.md` for the convention.
 
 ## Startup Behavior
 
-All servers are designed to start fast and not block on network calls. The `local_store` server defers its NDEx connection check to first tool use — this is intentional so Claude Desktop/Cowork doesn't timeout waiting for the server to start. Do not add blocking network calls before `mcp.run()`.
+MCP servers are launched as stdio subprocesses by the desktop app. Two rules for writing a new server module:
 
-## Three Places MCP Servers Can Be Configured
+1. **Never `print()` to stdout before or during `mcp.run()`.** Stdout is the JSON-RPC channel — any stray output corrupts the handshake and the client drops the server silently (no error surfaced to the user). All startup diagnostics must go to `sys.stderr`:
+   ```python
+   print("my-server starting...", file=sys.stderr)
+   ```
+   This applies inside plugin-registration loops too — see the `sl_tools/registry.py` incident (Apr 2026) where a single `print()` without `file=sys.stderr` caused the server to fail to load for weeks.
 
-1. **Project `.mcp.json`** (repo root) — Used by **Claude Code** (CLI, VS Code extension, Desktop Code mode). Paths can be relative to the project. This is what agents use during interactive Claude Code sessions.
-
-2. **`claude_desktop_config.json`** — Used by **Claude Desktop / Cowork**. Paths must be **absolute** because Desktop doesn't run from a project directory. Servers appear as "LOCAL DEV" in the Connectors panel. Location varies by OS:
-   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-3. **Claude Code user-scope settings** (`~/.claude/settings.json`) — Global MCP servers available across all Claude Code projects.
-
-**Common mistake**: On macOS, there is also a `config.json` in the same directory. That file is for general Desktop app settings (theme, locale, etc.) — MCP entries there are ignored by the UI.
+2. **Don't block on network calls before `mcp.run()`.** The `local_store` server defers its NDEx connection check to first tool use, so the desktop app doesn't time out waiting for the handshake.
 
 ## Setting Up on a New Machine
 
 ### 1. Install dependencies
 
-This project standardizes on **`.venv`** (Python built-in venv). Do not use conda — the `.mcp.json` and Desktop config expect `.venv/bin/python3`.
+This project standardizes on **`.venv`** (Python built-in venv). Do not use conda — the config expects `.venv/bin/python3`.
 
 ```bash
-cd /path/to/memento
+cd ~/Documents/agents/GitHub/memento
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
 ```
 
-The key dependency is `real_ladybug` (embedded graph DB for local_store). Verify all servers import cleanly:
+Verify all servers import cleanly:
 
 ```bash
 .venv/bin/python3 -c "from tools.ndex_mcp.server import main; print('ndex OK')"
 .venv/bin/python3 -c "from tools.local_store.server import main; print('local_store OK')"
 .venv/bin/python3 -c "from tools.biorxiv.server import main; print('biorxiv OK')"
 .venv/bin/python3 -c "from tools.pubmed.server import main; print('pubmed OK')"
+.venv/bin/python3 -c "from tools.sl_tools.mcp_server import main; print('sl_tools OK')"
 ```
 
 ### 2. Configure NDEx credentials
 
-Create `~/.ndex/config.json` with profiles for each agent:
+Create `~/.ndex/config.json` with a profile per agent identity. For each agent, typically both a public and a local variant:
 
 ```json
 {
+  "server": "https://www.ndexbio.org",
   "profiles": {
-    "<agent_name>": { "server": "https://www.ndexbio.org/v3", "username": "<ndex_username>", "password": "..." }
+    "<agent>":        { "username": "<agent>", "password": "..." },
+    "local-<agent>":  { "server": "http://127.0.0.1:8080", "username": "<agent>", "password": "..." }
   }
 }
 ```
 
-### 3. Configure Claude Code (`.mcp.json`)
+### 3. Place the MCP config
 
-The project `.mcp.json` uses `.venv/bin/python3` with relative paths and works out of the box after creating the venv. No changes needed.
-
-### 4. Configure Claude Desktop / Cowork
-
-Add entries to `claude_desktop_config.json` with **absolute paths** to both the Python interpreter and the project root:
+`~/Documents/agents/.mcp.json` (absolute paths only, since the desktop app does not run from a project directory):
 
 ```json
-"server_name": {
-  "command": "/absolute/path/to/memento/.venv/bin/python3",
-  "args": ["-m", "tools.<module>.server", "--profile", "<agent>"],
-  "cwd": "/absolute/path/to/memento"
+{
+  "mcpServers": {
+    "ndex": {
+      "command": "/Users/<you>/Documents/agents/GitHub/memento/.venv/bin/python3",
+      "args": ["-m", "tools.ndex_mcp.server"],
+      "cwd":  "/Users/<you>/Documents/agents/GitHub/memento"
+    },
+    ... (entries for local_store, biorxiv, pubmed, sl_tools)
+  }
 }
 ```
 
-Restart Claude Desktop after changes. Servers should appear as "LOCAL DEV" connectors.
+Fully quit and relaunch the desktop app. All five servers should appear as "LOCAL DEV" under Customize → Connectors → Desktop.
 
 ## Adding a New Agent
 
-When adding a new agent to the system:
+1. **Create an NDEx account** for the agent (manual step at ndexbio.org, or POST to `/v2/user` on local test server)
+2. **Add a profile** to `~/.ndex/config.json` (typically `<name>` for public, `local-<name>` for local 127.0.0.1:8080)
+3. **Create the workspace**: `mkdir -p ~/.ndex/cache/<name>/`
+4. **Add `agents/<name>/CLAUDE.md`** referencing SHARED.md
 
-1. **Create an NDEx account** for the agent (manual step)
-2. **Add a profile** to `~/.ndex/config.json` on each machine that will run the agent
-3. **Add a `CLAUDE.md`** in `agents/<agent_name>/CLAUDE.md` with role-specific instructions
-4. **No MCP server changes needed** — the existing servers support any agent via the `--profile` parameter. Each Cowork task or Claude Code session just passes the appropriate profile.
+**No `.mcp.json` changes.** The five shared servers handle any agent via per-call `profile=` / `store_agent=` arguments.
 
-For Desktop/Cowork, you can either:
-- Reuse the same server entries and switch profiles per task
-- Add dedicated server entries per agent (e.g., `ndex_drh`, `local_store_drh`) if you want parallel agents
+## Backlog: Scoped local_store Entries
 
-## Scheduling: Cowork vs Claude Code
+The `local_store` server supports an `--agent-scope <name>` flag that restricts it to a single agent's cache and rejects any other `store_agent` value. This is needed **only if** concurrent processes (e.g., an interactive session and a scheduled task) might both open the same agent's LadybugDB file — exclusive locks otherwise cause failures.
 
-These are **two different scheduling systems**:
+As of this writing, the project runs all agents via Claude Code Routines from a single desktop session, so concurrent cache access is not a concern and the unscoped `local_store` entry is sufficient. If/when Cowork scheduled tasks come online, add per-agent scoped entries (`local_store_<name>` with `--agent-scope <name>`) to `~/Documents/agents/.mcp.json` at that time.
 
-### Cowork Scheduled Tasks (Claude Desktop)
-- Configured in the **Cowork tab** of the Claude Desktop app
-- Runs locally on your machine (must be on and Desktop must be running)
-- Uses MCP servers from `claude_desktop_config.json`
-- Good for: interactive research tasks, tasks needing Desktop connectors (Google Drive, GitHub, etc.)
+## Scheduling
 
-### Claude Code `/schedule` (Remote Triggers)
-- Configured via `/schedule` command in Claude Code CLI or VS Code extension
-- **Cloud tasks** run on Anthropic infrastructure (machine can be off) but cannot use local MCP servers
-- **Desktop/local tasks** run on your machine and can use project `.mcp.json` servers
-- Good for: automated CI-like workflows, tasks that should run even when you're away
+**Project decision: use Claude Code Routines, not Cowork Scheduled Tasks.** One reason: Routines use `~/Documents/agents/.mcp.json` (the single source of truth), while Cowork Tasks would reintroduce `claude_desktop_config.json` as a second config file. We accept giving up Dispatch remote-monitor visibility — a tradeoff that can be revisited later. Migration from Routines → Cowork is mechanical if/when needed.
+
+Existing Routines can be viewed in the desktop app's sidebar under "Routines". Add new ones via the same panel.
 
 ## Troubleshooting
 
-- **Servers not appearing in Desktop**: You're probably editing `config.json` instead of `claude_desktop_config.json`. Edit the right file and restart Desktop.
-- **Server fails to connect in Desktop**: Check that the `command` path points to a Python with all dependencies installed. Run the import check above.
-- **`local_store` hangs on startup**: If someone re-added a network call before `mcp.run()`, remove it — startup must not block on HTTP.
-- **Module not found errors**: Ensure `cwd` is set to the memento project root.
-- **Wrong agent identity**: Check the `--profile` argument matches a profile in `~/.ndex/config.json`.
+- **A server is missing from the session**: Run `/mcp` in the session — it shows all configured servers with their connect/fail status. If a server is present but failed, check its stderr for the launch error.
+- **All servers missing / "No MCP servers configured"**: The desktop app probably spawned the session before `~/Documents/agents/.mcp.json` existed (or was edited). Fully quit and relaunch — `/mcp reconnect` does not pick up new entries.
+- **Server fails handshake silently (loads in `/mcp` as "failed"** or doesn't appear at all): check that the server isn't printing to stdout anywhere during startup — see "Startup Behavior" above.
+- **`local_store` hangs on startup**: If someone re-added a network call before `mcp.run()`, remove it.
+- **Module not found errors**: Ensure `cwd` in the `.mcp.json` entry points to the memento repo root and that `.venv` is installed there.
+- **Wrong agent identity on a network**: Not a config problem — the agent passed the wrong `profile=` argument on the tool call. Check agent CLAUDE.md for profile-name conventions.
 - **Local NDEx container fails with `/ndexbio-rest/v3/` errors**: The ndex2 Python library hardcodes a path override when it sees "localhost" in the URL. Use `http://127.0.0.1:8080` instead of `http://localhost:8080` in your profile's `server` field.
 
 ## Data Format Constraints

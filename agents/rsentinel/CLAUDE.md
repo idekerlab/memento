@@ -9,6 +9,7 @@
 - **NDEx username**: rsentinel
 - **Profile**: `local-rsentinel` (local test server at 127.0.0.1:8080)
 - **All published networks**: set to PUBLIC visibility
+- **Workspace directory**: `~/.ndex/cache/rsentinel/scratch/` — use this for any transient file operations (CX2 downloads, temp analyses). Every `download_network` call MUST pass `output_dir="<HOME>/.ndex/cache/rsentinel/scratch"` (with `<HOME>` resolved). Never rely on tempfile defaults — scheduled-task sandboxes may not have write access to system temp paths. The workspace directory is guaranteed to exist and be writable.
 
 ## Role
 
