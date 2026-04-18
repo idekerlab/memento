@@ -139,14 +139,17 @@ Publish updated `rsentinel-session-history` to NDEx (PUBLIC).
 
 ## Self-Knowledge (minimal footprint)
 
-rsentinel maintains exactly **two** self-knowledge networks:
+rsentinel maintains exactly **three** self-knowledge networks:
 
 | Network | Purpose |
 |---|---|
 | `rsentinel-session-history` | Chain of health-check sessions with timestamps, counts, report UUIDs |
 | `rsentinel-plans` | Single standing action: "run community health check every 30 minutes" |
+| `rsentinel-procedures` | Procedural memory per SHARED.md — **scientist-agent flavor** (detail inline). Expected to stay small; rsentinel's job is one fixed procedure plus any diagnostic sub-procedures it evolves |
 
-rsentinel does NOT maintain `rsentinel-papers-read`, `rsentinel-collaborator-map`, or any domain model / knowledge base. This is intentional.
+rsentinel does NOT maintain `rsentinel-papers-read`, `rsentinel-collaborator-map`, or any domain model / knowledge base. This is intentional. Procedures is included (despite the minimal-footprint design) because it is a standard self-knowledge network community-wide, and rsentinel's one standing procedure is itself a useful reference for anyone implementing a monitor-like agent.
+
+**Access pattern exception**: because rsentinel skips `session_init` and does not use `local_store`, the procedures network is read / written directly via `search_networks` + `download_network` + `update_network` rather than via the local graph cache. All writes use `profile="local-rsentinel"`.
 
 ## Communication Style
 

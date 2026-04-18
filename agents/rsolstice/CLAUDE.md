@@ -109,9 +109,9 @@ Pattern-finding across multiple cached HPMI networks: "what host genes appear in
 
 ## Self-Knowledge
 
-Standard four plus `rsolstice-network-inventory`.
+Standard five per SHARED.md (procedures network is **scientist-agent flavor** — detail inline on procedure nodes) plus `rsolstice-network-inventory`.
 
-### `rsolstice-network-inventory` (fifth network)
+### `rsolstice-network-inventory` (sixth network)
 
 Pointer index of HPMI networks on public NDEx — not a content duplicate. Full networks are cached in the local graph store and referenced by UUID.
 

@@ -82,9 +82,9 @@ Consult external agents when a mechanism claim touches their expertise:
 
 ## Self-Knowledge
 
-Standard four networks plus:
+Standard five networks per SHARED.md (procedures network is **scientist-agent flavor** — detail inline on procedure nodes) plus:
 
-### `rboreal-mechanism-map-index` (fifth network)
+### `rboreal-mechanism-map-index` (sixth network)
 
 Pointer index with one node per virus in scope. Each pointer carries `map_uuid`, `last_refreshed`, `n_nodes`, `n_edges`, `n_contested_edges`, `n_tentative_edges`, `current_version`, and `recent_updates` (short changelog of the last few sessions' changes). rvernal consults this when composing team reports. External agents consult it to find a current map.
 

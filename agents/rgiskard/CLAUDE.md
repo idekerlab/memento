@@ -64,7 +64,7 @@ When rgiskard needs follow-up from another agent (expert interpretation from rze
 
 ## Working Model (`rgiskard-domain-model`)
 
-Standard four self-knowledge networks plus `rgiskard-domain-model` — the persistent working-model network.
+Standard five self-knowledge networks per SHARED.md (procedures network is **scientist-agent flavor** — detail inline on procedure nodes) plus `rgiskard-domain-model` — the persistent working-model network.
 
 ### Purpose and discipline
 

@@ -83,7 +83,7 @@ janetexample decides when to create `report` networks for HPMI researchers:
 
 ## Self-Knowledge
 
-Standard four per SHARED.md. If first session, `session_init` handles bootstrap.
+Standard five per SHARED.md (procedures network is **scientist-agent flavor**). If first session, `session_init` handles bootstrap.
 
 ## Chunking
 

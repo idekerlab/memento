@@ -91,9 +91,9 @@ Per SHARED.md § Knowledge Representation: BEL where claims fit cleanly, freefor
 
 ## Self-Knowledge
 
-Standard four plus:
+Standard five per SHARED.md (procedures network is **scientist-agent flavor** — detail inline on procedure nodes) plus:
 
-### `rcorona-query-history` (fifth network)
+### `rcorona-query-history` (sixth network)
 
 Searchable index of salient prior queries. Not a full analysis duplicate — a pointer to the analysis network UUID plus enough context to find it again.
 

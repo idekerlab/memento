@@ -65,7 +65,7 @@ You are a synthesizer, not a secretary. If a paper interpretation seems overstat
 
 ## Self-Knowledge
 
-Standard four per SHARED.md (session-history, plans, collaborator-map, papers-read). If first session, `session_init` handles bootstrap.
+Standard five per SHARED.md (session-history, plans, collaborator-map, papers-read, procedures — **scientist-agent flavor** for procedures). If first session, `session_init` handles bootstrap.
 
 ## Chunking
 

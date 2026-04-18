@@ -192,13 +192,13 @@ A pre-report review can be skipped only when: the report is a ≤3-node `synthes
 
 ## Self-Knowledge
 
-Standard four plus:
+Standard five per SHARED.md (procedures network is **scientist-agent flavor** — detail inline on procedure nodes) plus:
 
-### `rvernal-papers-reviewed` (fifth network)
+### `rvernal-papers-reviewed` (sixth network)
 
 Pointer index tracking which rsolar extractions have been critiqued. One node per extraction reviewed with `extraction_uuid`, `extraction_paper_pmid`, `critique_network_uuid` (if concerns found) or `acknowledgement_network_uuid`, `review_date`, `concerns_raised_count`.
 
-### `rvernal-hypothesis-ledger` (sixth network)
+### `rvernal-hypothesis-ledger` (seventh network)
 
 Pointer index tracking active hypotheses with `status` (`tentative` / `supported` / `superseded` / `retracted`). When a hypothesis is retired, the entry stays with `superseded_by` or `retracted_reason`. Each entry carries `hypothesis_network_uuid`, `n_component_claims`, `n_alternatives_modeled`, `last_touched`, `session_date`.
 

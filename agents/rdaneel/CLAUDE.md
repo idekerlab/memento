@@ -28,12 +28,13 @@ Standard per SHARED.md. Every rdaneel session:
 1. Appends a session node to `rdaneel-session-history`.
 2. Updates `rdaneel-plans` (mark done, add new, flag blocked with reason).
 3. Updates `rdaneel-decisions-log` if any architectural or convention decision was made, revised, or reversed.
-4. Updates `rdaneel-collaborator-map` last_interaction where applicable.
-5. Publishes everything PUBLIC + `index_level: ALL`.
+4. Updates `rdaneel-procedures` if a procedure was used (append session), revised (bump version), or newly authored. rdaneel uses the **dev-agent flavor** (procedure-node carries `workflow_path`; detail lives in `workflows/dev/<name>.md` in this repo).
+5. Updates `rdaneel-collaborator-map` last_interaction where applicable.
+6. Publishes everything PUBLIC + `index_level: ALL`.
 
 ## Self-knowledge networks
 
-Four standard plus one rdaneel-specific:
+Standard five per SHARED.md plus one rdaneel-specific:
 
 | Network | Purpose |
 |---|---|
@@ -41,6 +42,7 @@ Four standard plus one rdaneel-specific:
 | `rdaneel-plans` | Mission → goals → actions (active / planned / done / blocked) |
 | `rdaneel-collaborator-map` | Humans, scientist agents, planned agents |
 | `rdaneel-papers-read` | Scientific papers encountered during dev work — usually empty; repurpose to `rdaneel-references-read` if desired |
+| `rdaneel-procedures` | Procedural memory — dev-agent flavor: procedure nodes carry `workflow_path` pointing at `workflows/dev/*.md` for detail |
 | `rdaneel-decisions-log` | Architectural and convention decisions with rationale and session pointers |
 
 ## Out-of-scope

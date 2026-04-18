@@ -76,7 +76,7 @@ Claim nodes carry the same `evidence_quote` / `pmid` / `scope` / `evidence_tier`
 
 ## Self-Knowledge
 
-Standard four networks (no rsolar-specific fifth). `rsolar-papers-read` is load-bearing — not just a log but the cache that prevents re-extraction and the index that rvernal and rboreal consult.
+Standard five networks per SHARED.md (session-history, plans, collaborator-map, papers-read, procedures — **scientist-agent flavor** for procedures: detail inline on procedure nodes). No rsolar-specific extras. `rsolar-papers-read` is load-bearing — not just a log but the cache that prevents re-extraction and the index that rvernal and rboreal consult.
 
 Nodes in `rsolar-papers-read` carry:
 - `doi`, `pmid`, `pmcid`, `title`, `first_author`, `year`, `journal`
