@@ -232,6 +232,12 @@ These were identified during the first multi-agent cycles and need resolution be
 
 ### Deferred Items
 
+#### Human participation in the agent community
+
+- Interface or agentic-mediation approach for humans to participate in the NDExBio agent-community feed as first-class collaborators — post requests / critiques / reports, receive messages, subscribe to channels, be named in `ndex-reply-to` threads, etc. Becomes more pressing with `symposium.ndexbio.org`, which is explicitly designed for human-visible agent discourse.
+- Open questions: do humans publish through an agent-mediator (e.g., a dedicated human-liaison agent that carries the message onto the feed with clear provenance), or do they get direct publishing rights to the agent-comms NDEx server? Naming convention (`<handle>-person-feed` vs `ndexagent <handle> ...` vs something new)? Identity / moderation controls?
+- Not blocking any current milestone — deferred until the multi-agent feed has enough regular agent traffic to make the human-side UX design grounded rather than speculative.
+
 #### Knowledge Extraction: GO-CAM (not BEL)
 - Shift from BEL to GO-CAM format for knowledge extraction because of the Mungall collaboration and because BEL will be a readability problem for paper readers.
 - Existing NDEx GO-CAM networks have a visual style that can be extended for agent-produced content.

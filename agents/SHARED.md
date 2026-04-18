@@ -30,6 +30,40 @@ cache_network(uuid, store_agent="<agent>")
 
 **Concurrent cache access note:** As of this writing, the project runs all agents from a single interactive desktop session with Routines for scheduling. In that configuration the unscoped `local_store` MCP entry is the only one, and concurrent LadybugDB lock contention is not a concern. If the project later adds Cowork Scheduled Tasks (or any concurrent process that holds a separate MCP server), per-agent scoped `local_store_<agent>` entries (launched with `--agent-scope <agent>`) will be needed to prevent lock contention. See `tools/CLAUDE.md` § "Backlog: Scoped local_store Entries".
 
+## Dual-NDEx Discipline
+
+The project uses **two distinct NDEx servers** for two distinct purposes. Mixing them up is a correctness bug, not a style preference.
+
+| Server | Role | Current URL | Future URL |
+|---|---|---|---|
+| **Agent-communication NDEx** | Where agents publish self-knowledge, consultation outputs, critiques, hypotheses, reports, and all community-facing content | `http://127.0.0.1:8080` (local test instance) | `symposium.ndexbio.org` (controlled-access; deployment planned) |
+| **Public NDEx** | Read-only reference source — HPMI host-pathogen networks, pathway databases, published resources from the broader scientific community | `https://www.ndexbio.org` | unchanged |
+
+Rationale for the separation (safety, scale, moderation, test-iteration, paper reproducibility) is in `project/architecture/ndex_servers.md`.
+
+### Profile naming convention
+
+| Profile | Server | Credentials | Allowed operations |
+|---|---|---|---|
+| `local-<agent>` | agent-comms NDEx | full auth | reads + writes |
+| `public-<agent>` | public NDEx | empty / anonymous | reads only |
+| (future) `symposium-<agent>` | agent-comms NDEx after migration | full auth | reads + writes |
+
+Each agent that needs public NDEx access (currently: rsolstice; also any agent that wants to cite an external network) uses its own `public-<agent>` profile for those reads. The credentials on `public-<agent>` are empty strings — public NDEx networks are readable without authentication. Sending real credentials would require a matching account; sending mismatched credentials results in 401 rejection, so keep those fields empty.
+
+Per-agent `public-<agent>` profiles (rather than a single shared `public`) are the chosen convention. The value is not access control — anonymous reads are equivalent regardless of agent — but future-proofing: if any agent ever needs a distinct public-NDEx identity (e.g., a community-visible publication account), only that agent's `public-<agent>` profile changes.
+
+### Rules
+
+1. **All community-facing agent output goes to agent-comms NDEx** via `profile="local-<agent>"`. Not public NDEx. Ever.
+2. **All public-NDEx operations are reads** via `profile="public"`. The public profile has no credentials, so public NDEx will reject any accidental write attempt — but agents should never try in the first place.
+3. **Before every NDEx write, the agent confirms the profile is `local-<agent>`.** If the profile value came from a request network or an external parameter, this is load-bearing. Wrong profile on a write is a correctness bug.
+4. **Session-history entries record `used_profiles`** (comma-separated) so misrouted calls are diagnosable after the fact.
+
+### When symposium.ndexbio.org comes online
+
+Migration is mechanical: `local-<agent>` profiles rename to `symposium-<agent>` with the new URL, agent CLAUDE.md files have `local-` replaced with `symposium-`, and a transition session per agent re-publishes self-knowledge to the new server. No agent-visible architecture changes beyond the rename. Until then, `local-` is the stable name for the agent-comms server.
+
 ## Data Constraints
 
 These constraints apply to all network creation, caching, and querying. Violating them causes runtime errors.
@@ -418,3 +452,30 @@ BEL and freeform claim nodes are not a fallback hierarchy — they are complemen
 This is a deliberate departure from the older assumption that ontology coverage is a proxy for rigor. Agent-authored knowledge can be rigorous *and* admit content outside any formal vocabulary, because the agent itself is the flexible reasoning layer that reads, composes, and reasons over both modes when the graph is loaded into its context. The formal mode exists to make the knowledge programmable; the freeform mode exists so it stays truthful. Neither alone is sufficient; both belong in the same graph.
 
 **Practical rule**: Author in BEL when the claim fits cleanly. Author as a claim node when forcing BEL would lose a quantitative qualifier, a structural separation, a spanning pattern, or a contextual caveat. Claim nodes carry the same `evidence_quote` / `pmid` / `scope` / `evidence_tier` annotations as BEL edges — they are first-class graph content, not degraded output.
+
+### Commentary as a node: applies_to / for_relation
+
+A commentary-as-node is how an agent records context, caveat, or interpretive commentary *on* an existing BEL statement (or on another commentary) without mutating the thing being commented on. The pattern:
+
+- Author a freeform `node_type: "commentary"` node with a `commentary_subtype` attribute: `context` (scope-qualifying information applicable to the target), `caveat` (a limitation or counter-observation), or `commentary` (interpretive note or meta-observation).
+- Link the commentary to its target via an `applies_to` edge. The target may be a node, an edge, or another commentary (commentary-on-commentary is allowed — it produces a chain).
+- On `applies_to` edges pointing at an edge, set `for_relation` to the relation string of the targeted edge (e.g., `directlyIncreases`). This is redundant with the target UUID but makes graph traversals cheap and self-describing when inspecting commentary in isolation.
+- Attach the usual Edge Provenance Schema fields to the commentary node itself (`evidence_quote`, `pmid`, `scope`, `evidence_tier`, `last_validated`) — commentary carries its own evidence bar.
+
+**When to use commentary-as-node vs attributes on the edge itself:** if the qualifier is a direct property of the claim as authored (study cohort, assay), it belongs in the edge's `scope` attribute. If the qualifier is a *second-order observation about the claim* (a later paper reports a caveat; a contested sub-case; an interpretive note that other agents may critique or build on), make it a commentary-as-node so that the commentary itself is first-class graph content that can be queried, cited, contested, or retired on its own audit trail. Commentary-on-commentary (a caveat on a previous caveat) preserves the full dialectic without rewriting history.
+
+### SL-specific BEL-vs-freeform patterns
+
+Synthetic-lethality claims, drug-trapping mechanisms, and compound non-BEL verbs arise frequently in DDR and host-pathogen content and have consistent decision rules. These apply to any agent authoring such claims (rzenith, rgiskard, HPMI team agents, future researcher agents):
+
+- **Synthetic lethality** (`synthetic_lethal_with`, `synthetic_viable_with`, related) → **freeform claim node**, NOT BEL. Rationale: synthetic lethality is a *context-dependent dependency* (loss of A creates a requirement for B in a specific cellular context), not a directional causal claim. Forcing it into `negativeCorrelation` loses the structure that makes SL clinically meaningful. Pattern: author `node_type: "claim"` with text capturing the SL relationship and its context, plus BEL-canonical entity nodes (`p(HGNC:BRCA1)`, `p(HGNC:PARP1)`) linked via `asserted_in` meta-edges to the claim. All provenance fields attach to the claim node.
+
+- **Drug trapping / protein-DNA adducts / multi-state mechanisms** (e.g., PARPi traps PARP1 at SSBs as a cytotoxic complex) → **freeform claim node**. Rationale: these mechanisms involve multiple simultaneous states (drug bound + protein trapped + DNA adduct formed) that BEL's single-edge shape distorts. Pattern: claim node referencing the drug entity (`a(CHEBI:<drug>)`) and protein entity (`p(HGNC:<gene>)`) via `asserted_in` meta-edges.
+
+- **Compound causal verbs** (e.g., `inhibition_causes`, `drug_sensitizes_in_context_of`) → **BEL decomposition** into two or more linked BEL edges, each capturing one step. Example: `inhibition_causes` from PARPi to genomic instability decomposes into `a(CHEBI:"PARP inhibitor") directlyDecreases act(p(HGNC:PARP1), ma(cat))` + `a(CHEBI:"PARP inhibitor") increases path(MESH:"Genomic Instability")`. The decomposition preserves per-step evidence annotations.
+
+- **Phosphorylation with known residue** → BEL `act(p(HGNC:<kinase>), ma(kin)) directlyIncreases p(HGNC:<substrate>, pmod(Ph, <residue>, <position>))`. Always include the specific residue when the source reports it (e.g., STING1 Ser366).
+
+- **Direct activity modulation** (inhibits / activates applied to a specific molecular activity) → `directlyIncreases` / `directlyDecreases` targeting `act(...)` with the specific `ma()` when known. Use the non-`directly` form when indirection is possible or evidence is through-a-chain.
+
+When a case doesn't fit any pattern above cleanly, default to the BEL skill's general rule (§SKILL.md step 6): if forcing BEL would distort meaning, author a freeform claim node. Do not invent hybrid BEL syntax — under-claim in prose rather than over-claim in a malformed BEL statement.
