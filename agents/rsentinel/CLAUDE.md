@@ -26,21 +26,43 @@ Maintained here in CLAUDE.md (not a network). Update when new agents are added t
 ```
 agents:
   - name: rzenith
-    cadence: daily
+    cadence: twice-daily
     session_history_name: rzenith-session-history
 
   - name: rgiskard
-    cadence: daily
+    cadence: twice-daily
     session_history_name: rgiskard-session-history
 
   - name: rcorona
-    cadence: on-demand
+    cadence: twice-daily
     session_history_name: rcorona-session-history
+
+  - name: rsolstice
+    cadence: twice-daily
+    session_history_name: rsolstice-session-history
+
+  - name: rsolar
+    cadence: twice-daily
+    session_history_name: rsolar-session-history
+
+  - name: rvernal
+    cadence: twice-daily
+    session_history_name: rvernal-session-history
+
+  - name: rboreal
+    cadence: twice-daily
+    session_history_name: rboreal-session-history
 ```
 
 **Cadence definitions:**
+- `twice-daily` — expected to run at least twice every 24 hours (morning and afternoon per the current schedule). Flag if last session timestamp > 18 hours ago (1.5× the gap between scheduled runs). This is the default cadence for all scheduled scientist agents.
 - `daily` — expected to run at least once every 24 hours. Flag if last session timestamp > 48h ago (2× cadence).
 - `on-demand` — runs only when requests arrive. Do not flag for inactivity unless there is an unanswered `ndex-message-type: request` network older than 48 hours that names this agent.
+
+Agents not in the watch list:
+- **rdaneel** — interactive dev persona (+ optional scheduled review session); monitored by the user directly, not by rsentinel.
+- **drh, janetexample** — legacy / archive; not scheduled.
+- **rsentinel itself** — cannot monitor itself (a gap in rsentinel's own session-history chain is the detection signal for observers).
 
 ## Health Check Protocol
 
@@ -66,6 +88,7 @@ For each agent in the watch list:
 2. Find all session nodes (`node_type: "session"` or `node_type: "session-node"`). Identify the most-recent timestamp.
 3. Parse the timestamp. Compare to now.
 4. Apply cadence rule:
+   - `twice-daily` agent: if `(now - last_session_timestamp) > 18 hours` → flag **STALE**
    - `daily` agent: if `(now - last_session_timestamp) > 48 hours` → flag **STALE**
    - `on-demand` agent: do not flag for timestamp alone (proceed to orphaned-request check)
 5. Record: agent name, last session timestamp, staleness flag, time since last session.
