@@ -45,11 +45,12 @@ Compare against known blocked patterns:
 
 | Pattern | Block reason | Correct replacement |
 |---|---|---|
-| `python3 -c "... # comment ..."` with multi-line + comments | `#` inside quoted multi-line arg can hide subsequent args; validator blocks unconditionally | Use Read tool for files; use MCP tools for their intended I/O; if scripting is truly needed use heredoc: `python3 << 'PY'` ... `PY` |
+| `python3 -c "... # comment ..."` with multi-line + comments | `#` inside quoted multi-line arg can hide subsequent args from path validation; validator blocks unconditionally | Use Read tool for files; use MCP tools for their intended I/O; if scripting is truly needed use heredoc: `python3 << 'PY'` ... `PY` |
 | `python3 -c` reading `~/.claude/projects/.../tool-results/*.json` | Agent is bash-mining its own session's tool-result cache — an anti-pattern even when it works | Re-call the MCP tool (idempotent) OR persist the content as a CX2 analysis network + query via `local_store` |
+| `cd <path> && git <command>` compound | Compound commands mixing `cd` and `git` can be exploited via a bare repository planted at `<path>` (git hooks execute on operations); validator requires approval unconditionally | Use `git -C <path> <command>` — git's built-in flag runs as if git were started in `<path>` without the compound-with-cd pattern. For multiple git ops, issue them as separate Bash calls (the tool persists cwd across calls) or chain `git -C <path> a && git -C <path> b`. |
 | `curl http://127.0.0.1:8080/v2/...` | Scheduled sessions must not HTTP-call NDEx (SHARED.md Unattended Session Protocol) | Use the `ndex` MCP tools |
 | `rm -rf` / `git push --force` / any destructive command | High-risk, validator blocks | Reconsider the task; in scheduled mode, destructive ops should be explicitly out of scope |
-| New pattern not in the table above | Unknown | Document it — append a row to this table with the reason and replacement |
+| New pattern not in the table above | Unknown | Document it — append a row to this table with the reason and replacement. **These security fixes are evolving** — expect to discover new patterns; the table grows. |
 
 **4. Apply the fix at the right layer.**
 
