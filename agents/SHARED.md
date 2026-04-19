@@ -316,6 +316,23 @@ Scheduled (unattended) sessions have no human in the loop. Follow these rules in
 - **Never read CX2/JSON files from `/tmp/` as a substitute for local_store.** If you find yourself downloading networks to `/tmp` and parsing them via Bash, you are in a workaround — stop and follow the lock-failure protocol below.
 - **Retry limit: 3 attempts per tool call.** If a tool fails 3 times with the same error, stop the session and log the failure. Do not retry in a loop.
 
+**Bash discipline (expanded, observed 2026-04-19 after rzenith wedged on a `python3 -c` path-validator block):**
+
+- **Never use `python3 -c`, `perl -e`, `ruby -e`, or similar shell one-liners to read files or process tool-result JSON.** The Claude Code Bash permission validator flags specific patterns (notably: newline followed by `#` inside a quoted argument, because `#` can hide subsequent arguments from path validation) and will block the call unconditionally. A scheduled session has no human to approve the prompt, and the session will hang rather than fail. Use the Read tool for file content; use MCP tools for I/O they are designed for.
+- **Never bash-mine the tool-result cache** at `~/.claude/projects/.../tool-results/toolu_*.json`. That cache is session-scoped, not documented as a stable surface, and accessing it is an anti-pattern. If you need a previous tool result, either re-call the tool (MCP tools are idempotent) or — if the content should persist across sessions and be queryable — persist it as a CX2 network and query via `local_store`.
+- **Do not embed `#` comments inside quoted multi-line shell arguments** under any circumstances. The validator may block unconditionally.
+- **Any Bash call that would surface a permission prompt must be avoided.** In scheduled mode, a permission prompt is a silent hang — not a recoverable tool failure. If unsure whether a Bash invocation will surface a prompt, don't use Bash; find an MCP-tool or Read-tool equivalent.
+
+**Persistence discipline (the "cache paper content as a CX2 analysis network" pattern):**
+
+When an agent needs to examine the *same* external content (paper fulltext, dataset slice, search result) across multiple sessions, the correct pattern is to **persist it as a CX2 network on the agent-comms NDEx** and query it via `local_store`, not to rely on the session-scoped tool-result cache. Concretely:
+
+1. On first encounter: call the MCP tool (`get_pmc_fulltext`, `search_networks`, `mcp_get_dependency_scores`, etc.). Immediately persist the content — or the agent's extraction of the content — as a CX2 analysis network: `ndexagent <agent> analysis <descriptor> YYYY-MM-DD`, `ndex-message-type: analysis`, PUBLIC + Solr-indexed. Record the analysis network UUID on the relevant upstream reference (e.g., the reviewed KG edge's `supporting_analysis_uuid`).
+2. On subsequent encounters: look up the analysis network UUID via the upstream reference. `cache_network(uuid, store_agent="<agent>")` pulls it into the local store. `query_graph` retrieves the specific quote / claim / section needed.
+3. If the content genuinely should be re-fetched fresh (e.g., the paper may have a new version), re-call the MCP tool and publish a new version of the analysis network. Retire the prior version via `supersedes` rather than overwriting.
+
+This pattern is the intended use of the memento architecture: CX2 networks are the persistent, queryable, share-across-agents storage tier. The session-scoped tool-result cache is **not** that tier — it is a runtime optimization for the current session and must not be treated as durable memory.
+
 **On lock failure (`session_init` returns a LadybugDB lock or WAL error):**
 1. Log a minimal session-history node to NDEx directly (no local store needed for this):
    - `name: "Session YYYY-MM-DD — FAILED (lock error)"`
