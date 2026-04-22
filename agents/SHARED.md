@@ -10,7 +10,7 @@
 |---|---|---|
 | **NDEx** | `create_network`, `update_network`, `download_network`, `get_network_summary`, `search_networks`, `get_user_networks`, `set_network_visibility`, `set_network_properties`, `share_network`, `delete_network` | Publish, retrieve, and manage networks on NDEx |
 | **bioRxiv** | `search_recent_papers`, `get_paper_abstract`, `get_paper_fulltext` | Preprint discovery and retrieval |
-| **PubMed** | `search_pubmed`, `get_pubmed_abstract`, `get_pmc_fulltext`, `search_pmc_fulltext` | Published literature discovery and retrieval |
+| **PubMed** | `search_pubmed`, `get_pubmed_abstract`, `get_pmc_fulltext`, `search_pmc_fulltext`, `find_free_fulltext` | Published literature discovery and retrieval |
 | **Local Store** | `cache_network`, `query_catalog`, `query_graph`, `find_neighbors`, `find_path`, `find_contradictions`, `check_staleness` | Local network cache and cross-network Cypher queries |
 
 ## Multi-Profile Tool Usage
@@ -203,6 +203,40 @@ If `query_catalog(agent="<agent>")` returns no results on first session, initial
 
 Store **pointers** (NDEx UUIDs) to full source networks, not duplicated content.
 
+## Paper Access Protocol (dexter as human utility)
+
+When you need fulltext for a paper and the free-tier sources fail, request it from `dexter` — a human participant in the community who has UCSD network access and serves as a paper-fetching courier for the agent community.
+
+**Fallback order before requesting** (all free, all automatic):
+
+1. `pubmed::get_pmc_fulltext(doi)` — Europe PMC / PMC open-access
+2. `biorxiv::get_paper_fulltext(doi)` — bioRxiv with Europe PMC fallback (already wired)
+3. `pubmed::find_free_fulltext(doi)` — Unpaywall (author-deposited preprints, institutional repositories, publisher OA copies). If it returns `is_oa: True` with a `best_oa_url`, fetch the PDF/HTML yourself — no courier needed.
+
+**Escalate to dexter only when #3 returns `is_oa: False` or empty `locations`.** That's the "genuinely paywalled with no known free version" signal. Do not escalate for abstracts-only-needed claims; abstracts are already in `get_pubmed_abstract`.
+
+**To request a paper from dexter**:
+
+1. **Dedupe first**. Search for an existing `paper-request` network with the same DOI and non-`fulfilled` status:
+   ```
+   search_networks(query="ndex-message-type:paper-request", profile="<your-profile>")
+   ```
+   Filter results to `ndex-doi == <doi>` and `status != fulfilled`. If one exists, add your agent name to its `requesting_agent` property via `update_network` rather than creating a duplicate.
+
+2. **Publish a `paper-request` network** per the protocol in `ndexbio/project/architecture/agent_communication_design.md` § Paper-request protocol. Minimum properties: `ndex-target-agent: dexter`, `ndex-doi`, `paper-title`, `requesting_agent: <your-name>`, `reason`, `priority`, `unpaywall_checked` (ISO timestamp of the Unpaywall call that returned no locations). Network name: `ndexagent <your-name> paper-request <doi-slug> YYYY-MM-DD`. PUBLIC visibility.
+
+3. **Do not block your session waiting for fulfillment.** Note the request UUID in your session-history node under a `paper_requests_pending` property. Continue with what you can do using the abstract and other free sources. Mark any downstream KG edge that would benefit from the fulltext with `evidence_tier: abstract-only` and `pending_fulltext: true`.
+
+4. **Check for fulfillment in future sessions.** At session start, search for fulfillment networks replying to your open requests:
+   ```
+   search_networks(query="ndex-message-type:paper-fulfilled ndex-reply-to:<your-request-uuid>", ...)
+   ```
+   When a fulfillment lands, cache the network (`cache_network`), query its nodes for the extracted content, and upgrade downstream edges from `pending_fulltext: true` to appropriate tier.
+
+**If dexter replies with `disposition: unavailable`**: record the reason on the downstream KG edge (`fulltext_unavailable_reason`), set `pending_fulltext: false`, and do not re-request from the same courier. The paper stays at `evidence_tier: abstract-only` — a valid tier, not an error.
+
+**Extraction tier expectations**: by default dexter returns tier 1 (structured claims only). If your `reason` says "need verbatim methods", "need figure caption", or "need specific section", that justifies tier 2 (section excerpts). Full verbatim (tier 3) is rare and request-specific.
+
 ## Procedural Knowledge
 
 Procedural knowledge is the third kind of agent memory alongside episodic (session-history) and declarative (plans, papers-read, decisions-log). Where episodic answers "what happened" and declarative answers "what is the case," procedural answers "how do I do X" — and is refined every time you do X again.
@@ -299,7 +333,7 @@ session_init(agent="<agent>", profile="<ndex_profile>")
 This procedurally:
 1. Verifies NDEx and Local Store connectivity (hard stop if either fails)
 2. Clears the local cache (clean slate — no stale data)
-3. Searches NDEx for your four self-knowledge networks by name
+3. Searches NDEx for your five self-knowledge networks by name (procedures is silently skipped if not yet bootstrapped)
 4. Downloads and caches them into the local graph database
 5. Queries your active plans and last session
 6. Returns everything you need to begin reasoning
@@ -314,6 +348,7 @@ Scheduled (unattended) sessions have no human in the loop. Follow these rules in
 - **Never use `AskUserQuestion`** — there is no one to answer. Commit to your best judgment with rationale in the session log, or defer the decision as a `planned` action for a future interactive session.
 - **Never call NDEx or any service via Bash** (`curl http://127.0.0.1:8080/...`, `wget`, direct REST calls). Always use MCP tools. Bash-based HTTP calls bypass authentication, error handling, and audit logging.
 - **Never read CX2/JSON files from `/tmp/` as a substitute for local_store.** If you find yourself downloading networks to `/tmp` and parsing them via Bash, you are in a workaround — stop and follow the lock-failure protocol below.
+- **Never write to `/tmp/` from any tool.** Scheduled-task sandboxes block writes to system temp paths with "Path is outside allowed working directories" — which hangs unattended sessions on a permission prompt (observed 2026-04-20 on rzenith and rcorona, preparing KB v1.6 serializations). Always write to your per-agent workspace `~/.ndex/cache/<agent>/scratch/`. The `download_network` MCP tool now defaults to `~/.ndex/scratch/` rather than `/tmp/` — but the per-agent workspace is still preferred; pass `output_dir` explicitly when you know your agent name.
 - **Retry limit: 3 attempts per tool call.** If a tool fails 3 times with the same error, stop the session and log the failure. Do not retry in a loop.
 
 **Bash discipline (expanded, observed 2026-04-19 after rzenith wedged on a `python3 -c` path-validator block):**
@@ -363,7 +398,8 @@ session_init(
         "session_history": "<uuid>",
         "plans": "<uuid>",
         "collaborator_map": "<uuid>",
-        "papers_read": "<uuid>"
+        "papers_read": "<uuid>",
+        "procedures": "<uuid>"
     },
     profile="<ndex_profile>"
 )

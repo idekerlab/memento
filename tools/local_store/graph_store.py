@@ -1,6 +1,7 @@
 """Tier 2: LadybugDB embedded graph database for CX2 network data."""
 
 import hashlib
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,37 @@ import real_ladybug as lbug
 
 
 DEFAULT_CACHE_DIR = Path.home() / ".ndex" / "cache"
+
+
+def _open_database_with_wal_recovery(db_path: str) -> "lbug.Database":
+    """Open LadybugDB, self-healing a torn WAL on first retry.
+
+    Kuzu (the upstream of real_ladybug) does not auto-truncate a partial
+    WAL record on open — if the previous writer was killed mid-transaction
+    (SIGKILL, OOM, abrupt desktop-app exit), the next open fails with
+    "Corrupted wal file. Read out invalid WAL record type." (see Kuzu
+    issue #4013). We delete the stale WAL and retry once. This is safe
+    here because NDEx is the canonical source: session_init re-imports
+    from NDEx, and the only data lost is writes that were in-flight and
+    not yet publish_network'd upstream.
+    """
+    try:
+        return lbug.Database(db_path)
+    except Exception as e:
+        msg = str(e)
+        if "wal" not in msg.lower():
+            raise
+        wal_path = Path(db_path + ".wal")
+        if not wal_path.exists():
+            raise
+        print(
+            f"local_store: corrupt WAL detected at {wal_path} ({msg!r}); "
+            f"deleting and retrying open. Any uncommitted writes from the "
+            f"previous process are lost — canonical state is in NDEx.",
+            file=sys.stderr,
+        )
+        wal_path.unlink()
+        return lbug.Database(db_path)
 
 
 def make_global_id(network_uuid: str, cx2_node_id: int) -> int:
@@ -93,7 +125,7 @@ class GraphStore:
             db_path = DEFAULT_CACHE_DIR / "graph.db"
         self.db_path = str(db_path)
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self.db = lbug.Database(self.db_path)
+        self.db = _open_database_with_wal_recovery(self.db_path)
         self.conn = lbug.Connection(self.db)
         self._init_schema()
 

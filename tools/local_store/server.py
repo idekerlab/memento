@@ -13,7 +13,9 @@ Optional:  python -m tools.local_store.server --agent-scope <agent_name>
 """
 
 import argparse
+import atexit
 import json
+import signal
 import sys
 from pathlib import Path
 
@@ -712,8 +714,14 @@ def session_init(
                to construct self-knowledge network names if UUIDs not provided.
         profile: NDEx profile for downloading (required).
         self_network_uuids: Optional dict mapping self-knowledge types to NDEx
-            UUIDs. Keys: "session_history", "plans", "collaborator_map", "papers_read".
-            If omitted, searches NDEx for networks named "<agent>-session-history", etc.
+            UUIDs. Keys: "session_history", "plans", "collaborator_map",
+            "papers_read", "procedures". If omitted, searches NDEx for networks
+            named "<agent>-session-history", etc.
+
+            Note on "procedures": this is the fifth standard self-knowledge
+            network (SHARED.md §Procedural Knowledge). Agents without a
+            "<agent>-procedures" network yet will have it silently skipped —
+            the search returns numFound=0 and no error is raised.
     """
     err = _check_scope(agent)
     if err:
@@ -728,7 +736,12 @@ def session_init(
     cleared = store.clear_all()
 
     # Step 2: Resolve self-knowledge network UUIDs
-    sk_types = ["session-history", "plans", "collaborator-map", "papers-read"]
+    #
+    # SHARED.md §Self-Knowledge Networks defines five standard networks.
+    # The fifth ("procedures") was added 2026-04-18; agents that haven't
+    # bootstrapped a procedures network yet will have it silently skipped
+    # below (search returns numFound=0 → the key is never added to `uuids`).
+    sk_types = ["session-history", "plans", "collaborator-map", "papers-read", "procedures"]
     uuids = {}
 
     if self_network_uuids:
@@ -737,6 +750,7 @@ def session_init(
             "plans": "plans",
             "collaborator_map": "collaborator-map",
             "papers_read": "papers-read",
+            "procedures": "procedures",
         }
         for param_key, sk_key in key_map.items():
             if param_key in self_network_uuids:
@@ -829,6 +843,47 @@ def session_init(
             "self_network_uuids": uuids,
         },
     }
+
+
+# ── Shutdown: checkpoint + close ─────────────────────────────────────
+
+def _shutdown_local_stores() -> None:
+    """Best-effort CHECKPOINT + close of every open agent store.
+
+    Kuzu does not auto-checkpoint on Database destruction (upstream issue
+    #4013), so abrupt process exit leaves uncommitted writes in the WAL.
+    A torn record at the tail then blocks the next open with "Corrupted
+    wal file." Running CHECKPOINT on graceful shutdown folds the WAL into
+    the main db file and truncates it. SIGKILL still leaves a stale WAL,
+    which GraphStore._open_database_with_wal_recovery handles at open time.
+    """
+    for agent, store in list(_stores.items()):
+        try:
+            store.graph.conn.execute("CHECKPOINT")
+        except Exception as e:
+            print(
+                f"local_store shutdown: CHECKPOINT failed for '{agent}': {e}",
+                file=sys.stderr,
+            )
+        try:
+            store.close()
+        except Exception as e:
+            print(
+                f"local_store shutdown: close failed for '{agent}': {e}",
+                file=sys.stderr,
+            )
+        _stores.pop(agent, None)
+
+
+def _sigterm_handler(signum, frame):
+    # Raising SystemExit runs atexit callbacks; the default SIGTERM disposition
+    # does not. SIGINT already flows through KeyboardInterrupt → atexit, so we
+    # only need an explicit handler for SIGTERM.
+    sys.exit(0)
+
+
+atexit.register(_shutdown_local_stores)
+signal.signal(signal.SIGTERM, _sigterm_handler)
 
 
 # ── Entry point ──────────────────────────────────────────────────────

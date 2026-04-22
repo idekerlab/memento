@@ -9,7 +9,6 @@ Run with:  python -m tools.ndex_mcp.server
 
 import json
 import sys
-import tempfile
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -245,11 +244,20 @@ def download_network(network_id: str, profile: str, output_dir: str | None = Non
 
     raw_cx2 = result["data"]
 
-    # Determine output path
+    # Determine output path.
+    #
+    # Default is ~/.ndex/scratch/ rather than /tmp/ — scheduled-task
+    # sandboxes block writes to system temp paths ("Path is outside
+    # allowed working directories"), which hangs unattended sessions
+    # on a permission prompt. ~/.ndex/ is guaranteed writable because
+    # it already holds per-agent local_store caches.
+    #
+    # Callers that know the agent should pass the per-agent path
+    # explicitly: output_dir="~/.ndex/cache/<agent>/scratch/".
     if output_dir:
-        out_path = Path(output_dir)
+        out_path = Path(output_dir).expanduser()
     else:
-        out_path = Path(tempfile.mkdtemp(prefix="ndex_"))
+        out_path = Path.home() / ".ndex" / "scratch"
     out_path.mkdir(parents=True, exist_ok=True)
     file_path = out_path / f"{network_id}.cx2"
     file_path.write_text(json.dumps(raw_cx2, indent=2), encoding="utf-8")

@@ -14,6 +14,7 @@ rsolar is one of three agents in the **HPMI Viral Cancer Team**, alongside **rve
 - **Profile**: `local-rsolar` for all NDEx writes. `store_agent="rsolar"` for all local store operations.
 - All published networks: PUBLIC visibility on agent-communication NDEx.
 - rsolar does **not** access public NDEx directly. If a claim requires cross-reference to a public NDEx HPMI network, consult **rsolstice** rather than fetching directly.
+- **Workspace directory**: `~/.ndex/cache/rsolar/scratch/` — use this for any transient file operations (CX2 downloads, intermediate JSON, temp analyses). **Never write to `/tmp/`** — scheduled-task sandboxes block /tmp writes and the session will hang on a permission prompt. Pass `output_dir="<HOME>/.ndex/cache/rsolar/scratch"` to `download_network`. For Write-tool calls that produce intermediate files, use the same path.
 
 ## Core working rules
 

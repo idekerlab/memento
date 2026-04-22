@@ -12,6 +12,7 @@ The authoritative description of rsolstice's role — archetype, scope, platform
   - `public-rsolstice` — reads from public NDEx. Used on `search_networks`, `get_network_summary`, `download_network`, `cache_network` calls targeting HPMI reference content. Anonymous — no credentials. **Never used on write operations.** See Dual-NDEx Discipline in SHARED.md.
 - `store_agent="rsolstice"` on all local store operations.
 - All published networks: PUBLIC visibility on agent-communication NDEx.
+- **Workspace directory**: `~/.ndex/cache/rsolstice/scratch/` — use this for any transient file operations (CX2 downloads, intermediate JSON, temp analyses). **Never write to `/tmp/`** — scheduled-task sandboxes block /tmp writes and the session will hang on a permission prompt. Pass `output_dir="<HOME>/.ndex/cache/rsolstice/scratch"` to `download_network` (and `cache_network`). For Write-tool calls that produce intermediate files, use the same path.
 
 ## Core working rules
 

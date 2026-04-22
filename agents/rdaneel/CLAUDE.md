@@ -7,6 +7,7 @@
 - **NDEx username**: `rdaneel` on the agent-communication NDEx.
 - **Profiles**: `local-rdaneel` for all NDEx writes. `store_agent="rdaneel"` for local store.
 - **All published networks**: PUBLIC visibility + `index_level: ALL`.
+- **Workspace directory**: `~/.ndex/cache/rdaneel/scratch/` — use this for any transient file operations (CX2 downloads, intermediate JSON, temp analyses). **Never write to `/tmp/`** — scheduled-task sandboxes block /tmp writes and the session will hang on a permission prompt. Pass `output_dir="<HOME>/.ndex/cache/rdaneel/scratch"` to `download_network`. For Write-tool calls that produce intermediate files, use the same path.
 - **Modes**: two distinct modes, distinguished by how the session is invoked.
   - **Interactive mode** (default): user-directed sessions. Full dev scope — architectural decisions, refactors, protocol authoring, bootstrapping new agents, etc. `AskUserQuestion` is available; the user is in the loop.
   - **Scheduled review mode**: runs last in each morning / afternoon batch via `~/.claude/scheduled-tasks/rdaneel-review-*`. Read-only summarization of the day's agent activity — does NOT make architectural decisions, does NOT modify scientist agents' state, does NOT touch the repo. See § Scheduled review mode below.

@@ -5,10 +5,12 @@ Run with:  python -m tools.pubmed.server
 
 from mcp.server.fastmcp import FastMCP
 from .client import PubMedClient
+from .unpaywall import UnpaywallClient
 
 mcp = FastMCP("pubmed", log_level="INFO")
 
 _client: PubMedClient | None = None
+_unpaywall: UnpaywallClient | None = None
 
 
 def _get_client() -> PubMedClient:
@@ -16,6 +18,13 @@ def _get_client() -> PubMedClient:
     if _client is None:
         _client = PubMedClient()
     return _client
+
+
+def _get_unpaywall() -> UnpaywallClient:
+    global _unpaywall
+    if _unpaywall is None:
+        _unpaywall = UnpaywallClient()
+    return _unpaywall
 
 
 # ── PubMed Search ────────────────────────────────────────────────────
@@ -125,6 +134,66 @@ def search_pmc_fulltext(
                 "papers": [p.to_dict() for p in papers],
             },
         }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "error_type": type(e).__name__}
+
+
+# ── Unpaywall (free-fulltext URL finder) ─────────────────────────────
+
+
+@mcp.tool()
+def find_free_fulltext(doi: str) -> dict:
+    """Find legal free-fulltext URLs for a DOI via Unpaywall.
+
+    Unpaywall (https://unpaywall.org) indexes ~30M papers with known
+    free versions: author-deposited preprints (arXiv, bioRxiv),
+    institutional-repository copies, and publisher OA copies. It
+    complements the existing tools — if `get_pmc_fulltext` returns
+    "not in PMC" and `get_paper_fulltext` (bioRxiv) can't reach the
+    preprint, Unpaywall often still knows about a free author version
+    that no other tool in this server can find.
+
+    **When to use**: agents hitting a PMC miss should call this
+    BEFORE requesting the paper from a human courier. If Unpaywall
+    reports is_oa=True with a URL, the agent can fetch that URL
+    directly (or pass it to the paper-request as "courier only needs
+    to verify this PDF link works"). If is_oa=False, the paper is
+    genuinely paywalled with no known legal free copy — escalate to
+    the human paper-request queue.
+
+    **What this tool does NOT do**: it does not fetch the fulltext
+    content itself. It returns URLs (publisher PDF, repository PDF,
+    landing pages) that a caller can then fetch by whatever means
+    is appropriate for the content type.
+
+    Args:
+        doi: DOI (e.g. "10.1038/nature12373"). Accepts "doi:" prefix
+             or full doi.org URL; both are normalized.
+
+    Returns:
+        On success: status=success, data={doi, is_oa, genre, title,
+        journal_name, locations: [{url, url_for_pdf, host_type,
+        version, license, repository_institution, is_best}, ...]}.
+        If is_oa is False and locations is empty, the paper has no
+        known free version anywhere — escalate.
+
+        Location "version" values: "publishedVersion" (final typeset
+        copy, best), "acceptedVersion" (post-peer-review postprint),
+        "submittedVersion" (preprint, pre-peer-review).
+    """
+    try:
+        client = _get_unpaywall()
+        result = client.find_free_fulltext(doi)
+        if result is None:
+            return {
+                "status": "error",
+                "message": (
+                    f"DOI '{doi}' not found in Unpaywall. Either the DOI is "
+                    "malformed or it's not yet indexed (Unpaywall covers most "
+                    "DOIs with a Crossref record from ~2010 onward)."
+                ),
+            }
+        return {"status": "success", "data": result.to_dict()}
     except Exception as e:
         return {"status": "error", "message": str(e), "error_type": type(e).__name__}
 

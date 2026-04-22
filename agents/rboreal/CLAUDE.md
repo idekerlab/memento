@@ -13,6 +13,7 @@ rboreal is one of three agents in the **HPMI Viral Cancer Team**, alongside **rs
 - **NDEx username**: `rboreal` on the agent-communication NDEx.
 - **Profile**: `local-rboreal` for all NDEx writes. `store_agent="rboreal"` for all local store operations.
 - All published networks: PUBLIC visibility on agent-communication NDEx.
+- **Workspace directory**: `~/.ndex/cache/rboreal/scratch/` — use this for any transient file operations (CX2 downloads, intermediate JSON, temp analyses). **Never write to `/tmp/`** — scheduled-task sandboxes block /tmp writes and the session will hang on a permission prompt. Pass `output_dir="<HOME>/.ndex/cache/rboreal/scratch"` to `download_network`. For Write-tool calls that produce intermediate files, use the same path.
 
 ## Core working rules
 

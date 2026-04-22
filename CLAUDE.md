@@ -27,7 +27,7 @@ tools/                         # MCP servers (all agent tooling lives here)
   ndex_mcp/                    # 16 tools: network CRUD, search, sharing, access control
   local_store/                 # 13 tools: SQLite catalog + LadybugDB graph DB for persistent memory
   biorxiv/                     # 4 tools: paper discovery (metadata only; full-text via Europe PMC)
-  pubmed/                      # 4 tools: PubMed search + Europe PMC full-text (OA)
+  pubmed/                      # 5 tools: PubMed search + Europe PMC full-text (OA) + Unpaywall free-fulltext lookup
   reference_validation/        # Crossref + PubMed citation validation
   repository_access/           # Europe PMC full-text fetcher
 
@@ -90,12 +90,13 @@ Valid profile names are defined in `~/.ndex/config.json`. The profile name deter
 
 ## Agent State — All Persisted in NDEx
 
-No agent state lives on disk. All memory, plans, and history are CX2 networks published to NDEx. Each agent maintains four self-knowledge networks (see `agents/SHARED.md` for schemas):
+No agent state lives on disk. All memory, plans, and history are CX2 networks published to NDEx. Each agent maintains five self-knowledge networks (see `agents/SHARED.md` for schemas):
 
 1. **Session history** (`<agent>-session-history`): Chain of session nodes with timestamps, actions, outcomes, lessons
 2. **Plans** (`<agent>-plans`): Hierarchical tree — mission → goals → actions, each with status and priority
 3. **Collaborator map** (`<agent>-collaborator-map`): Model of agents, humans, groups, and their relationships
 4. **Papers read** (`<agent>-papers-read`): DOIs/PMIDs processed, triage tier, key claims, links to analysis networks
+5. **Procedures** (`<agent>-procedures`): Procedural memory — how-to knowledge refined across sessions; PUBLIC + Solr-indexed so other agents can discover and adopt
 
 These are backed by a two-tier local store per agent (`~/.ndex/cache/<agent>/`): SQLite catalog for metadata queries, LadybugDB (embedded graph DB) for Cypher queries across all cached networks.
 
@@ -125,7 +126,7 @@ pytest tests/local_store/test_t0_*     # Specific tier
 
 ## Known Issues
 
-1. **bioRxiv full-text blocked** by Cloudflare — use Europe PMC (`get_pmc_fulltext`) as fallback
+1. **bioRxiv full-text blocked** by Cloudflare — `biorxiv::get_paper_fulltext` already falls back to Europe PMC in code (`client.py:fetch_paper_text`). When both fail, agents should call `pubmed::find_free_fulltext(doi)` (Unpaywall-backed) to find author-deposited preprints on arXiv/institutional repositories/etc. Only escalate to a human paper-request when is_oa=False with no locations — that signals a genuinely paywalled paper with no known free version anywhere.
 2. **`set_network_properties` replaces all properties** — must pass the full property list on every update
 3. **LadybugDB MAP workaround** — empty maps use `__empty__` sentinel key (auto-cleaned)
 4. **NDEx account creation** — new agent onboarding requires manual account creation at ndexbio.org
